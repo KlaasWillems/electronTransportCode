@@ -50,6 +50,10 @@ class ParticleModel(ABC):
     
     
 class SimplifiedEGSnrcElectron(ParticleModel):
+    """A simplified electron model. Soft elastic collisions are taken into account using the screened Rutherford elastic cross section. 
+    Energy loss is deposited continuously using the Bethe-Bloch inelastic restricted collisional stopping power. Hard-inelastic collisions and bremstrahlung are not 
+    taken into account. 
+    """
     
     def sampleCrossSection(self, Ekin: float, rho: float, Z: float = Z_WATER, A: float = A_WATER) -> Tuple[float, float]:
         """ Sample path-length and polar scattering angle from screened Rutherford elastic scattering cross section. See EGSnrc manual by Kawrakow et al for full details.
