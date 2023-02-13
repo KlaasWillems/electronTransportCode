@@ -13,7 +13,7 @@ A_WATER: Final[float] = 18  # Relative molar mass of water
 I_WATER: Final[float] = 75  # [eV] mean excitation energy for water
 Re: Final[float] = constants.value('classical electron radius')*100  # [cm] classical electron radius
 NB_DENSITY_WATER: Final[float] = 3.3428847  # [cm^-3] electron number density of water
-
+E_THRESHOLD: Final[float] = 1.0
 
 class ParticleModel(ABC):
     
@@ -34,12 +34,12 @@ class ParticleModel(ABC):
         pass
             
     @abstractmethod
-    def evalStoppingPower(self, Ekin: float, DeltaE: float, I: float = I_WATER, NB_DENSITY: float = NB_DENSITY_WATER) -> float:
+    def evalStoppingPower(self, Ekin: float, Ec: float = E_THRESHOLD, I: float = I_WATER, NB_DENSITY: float = NB_DENSITY_WATER) -> float:
         """Evaluate electron stopping power. 
 
         Args:
             Ekin (float): Incoming particle kinetic energy relative to electron rest energy (tau or epsilon in literature)
-            DeltaE (float): Energy loss in the same units as Ekin
+            DeltaE (float): Energy cut-off value for soft-inelastic collisions in the same units as Ekin. Defaults to E_THRESHOLD.
             I (float, optional): Mean excitation energy. Defaults to I_WATER.
             NB_DENSITY (float): Number density of scattering medium. Defaults to NB_DENSITY_WATER.
 
@@ -74,7 +74,7 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         s: float = np.random.exponential(1/SigmaSR)  # path-length 
         return s, mu
 
-    def evalStoppingPower(self, Ekin: float, DeltaE: float, I: float = I_WATER, NB_DENSITY: float = NB_DENSITY_WATER) -> float:
+    def evalStoppingPower(self, Ekin: float, Ec: float = E_THRESHOLD, I: float = I_WATER, NB_DENSITY: float = NB_DENSITY_WATER) -> float:
         """ Restricted stopping power from EGS4 and EGSnrc based on Bethe-Bloch theory. Implementation does not include density effect correction that takes into account 
             the polarization of the medium due to the electron field.
 
@@ -84,7 +84,7 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         Ekin_eV: float = Ekin*ERE*1e6  # Electron kinetic energy in eV (E or T in literature)
         delta: float = 0.0
         betaSquared: float = Ekin*(Ekin+2)/np.power(Ekin+1, 2)
-        eta: float = DeltaE/Ekin
+        eta: float = Ec/Ekin
         G: float = -1 - betaSquared + np.log(4*eta*(1-eta)) + 1/(1-eta) + (1 - betaSquared)*(np.power(Ekin*eta, 2)/2 + (2*Ekin + 1)*np.log(1-eta))
         Lcoll: float = 2*np.pi*np.power(Re, 2)*ERE*NB_DENSITY*(2*np.log(Ekin_eV/I) + np.log(1 + Ekin/2) + G - delta)/betaSquared
         return Lcoll
