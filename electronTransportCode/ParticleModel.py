@@ -19,8 +19,8 @@ E_THRESHOLD: Final[float] = 1.0  # CutOff energy level for soft and hard inelast
 class ParticleModel(ABC):
     
     @abstractmethod
-    def sampleCrossSection(self, Ekin: float, rho: float, Z: float = Z_WATER, A: float = A_WATER) -> Tuple[float, float]:
-        """Sample path-length and polar scattering angle. 
+    def samplePathlength(self, Ekin: float, rho: float, Z: float = Z_WATER, A: float = A_WATER) -> float:
+        """Sample path-length. 
 
         Args:
             Ekin (float): Incoming particle kinetic energy relative to electron rest energy (tau or epsilon in literature)
@@ -29,11 +29,24 @@ class ParticleModel(ABC):
             A (float): relative molecular mass. Defaults to A_WATER.
 
         Returns:
-            float: path-length [cm] and polar scattering angle
+            float: path-length [cm]
+        """
+        pass
+    
+    @abstractmethod
+    def sampleAngle(self, Ekin: float, Z: float = Z_WATER) -> float:
+        """Sample polar scattering angle mu. 
+
+        Args:
+            Ekin (float): Incoming particle kinetic energy relative to electron rest energy (tau or epsilon in literature)
+            Z (float): atomic number. Defaults to Z_WATER.
+
+        Returns:
+            float: polar scattering angle
         """
 
         pass
-            
+         
     @abstractmethod
     def evalStoppingPower(self, Ekin: float, Ec: float = E_THRESHOLD, I: float = I_WATER, NB_DENSITY: float = NB_DENSITY_WATER) -> float:
         """Evaluate electron stopping power. 
@@ -56,28 +69,34 @@ class SimplifiedEGSnrcElectron(ParticleModel):
     taken into account. 
     """
     
-    def sampleCrossSection(self, Ekin: float, rho: float, Z: float = Z_WATER, A: float = A_WATER) -> Tuple[float, float]:
-        """ Sample path-length and polar scattering angle from screened Rutherford elastic scattering cross section. See EGSnrc manual by Kawrakow et al for full details.
+    def samplePathlength(self, Ekin: float, rho: float, Z: float = Z_WATER, A: float = A_WATER) -> float:
+        """ Sample path-length from screened Rutherford elastic scattering cross section. See EGSnrc manual by Kawrakow et al for full details.
             
             See abstract base class method for arguments and return value.
         """
-        # Polar scattering angle
+        
+        betaSquared: float = Ekin*(Ekin+2)/np.power(Ekin+1,2)
+        ZS: float = Z*(Z + 1)
+        ZE: float = Z*(Z + 1)*np.log(np.power(Z, -2/3))
+        ZX: float = Z*(Z + 1)*np.log(1 + 3.34*np.power(FSC*Z, 2))
+        bc: float = 7821.6 * rho * ZS * np.exp(ZE/ZS)/(A * np.exp(ZX/ZS))
+        SigmaSR: float = bc/betaSquared  # total macroscopic screened Rutherford cross section
+        return np.random.exponential(1/SigmaSR)  # path-length 
+        
+    
+    def sampleAngle(self, Ekin: float, Z: float = Z_WATER) -> float:
+        """ Sample polar scattering angle from screened Rutherford elastic scattering cross section. See EGSnrc manual by Kawrakow et al for full details.
+            
+            See abstract base class method for arguments and return value.
+        """
+
         betaSquared: float = Ekin*(Ekin+2)/np.power(Ekin+1,2)
         beta: float = np.sqrt(betaSquared)
         alfaPrime: float = FSC*Z/beta
         eta0: float = np.power(FSC, 2)*np.power(Z, 2/3)/(4*np.power(CTF, 2)*Ekin*(Ekin+2))
         r: float = np.random.uniform()
         eta: float = eta0*(1.13 + 3.76*alfaPrime**2)
-        mu: float = 1 - 2*eta*r/(1-r+eta)  # polar scattering angle mu
-        
-        # path-length
-        ZS: float = Z*(Z + 1)
-        ZE: float = Z*(Z + 1)*np.log(np.power(Z, -2/3))
-        ZX: float = Z*(Z + 1)*np.log(1 + 3.34*np.power(FSC*Z, 2))
-        bc: float = 7821.6 * rho * ZS * np.exp(ZE/ZS)/(A * np.exp(ZX/ZS))
-        SigmaSR: float = bc/betaSquared  # total macroscopic screened Rutherford cross section
-        s: float = np.random.exponential(1/SigmaSR)  # path-length 
-        return s, mu
+        return 1 - 2*eta*r/(1-r+eta)  # polar scattering angle mu
 
     def evalStoppingPower(self, Ekin: float, Ec: float = E_THRESHOLD, I: float = I_WATER, NB_DENSITY: float = NB_DENSITY_WATER) -> float:
         """ Restricted stopping power from EGS4 and EGSnrc based on Bethe-Bloch theory. Implementation does not include density effect correction that takes into account 
