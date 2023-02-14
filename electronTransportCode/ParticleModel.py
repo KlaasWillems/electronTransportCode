@@ -12,8 +12,9 @@ ERE: Final[float] = constants.value('electron mass energy equivalent in MeV')  #
 A_WATER: Final[float] = 18  # Relative molar mass of water
 I_WATER: Final[float] = 75  # [eV] mean excitation energy for water
 Re: Final[float] = constants.value('classical electron radius')*100  # [cm] classical electron radius
-NB_DENSITY_WATER: Final[float] = 3.3428847  # [cm^-3] electron number density of water
-E_THRESHOLD: Final[float] = 1.0
+NB_DENSITY_WATER: Final[float] = 3.3428847*1e23  # [cm^-3] electron number density of water
+E_THRESHOLD: Final[float] = 1.0  # CutOff energy level for soft and hard inelastic scattering collisions
+
 
 class ParticleModel(ABC):
     
@@ -37,7 +38,7 @@ class ParticleModel(ABC):
     def evalStoppingPower(self, Ekin: float, Ec: float = E_THRESHOLD, I: float = I_WATER, NB_DENSITY: float = NB_DENSITY_WATER) -> float:
         """Evaluate electron stopping power. 
 
-        Args:
+        Args:	
             Ekin (float): Incoming particle kinetic energy relative to electron rest energy (tau or epsilon in literature)
             DeltaE (float): Energy cut-off value for soft-inelastic collisions in the same units as Ekin. Defaults to E_THRESHOLD.
             I (float, optional): Mean excitation energy. Defaults to I_WATER.
