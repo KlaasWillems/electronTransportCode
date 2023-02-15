@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
+from email.generator import Generator
 import numpy as np
 from scipy import constants
-from typing import Final
+from typing import Final, Optional, Union
 
 
 CTF: Final[float] = np.power(9*(np.pi**2)/128, 1/3)  # Thomas-Fermi constant. Dimensionless
@@ -18,6 +19,19 @@ RHO_WATER: Final[float] = 1.0  # [g/cm^3] density of water
 
 
 class ParticleModel(ABC):
+    def __init__(self, generator: Union[np.random.Generator, None, int] = None) -> None:
+        self.rng: Optional[np.random.Generator]
+        if isinstance(generator, int):
+            self.rng = np.random.default_rng(generator) 
+        elif generator is None:
+            self.rng = None
+        elif isinstance(generator, np.random.Generator):
+            self.rng = generator
+        else: 
+            raise ValueError('Generator input argument invalid.')
+        
+    def setGenerator(self, generator: np.random.Generator) -> None:
+        self.rng = generator
     
     @abstractmethod
     def samplePathlength(self, Ekin: float, rho: float = RHO_WATER, Z: float = Z_WATER, A: float = A_WATER) -> float:
@@ -73,14 +87,14 @@ class SimplifiedEGSnrcElectron(ParticleModel):
             
             See abstract base class method for arguments and return value.
         """
-        
+        assert self.rng is not None
         betaSquared: float = Ekin*(Ekin+2)/np.power(Ekin+1,2)
         ZS: float = Z*(Z + 1)
         ZE: float = Z*(Z + 1)*np.log(np.power(Z, -2/3))
         ZX: float = Z*(Z + 1)*np.log(1 + 3.34*np.power(FSC*Z, 2))
         bc: float = 7821.6 * rho * ZS * np.exp(ZE/ZS)/(A * np.exp(ZX/ZS))
         SigmaSR: float = bc/betaSquared  # total macroscopic screened Rutherford cross section
-        return np.random.exponential(1/SigmaSR)  # path-length 
+        return self.rng.exponential(1/SigmaSR)  # path-length 
         
     
     def sampleAngle(self, Ekin: float, Z: float = Z_WATER) -> float:
@@ -88,12 +102,12 @@ class SimplifiedEGSnrcElectron(ParticleModel):
             
             See abstract base class method for arguments and return value.
         """
-
+        assert self.rng is not None
         betaSquared: float = Ekin*(Ekin+2)/np.power(Ekin+1,2)
         beta: float = np.sqrt(betaSquared)
         alfaPrime: float = FSC*Z/beta
         eta0: float = np.power(FSC, 2)*np.power(Z, 2/3)/(4*np.power(CTF, 2)*Ekin*(Ekin+2))
-        r: float = np.random.uniform()
+        r: float = self.rng.uniform()
         eta: float = eta0*(1.13 + 3.76*alfaPrime**2)
         return 1 - 2*eta*r/(1-r+eta)  # polar scattering angle mu
 

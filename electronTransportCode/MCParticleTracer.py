@@ -22,7 +22,6 @@ class MCParticleTracer(ABC):
 
         """
         for particleNb in range(self.simOptions.nbParticles):
-                        
             # simulate particle
             self.traceParticle(estimator)
             
@@ -131,7 +130,7 @@ class AnalogParticleTracer(MCParticleTracer):
             new_vec: tuple2d = np.zeros_like(vec)
             new_index = index
             cost = self.particle.sampleAngle(new_energy)  # anisotropic scattering angle (mu)
-            sign = np.random.choice([-1, 1])
+            sign = self.simOptions.rng.choice([-1, 1])
             sint = np.sqrt(1 - cost**2)*sign  # scatter left or right with equal probability
             new_vec[0] = vec[0]*cost - vec[1]*sint
             new_vec[1] = vec[0]*sint + vec[1]*cost
