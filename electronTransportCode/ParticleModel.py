@@ -58,7 +58,7 @@ class ParticleModel(ABC):
             NB_DENSITY (float): Number density of scattering medium. Defaults to NB_DENSITY_WATER.
 
         Returns:
-            float: Stopping power evaluated at Eking and DeltaE [MeV/cm]
+            float: Stopping power evaluated at Ekin and DeltaE [1/cm] (energy relative to electron rest energy)
         """
     
     
@@ -109,5 +109,5 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         betaSquared: float = Ekin*(Ekin+2)/np.power(Ekin+1, 2)
         eta: float = Ec/Ekin
         G: float = -1 - betaSquared + np.log(4*eta*(1-eta)) + 1/(1-eta) + (1 - betaSquared)*(np.power(Ekin*eta, 2)/2 + (2*Ekin + 1)*np.log(1-eta))
-        Lcoll: float = 2*np.pi*np.power(Re, 2)*ERE*NB_DENSITY*(2*np.log(Ekin_eV/I) + np.log(1 + Ekin/2) + G - delta)/betaSquared
+        Lcoll: float = 2*np.pi*np.power(Re, 2)*NB_DENSITY*(2*np.log(Ekin_eV/I) + np.log(1 + Ekin/2) + G - delta)/betaSquared
         return Lcoll
