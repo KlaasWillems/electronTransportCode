@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 import numpy as np
 from scipy import constants
-from typing import Tuple, Final
+from typing import Final
 
 
 CTF: Final[float] = np.power(9*(np.pi**2)/128, 1/3)  # Thomas-Fermi constant
@@ -14,24 +14,24 @@ I_WATER: Final[float] = 75  # [eV] mean excitation energy for water
 Re: Final[float] = constants.value('classical electron radius')*100  # [cm] classical electron radius
 NB_DENSITY_WATER: Final[float] = 3.3428847*1e23  # [cm^-3] electron number density of water
 E_THRESHOLD: Final[float] = 1.0  # CutOff energy level for soft and hard inelastic scattering collisions
+RHO_WATER: Final[float] = 1.0  # [g/cm^3] density of water
 
 
 class ParticleModel(ABC):
     
     @abstractmethod
-    def samplePathlength(self, Ekin: float, rho: float, Z: float = Z_WATER, A: float = A_WATER) -> float:
+    def samplePathlength(self, Ekin: float, rho: float = RHO_WATER, Z: float = Z_WATER, A: float = A_WATER) -> float:
         """Sample path-length. 
 
         Args:
             Ekin (float): Incoming particle kinetic energy relative to electron rest energy (tau or epsilon in literature)
-            rho (float): mass density of medium
+            rho (float): mass density of medium. Defaults to RHO_WATER.
             Z (float): atomic number. Defaults to Z_WATER.
             A (float): relative molecular mass. Defaults to A_WATER.
 
         Returns:
             float: path-length [cm]
         """
-        pass
     
     @abstractmethod
     def sampleAngle(self, Ekin: float, Z: float = Z_WATER) -> float:
@@ -45,7 +45,7 @@ class ParticleModel(ABC):
             float: polar scattering angle
         """
 
-        pass
+        
          
     @abstractmethod
     def evalStoppingPower(self, Ekin: float, Ec: float = E_THRESHOLD, I: float = I_WATER, NB_DENSITY: float = NB_DENSITY_WATER) -> float:
@@ -60,7 +60,6 @@ class ParticleModel(ABC):
         Returns:
             float: Stopping power evaluated at Eking and DeltaE [MeV/cm]
         """
-        pass
     
     
 class SimplifiedEGSnrcElectron(ParticleModel):
@@ -69,7 +68,7 @@ class SimplifiedEGSnrcElectron(ParticleModel):
     taken into account. 
     """
     
-    def samplePathlength(self, Ekin: float, rho: float, Z: float = Z_WATER, A: float = A_WATER) -> float:
+    def samplePathlength(self, Ekin: float, rho: float = RHO_WATER, Z: float = Z_WATER, A: float = A_WATER) -> float:
         """ Sample path-length from screened Rutherford elastic scattering cross section. See EGSnrc manual by Kawrakow et al for full details.
             
             See abstract base class method for arguments and return value.
