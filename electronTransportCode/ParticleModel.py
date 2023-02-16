@@ -1,21 +1,8 @@
 from abc import ABC, abstractmethod
-from email.generator import Generator
 import numpy as np
-from scipy import constants
-from typing import Final, Optional, Union
+from typing import Optional, Union
 
-
-CTF: Final[float] = np.power(9*(np.pi**2)/128, 1/3)  # Thomas-Fermi constant. Dimensionless
-FSC: Final[float] = constants.fine_structure  # fine structure constant (denoted with symbol alpha). Dimensionless
-Z_WATER: Final[float] = 10  # atomic number of water
-Z_WATER_EFF: Final[float] = 7.51  # effective atomic number of water 
-ERE: Final[float] = constants.value('electron mass energy equivalent in MeV')  # [MeV] electron rest energy in MeV
-A_WATER: Final[float] = 18  # Relative molar mass of water
-I_WATER: Final[float] = 75  # [eV] mean excitation energy for water
-Re: Final[float] = constants.value('classical electron radius')*100  # [cm] classical electron radius
-NB_DENSITY_WATER: Final[float] = 3.3428847*1e23  # [cm^-3] electron number density of water
-E_THRESHOLD: Final[float] = 1.0  # CutOff energy level for soft and hard inelastic scattering collisions
-RHO_WATER: Final[float] = 1.0  # [g/cm^3] density of water
+from electronTransportCode.utils import A_WATER, CTF, E_THRESHOLD, ERE, FSC, I_WATER, NB_DENSITY_WATER, RHO_WATER, Z_WATER, Z_WATER_EFF, Re
 
 
 class ParticleModel(ABC):
@@ -62,7 +49,7 @@ class ParticleModel(ABC):
         
          
     @abstractmethod
-    def evalStoppingPower(self, Ekin: float, Ec: float = E_THRESHOLD, I: float = I_WATER, NB_DENSITY: float = NB_DENSITY_WATER) -> float:
+    def evalStoppingPower(self, Ekin: float, Ec: float = E_THRESHOLD, I: float = Z_WATER_EFF, NB_DENSITY: float = NB_DENSITY_WATER) -> float:
         """Evaluate electron stopping power. 
 
         Args:	
