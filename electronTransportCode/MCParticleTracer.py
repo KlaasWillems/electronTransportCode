@@ -72,9 +72,9 @@ class AnalogParticleTracer(MCParticleTracer):
         new_index: int
 
         # Step untill energy is smaller than threshold
-        while energy >= self.simOptions.thresholdEnergy:
+        while energy >= self.simOptions.minEnergy:
             new_pos, new_vec, new_energy, new_index = self.stepParticle(pos, vec, energy, index)
-            estimator.updateEstimator((pos, new_pos), (vec, new_vec), (energy, new_energy), (index, new_index))
+            estimator.updateEstimator((pos, new_pos), (vec, new_vec), (energy, new_energy), index)
             pos = new_pos
             vec = new_vec
             energy = new_energy
@@ -85,26 +85,25 @@ class AnalogParticleTracer(MCParticleTracer):
     def stepParticle(self, pos: tuple2d, vec: tuple2d, energy: float, index: int) -> tuple[tuple2d, tuple2d, float, int]:
         """Transport particle and apply event.
         Algorithm:
-            # Sample step size
-            #   1. collisional step size
-            #   2. grid cell or domain edge step size
+            - Sample step size
+                - collisional step size
+                - grid cell or domain edge step size
 
-            # Apply step
-            #   1. Change position
-            #   2. Decrement energy
+            - Apply step
+                - Change position
+                - Decrement energy
 
-            # If next event is a collision
-            #   1. Sample a new post-collisional direction
-            #   2. Keep index
+            - If next event is a collision
+                - Sample a new post-collisional direction
+                - Keep index
 
-            # If next event is a boundary crossing
-            #   1. Keep post-collisional direction
-            #   2. Update index
+            - If next event is a boundary crossing
+                - Keep post-collisional direction
+                - Update index
 
-            # If next event is a domain edge collision
-            #   1. Set energy to zero
-            #   2. Stop simulation by setting energy (weight) to zero
-
+            - If next event is a domain edge collision
+                - Set energy to zero
+                - Stop simulation by setting energy (weight) to zero
 
         Args:
             pos (tuple2d): particle position at start of method
