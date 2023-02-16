@@ -29,7 +29,7 @@ class MCParticleTracer(ABC):
             
         return None
 
-    def energyLoss(self, Ekin: float, stepsize: float) -> float:
+    def energyLoss(self, Ekin: float, stepsize: float, index: int) -> float:
         """Compute energy along step using continuous slowing down approximation. Eq. 4.11.3 from EGSnrc manual, also used in GPUMCD.
         Approximation is second order accurate: O(DeltaE^2)
 
@@ -40,8 +40,8 @@ class MCParticleTracer(ABC):
         Returns:
             float: Energy loss DeltaE
         """
-        Emid = Ekin + self.particle.evalStoppingPower(Ekin)*stepsize/2
-        return self.particle.evalStoppingPower(Emid)*stepsize
+        Emid = Ekin + self.particle.evalStoppingPower(Ekin, self.simDomain.getMaterial(index))*stepsize/2
+        return self.particle.evalStoppingPower(Emid, self.simDomain.getMaterial(index))*stepsize
             
     @abstractmethod
     def traceParticle(self, estimator: MCEstimator) -> None:
@@ -115,7 +115,7 @@ class AnalogParticleTracer(MCParticleTracer):
             tuple[tuple2d, tuple2d, float, int]: state of particle after being transported to new event location and having that event applied.
         """
         # Sample step size
-        stepColl = self.particle.samplePathlength(energy)
+        stepColl = self.particle.samplePathlength(energy, self.simDomain.getMaterial(index))
         stepGeom, neighbourCellIndex = self.simDomain.getCellEdgeInformation(pos, vec, index)
         step = min(stepColl, stepGeom)
         
@@ -123,14 +123,14 @@ class AnalogParticleTracer(MCParticleTracer):
         new_pos = pos + step*vec
         
         # Decrement energy along step
-        deltaE = self.energyLoss(energy, step)
+        deltaE = self.energyLoss(energy, step, index)
         new_energy = energy - deltaE
         
         # Select event
         if stepColl < stepGeom:  # Next event is collision
             new_vec: tuple2d = np.zeros_like(vec)
             new_index = index
-            cost = self.particle.sampleAngle(new_energy)  # anisotropic scattering angle (mu)
+            cost = self.particle.sampleAngle(new_energy, self.simDomain.getMaterial(index))  # anisotropic scattering angle (mu)
             sign = self.simOptions.rng.choice([-1, 1])
             sint = np.sqrt(1 - cost**2)*sign  # scatter left or right with equal probability
             new_vec[0] = vec[0]*cost - vec[1]*sint

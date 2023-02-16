@@ -1,5 +1,8 @@
 from electronTransportCode.utils import tuple2d
 import numpy as np
+from Material import Material
+
+WaterMaterial = Material()
 
 
 class SimulationDomain:
@@ -32,6 +35,10 @@ class SimulationDomain:
         self.xrange: np.ndarray = np.linspace(self.xmin, self.xmax, self.xbins+1)
         self.yrange: np.ndarray = np.linspace(self.ymin, self.ymax, self.ybins+1)
         self.dA: float = (self.xrange[1] - self.xrange[0])*(self.yrange[1] - self.yrange[0])
+        
+    def getMaterial(self, index) -> Material:
+        # All water simulation domain. TODO: expand capabilities.
+        return WaterMaterial
         
     def returnIndex(self, pos: tuple2d) -> int: 
         """Ruturn number of grid cell

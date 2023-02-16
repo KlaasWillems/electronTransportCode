@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 import numpy as np
 from typing import Optional, Union
-
-from electronTransportCode.utils import A_WATER, CTF, E_THRESHOLD, ERE, FSC, I_WATER, NB_DENSITY_WATER, RHO_WATER, Z_WATER, Z_WATER_EFF, Re
+from Material import Material
+from utils import A_WATER, CTF, E_THRESHOLD, ERE, FSC, I_WATER, NB_DENSITY_WATER, RHO_WATER, Z_WATER, Z_WATER_EFF, Re
 
 
 class ParticleModel(ABC):
@@ -21,26 +21,24 @@ class ParticleModel(ABC):
         self.rng = generator
     
     @abstractmethod
-    def samplePathlength(self, Ekin: float, rho: float = RHO_WATER, Z: float = Z_WATER, A: float = A_WATER) -> float:
+    def samplePathlength(self, Ekin: float, material: Material) -> float:
         """Sample path-length. 
 
         Args:
             Ekin (float): Incoming particle kinetic energy relative to electron rest energy (tau or epsilon in literature)
-            rho (float): mass density of medium. Defaults to RHO_WATER.
-            Z (float): atomic number. Defaults to Z_WATER.
-            A (float): relative molecular mass. Defaults to A_WATER.
+            material (Material): material of scattering medium in cell.
 
         Returns:
             float: path-length [cm]
         """
     
     @abstractmethod
-    def sampleAngle(self, Ekin: float, Z: float = Z_WATER) -> float:
+    def sampleAngle(self, Ekin: float, material: Material) -> float:
         """Sample polar scattering angle mu. 
 
         Args:
             Ekin (float): Incoming particle kinetic energy relative to electron rest energy (tau or epsilon in literature)
-            Z (float): atomic number. Defaults to Z_WATER.
+            material (Material): material of scattering medium in cell.
 
         Returns:
             float: polar scattering angle
@@ -49,14 +47,13 @@ class ParticleModel(ABC):
         
          
     @abstractmethod
-    def evalStoppingPower(self, Ekin: float, Ec: float = E_THRESHOLD, I: float = Z_WATER_EFF, NB_DENSITY: float = NB_DENSITY_WATER) -> float:
+    def evalStoppingPower(self, Ekin: float, material: Material, Ec: float = E_THRESHOLD) -> float:
         """Evaluate electron stopping power. 
 
         Args:	
             Ekin (float): Incoming particle kinetic energy relative to electron rest energy (tau or epsilon in literature)
+            material (Material): material of scattering medium in cell.
             DeltaE (float): Energy cut-off value for soft-inelastic collisions in the same units as Ekin. Defaults to E_THRESHOLD.
-            I (float, optional): Mean excitation energy. Defaults to I_WATER.
-            NB_DENSITY (float): Number density of scattering medium. Defaults to NB_DENSITY_WATER.
 
         Returns:
             float: Stopping power evaluated at Ekin and DeltaE [1/cm] (energy relative to electron rest energy)
@@ -69,12 +66,16 @@ class SimplifiedEGSnrcElectron(ParticleModel):
     taken into account. 
     """
     
-    def samplePathlength(self, Ekin: float, rho: float = RHO_WATER, Z: float = Z_WATER, A: float = A_WATER) -> float:
+    def samplePathlength(self, Ekin: float, material: Material) -> float:
         """ Sample path-length from screened Rutherford elastic scattering cross section. See EGSnrc manual by Kawrakow et al for full details.
             
             See abstract base class method for arguments and return value.
         """
         assert self.rng is not None
+        rho = material.rho
+        Z = material.Z
+        A = material.A
+        
         betaSquared: float = Ekin*(Ekin+2)/np.power(Ekin+1,2)
         ZS: float = Z*(Z + 1)
         ZE: float = Z*(Z + 1)*np.log(np.power(Z, -2/3))
@@ -84,12 +85,14 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         return self.rng.exponential(1/SigmaSR)  # path-length 
         
     
-    def sampleAngle(self, Ekin: float, Z: float = Z_WATER) -> float:
+    def sampleAngle(self, Ekin: float, material: Material) -> float:
         """ Sample polar scattering angle from screened Rutherford elastic scattering cross section. See EGSnrc manual by Kawrakow et al for full details.
             
             See abstract base class method for arguments and return value.
         """
         assert self.rng is not None
+        Z = material.Z
+        
         betaSquared: float = Ekin*(Ekin+2)/np.power(Ekin+1,2)
         beta: float = np.sqrt(betaSquared)
         alfaPrime: float = FSC*Z/beta
@@ -98,13 +101,15 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         eta: float = eta0*(1.13 + 3.76*alfaPrime**2)
         return 1 - 2*eta*r/(1-r+eta)  # polar scattering angle mu
 
-    def evalStoppingPower(self, Ekin: float, Ec: float = E_THRESHOLD, I: float = I_WATER, NB_DENSITY: float = NB_DENSITY_WATER) -> float:
+    def evalStoppingPower(self, Ekin: float, material: Material, Ec: float = E_THRESHOLD) -> float:
         """ Restricted stopping power from EGS4 and EGSnrc based on Bethe-Bloch theory. Implementation does not include density effect correction that takes into account 
             the polarization of the medium due to the electron field.
 
             See abstract base class method for arguments and return value.
         """
-
+        I = material.I
+        NB_DENSITY = material.NB_DENSITY
+        
         Ekin_eV: float = Ekin*ERE*1e6  # Electron kinetic energy in eV (E or T in literature)
         delta: float = 0.0
         betaSquared: float = Ekin*(Ekin+2)/np.power(Ekin+1, 2)
