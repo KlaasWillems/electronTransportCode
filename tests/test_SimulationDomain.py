@@ -19,7 +19,7 @@ class TestSimulationDomain(unittest.TestCase):
         
         y = 0.0
         for yi in range(3):
-            x = 0
+            x = 0.0
             y += 0.25
             for xi in range(3):
                 x += 0.25
@@ -112,7 +112,14 @@ class TestSimulationDomain(unittest.TestCase):
         self.assertEqual(cell, 5)
 
         return None
-
+    
+    def test_getCellArea(self) -> None:
+        TOL = 1e-15
+        xbins = 4
+        ybins = 3
+        domain = SimulationDomain(0, 1, 0, 1, xbins, ybins)
+        area = (1/3)*(1/4)
+        self.assertEqual(math.isclose(area, domain.dA, rel_tol=TOL), True)
 
 
 if __name__ == '__main__':

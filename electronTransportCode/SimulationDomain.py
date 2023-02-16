@@ -31,6 +31,7 @@ class SimulationDomain:
         self.ybins = ybins
         self.xrange: np.ndarray = np.linspace(self.xmin, self.xmax, self.xbins+1)
         self.yrange: np.ndarray = np.linspace(self.ymin, self.ymax, self.ybins+1)
+        self.dA: float = (self.xrange[1] - self.xrange[0])*(self.yrange[1] - self.yrange[0])
         
     def returnIndex(self, pos: tuple2d) -> int: 
         """Ruturn number of grid cell
