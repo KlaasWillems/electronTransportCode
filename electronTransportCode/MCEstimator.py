@@ -3,7 +3,9 @@ from abc import ABC, abstractmethod
 from SimulationDomain import SimulationDomain
 from utils import ERE, tuple2d
 
+# TODO: Estimators up to now assume grid cell crossing events. In KD Monte Carlo, particle can cross grid cell boundaries.
 
+ 
 class MCEstimator(ABC):
     def __init__(self, simDomain: SimulationDomain) -> None:
         self.simDomain = simDomain
