@@ -1,4 +1,4 @@
-from utils import A_WATER, CTF, E_THRESHOLD, ERE, FSC, I_WATER, NB_DENSITY_WATER, RHO_WATER, Z_WATER, Z_WATER_EFF, Re
+from utils import A_WATER, I_WATER, NB_DENSITY_WATER, RHO_WATER, Z_WATER
 
 
 class Material:
@@ -13,13 +13,13 @@ class Material:
             I (float, optional): [eV] Mean excitation energy. Defaults to I_WATER.
             NB_DENSITY (float, optional): [cm^-3] Scattering center number density. Defaults to NB_DENSITY_WATER.
             rho (float, optional): [g/cm^3] Mass density. Defaults to RHO_WATER.
-        """ 
+        """
         self.Z = Z
         self.A = A
         self.I = I
         self.NB_DENSITY = NB_DENSITY
         self.rho = rho
-        
+
 
 WaterMaterial = Material()
 unitDensityMaterial = Material(rho=1)

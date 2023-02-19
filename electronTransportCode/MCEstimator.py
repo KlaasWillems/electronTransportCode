@@ -5,13 +5,13 @@ from utils import ERE, tuple2d
 
 # TODO: Estimators up to now assume grid cell crossing events. In KD Monte Carlo, particle can cross grid cell boundaries.
 
- 
+
 class MCEstimator(ABC):
     def __init__(self, simDomain: SimulationDomain) -> None:
         self.simDomain = simDomain
-        
+
     @abstractmethod
-    def updateEstimator(self, posTuple: tuple[tuple2d, tuple2d], vecTuple: tuple[tuple2d, tuple2d], energyTuple: tuple[float, float], index: int) -> None: 
+    def updateEstimator(self, posTuple: tuple[tuple2d, tuple2d], vecTuple: tuple[tuple2d, tuple2d], energyTuple: tuple[float, float], index: int) -> None:
         """Score quantity of interest after a collision
 
         Args:
@@ -30,7 +30,7 @@ class MCEstimator(ABC):
             np.ndarray: quantity of interest
         """
         pass
-    
+
 
 class DoseEstimator(MCEstimator):
     """Score dose [MeV/g] at each collision and grid cell crossing
@@ -38,11 +38,11 @@ class DoseEstimator(MCEstimator):
     def __init__(self, simDomain: SimulationDomain) -> None:
         super().__init__(simDomain)
         self.scoreMatrix = np.zeros((self.simDomain.xbins*self.simDomain.ybins, ))
-        
+
     def updateEstimator(self, posTuple: tuple[tuple2d, tuple2d], vecTuple: tuple[tuple2d, tuple2d], energyTuple: tuple[float, float], index: int) -> None:
         energy, newEnergy = energyTuple
         self.scoreMatrix[index] += energy-newEnergy
-        
+
     def getEstimator(self) -> np.ndarray:
         # TODO: divide by mass in cell
         return self.scoreMatrix*ERE
@@ -67,31 +67,31 @@ class FluenceEstimator(MCEstimator):
         self.Ebins = Ebins  # In electron rest energy
         self.Emin = Emin
         self.Emax = Emax
-        
+
         self.scoreMatrix = np.zeros((self.Ebins, self.simDomain.xbins*self.simDomain.ybins))  # cell index is column index, energy bin index is row index
-        
+
         if spacing == 'lin':
             self.Erange = np.linspace(self.Emin, self.Emax, self.Ebins+1)
         elif spacing == 'log':
             self.Erange = np.logspace(np.log10(self.Emin), np.log10(self.Emax), self.Ebins+1)
         else:
             raise ValueError('Spacing argument is invalid. Should be "lin" or "log".')
-        
+
     def getEstimator(self) -> np.ndarray:
         return self.scoreMatrix/self.simDomain.dA
-    
+
     def updateEstimator(self, posTuple: tuple[tuple2d, tuple2d], vecTuple: tuple[tuple2d, tuple2d], energyTuple: tuple[float, float], index: int) -> None:
-        
+
         # Unpack
         energy, newEnergy = energyTuple
         pos, new_pos = posTuple
-        
+
         dE = energy - newEnergy
         stepsize: float = np.linalg.norm(pos - new_pos)
-        
+
         # bin the energies
         bin1, bin2 = np.digitize((energy, newEnergy), self.Erange)
-        
+
         # score
         if bin1 == bin2:  # same energy bin
             self.scoreMatrix[bin1-1, index] += stepsize
@@ -107,8 +107,5 @@ class FluenceEstimator(MCEstimator):
             diff = np.diff(Earray)
             for diffIndex, bin in enumerate(range(bin2, bin1+1)):
                 self.scoreMatrix[bin-1, index] += stepsize*diff[diffIndex]/dE
-        
+
         return None
-        
-        
-    

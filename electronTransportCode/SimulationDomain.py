@@ -4,8 +4,8 @@ from Material import Material, WaterMaterial
 
 
 class SimulationDomain:
-    """A simulation domain object represents a rectangular domain [x_min, xmax] \times [y_min, y_max]. 
-    This domain is divided into xbins columns and ybins rows. 
+    """A simulation domain object represents a rectangular domain [x_min, xmax] \times [y_min, y_max].
+    This domain is divided into xbins columns and ybins rows.
     As particles traverse the simulation domain they belong to a cell in the domain. Cells are numbered row-wise as follows:
     | 6 | 7 | 8 |
     | 3 | 4 | 5 |
@@ -17,7 +17,7 @@ class SimulationDomain:
         """Initialize rectangular simulation domain
 
         Args:
-            xmin (float): Smallest coordinate in horizontal direction   
+            xmin (float): Smallest coordinate in horizontal direction
             xmax (float): Largest coordinate in horizontal direction
             ymin (float): Smallest coordinate in vertical direction
             ymax (float): Largest coordinate in vertical direction
@@ -33,12 +33,12 @@ class SimulationDomain:
         self.xrange: np.ndarray = np.linspace(self.xmin, self.xmax, self.xbins+1)
         self.yrange: np.ndarray = np.linspace(self.ymin, self.ymax, self.ybins+1)
         self.dA: float = (self.xrange[1] - self.xrange[0])*(self.yrange[1] - self.yrange[0])
-        
+
     def getMaterial(self, index) -> Material:
         # All water simulation domain. TODO: expand capabilities.
         return WaterMaterial
-        
-    def returnIndex(self, pos: tuple2d) -> int: 
+
+    def returnIndex(self, pos: tuple2d) -> int:
         """Ruturn number of grid cell
 
         Args:
@@ -50,26 +50,26 @@ class SimulationDomain:
         x, y = pos
         col = np.argmax(self.xrange >= x) - 1
         row = np.argmax(self.yrange >= y) - 1
-        
+
         return row*self.xbins + col  # type:ignore
-    
+
     def returnNeighbourIndex(self, index: int, edge: int) -> int:
-        """Given the index of the current cell, return the index of the cell that shares the vertex 'edge' with the current cell. 
+        """Given the index of the current cell, return the index of the cell that shares the vertex 'edge' with the current cell.
         -1 is returned if there is no neighbour in that direction. (no periodic boundaries)
 
         Args:
             index (int): index of current cell
-            edge (int): 0 = left border, 1 = bottom border, 2 = right border, 3 = top border 
+            edge (int): 0 = left border, 1 = bottom border, 2 = right border, 3 = top border
 
         Returns:
             int: index of adjacent cell
         """
         assert index >= 0
         assert edge == 0 or edge == 1 or edge == 2 or edge == 3
-        
+
         col = index % self.xbins
         row = (index-col) // self.ybins
-        
+
         if edge == 0: # left border
             if col != 0:
                 return row*self.xbins + col - 1
@@ -83,70 +83,69 @@ class SimulationDomain:
             if row != self.ybins - 1:
                 return (row + 1)*self.xbins + col
         return -1
-    
-        
+
+
     def getCellEdgeInformation(self, pos: tuple2d, vec: tuple2d, index: int) -> tuple[float, int]:
-        """Return distance to nearest grid cell crossing and an integer. 
-        The distance is computed by finding the intersection of the particle with the horizontal lines at xmin and xmax, and vertical lines at ymin and ymax. 
-        The smallest positive distance is returned. 
-        
-        The extra integer is the index of the neighbouring cell if the particle were to be placed at the closest grid cell crossing. 
+        """Return distance to nearest grid cell crossing and an integer.
+        The distance is computed by finding the intersection of the particle with the horizontal lines at xmin and xmax, and vertical lines at ymin and ymax.
+        The smallest positive distance is returned.
+
+        The extra integer is the index of the neighbouring cell if the particle were to be placed at the closest grid cell crossing.
         If the integer is negative, there is no neighbour in that direction (particle is at the boundary).
-        
-        Args: 
+
+        Args:
             pos (tuple2d): Position tuple
             vec (tuple2d): Direction of travel tuple
             index (int): index of current cell
-            
-        Returns: 
+
+        Returns:
             tuple[float, int]: distance and domain edge boolean
-        """ 
+        """
         assert self.returnIndex(pos) ==  index
-        
+
         x0, y0 = pos
         vx, vy = vec
         col = index % self.xbins
         row = (index-col) // self.ybins
-        
+
         # cell boundaries
         xmincell = self.xrange[col]
         xmaxcell = self.xrange[col+1]
         ymincell = self.yrange[row]
         ymaxcell = self.yrange[row+1]
-        
+
         assert xmincell <= x0
         assert xmaxcell >= x0
         assert ymincell <= y0
         assert ymaxcell >= y0
-        
+
         # compute distance to horizontal cell boundaries
         if vx != 0.0:
             t2xmin = (xmincell - x0)/vx  # One of these distances will be negative, the other positive
             t2xmax = (xmaxcell - x0)/vx
-        else: 
+        else:
             t2xmin = np.infty
             t2xmax = np.infty
         tx = t2xmin if t2xmin > 0 else t2xmax  # Take the positive distance
-        
+
         # compute distance to vertical cell boundaries
-        if vy != 0.0: 
+        if vy != 0.0:
             t2ymin = (ymincell - y0)/vy  # One of these distances will be negative, the other positive
             t2ymax = (ymaxcell - y0)/vy
-        else: 
+        else:
             t2ymin = np.infty
             t2ymax = np.infty
         ty = t2ymin if t2ymin > 0 else t2ymax  # Take the positive distance
-        
+
         tmin = min(tx, ty)
-        
+
         if tmin == t2xmin:  # Particle is headed for left edge
-            edge = 0  
+            edge = 0
         elif tmin == t2xmax:  # Particle is headed for right edge
             edge = 2
         elif tmin == t2ymin:  # Particle is headed for bottom edge
             edge = 1
         else:  # Particle is headed for top edge
             edge = 3
-                    
+
         return tmin, self.returnNeighbourIndex(index, edge)
-            
