@@ -44,8 +44,6 @@ class ParticleModel(ABC):
             float: polar scattering angle
         """
 
-        
-         
     @abstractmethod
     def evalStoppingPower(self, Ekin: float, material: Material, Ec: float = E_THRESHOLD) -> float:
         """Evaluate electron stopping power. 
@@ -59,7 +57,25 @@ class ParticleModel(ABC):
             float: Stopping power evaluated at Ekin and DeltaE [1/cm] (energy relative to electron rest energy)
         """
     
+
+class LineSourceParticle(ParticleModel):
+    def __init__(self, generator: Union[np.random.Generator, None, int] = None) -> None:
+        super().__init__(generator)
+        self.sigma = 1
+        
+    def samplePathlength(self, Ekin: float, material: Material) -> float:
+        assert self.rng is not None
+        return self.rng.exponential(scale=1)/self.sigma
     
+    def sampleAngle(self, Ekin: float, material: Material) -> float:
+        # Isotropic scattering angle
+        assert self.rng is not None
+        return self.rng.uniform(low=-1, high=1)
+        
+    def evalStoppingPower(self, Ekin: float, material: Material, Ec: float = E_THRESHOLD) -> float:
+        return 1
+
+
 class SimplifiedEGSnrcElectron(ParticleModel):
     """A simplified electron model. Soft elastic collisions are taken into account using the screened Rutherford elastic cross section. 
     Energy loss is deposited continuously using the Bethe-Bloch inelastic restricted collisional stopping power. Hard-inelastic collisions and bremstrahlung are not 
@@ -84,7 +100,6 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         SigmaSR: float = bc/betaSquared  # total macroscopic screened Rutherford cross section
         return self.rng.exponential(1/SigmaSR)  # path-length 
         
-    
     def sampleAngle(self, Ekin: float, material: Material) -> float:
         """ Sample polar scattering angle from screened Rutherford elastic scattering cross section. See EGSnrc manual by Kawrakow et al for full details.
             

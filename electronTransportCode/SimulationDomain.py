@@ -1,8 +1,6 @@
 from electronTransportCode.utils import tuple2d
 import numpy as np
-from Material import Material
-
-WaterMaterial = Material()
+from Material import Material, WaterMaterial
 
 
 class SimulationDomain:
@@ -152,7 +150,3 @@ class SimulationDomain:
                     
         return tmin, self.returnNeighbourIndex(index, edge)
             
-        
-            
-            
-        
