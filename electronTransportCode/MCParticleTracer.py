@@ -64,6 +64,8 @@ class AnalogParticleTracer(MCParticleTracer):
         vec: tuple2d = self.simOptions.initialDirection()
         energy: float = self.simOptions.initialEnergy()
         index: int = self.simDomain.returnIndex(pos)
+        
+        loopbool: bool = True
 
         # Do type annotations for updated positions
         new_pos: tuple2d
@@ -72,8 +74,11 @@ class AnalogParticleTracer(MCParticleTracer):
         new_index: int
 
         # Step untill energy is smaller than threshold
-        while energy >= self.simOptions.minEnergy:
+        while loopbool:
             new_pos, new_vec, new_energy, new_index = self.stepParticle(pos, vec, energy, index)
+            if new_energy < self.simOptions.minEnergy:
+                new_energy = 0  # have estimator deposit all energy
+                loopbool = False  # make this the last iterations
             estimator.updateEstimator((pos, new_pos), (vec, new_vec), (energy, new_energy), index)
             pos = new_pos
             vec = new_vec
