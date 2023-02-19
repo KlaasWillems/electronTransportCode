@@ -1,13 +1,15 @@
-import numpy as np
-from MCEstimator import MCEstimator
-from ParticleModel import ParticleModel
 from abc import ABC, abstractmethod
-from SimOptions import SimOptions
-from utils import tuple2d
-from SimulationDomain import SimulationDomain
+import numpy as np
+from electronTransportCode.MCEstimator import MCEstimator
+from electronTransportCode.ParticleModel import ParticleModel
+from electronTransportCode.SimOptions import SimOptions
+from electronTransportCode.ProjectUtils import tuple2d
+from electronTransportCode.SimulationDomain import SimulationDomain
 
 
 class MCParticleTracer(ABC):
+    """General Monte Carlo particle tracer object for radiation therapy
+    """
     def __init__(self, particle: ParticleModel, simOptions: SimOptions, simDomain: SimulationDomain) -> None:
         self.particle = particle
         self.simOptions = simOptions
@@ -45,13 +47,13 @@ class MCParticleTracer(ABC):
 
     @abstractmethod
     def traceParticle(self, estimator: MCEstimator) -> None:
-        pass
+        """Simulate one particle
+        """
 
 
 class AnalogParticleTracer(MCParticleTracer):
-    def __init__(self, particle: ParticleModel, simOptions: SimOptions, simDomain: SimulationDomain) -> None:
-        super().__init__(particle, simOptions, simDomain)
-
+    """Analog particle tracing algorithm
+    """
     def traceParticle(self, estimator: MCEstimator) -> None:
         """Step particle through simulation domain until its energy is below a threshold value. Estimator routine is called after each step for on-the-fly estimation.
 

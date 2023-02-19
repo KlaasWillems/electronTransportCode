@@ -1,4 +1,4 @@
-from utils import A_WATER, I_WATER, NB_DENSITY_WATER, RHO_WATER, Z_WATER
+from electronTransportCode.ProjectUtils import A_WATER, I_WATER, NB_DENSITY_WATER, RHO_WATER, Z_WATER
 
 
 class Material:

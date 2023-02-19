@@ -1,7 +1,7 @@
-import numpy as np
 from abc import ABC, abstractmethod
-from SimulationDomain import SimulationDomain
-from utils import ERE, tuple2d
+import numpy as np
+from electronTransportCode.SimulationDomain import SimulationDomain
+from electronTransportCode.ProjectUtils import ERE, tuple2d
 
 # TODO: Estimators up to now assume grid cell crossing events. In KD Monte Carlo, particle can cross grid cell boundaries.
 
@@ -20,7 +20,6 @@ class MCEstimator(ABC):
             energyTuple (tuple[float, float]): old energy of particle and new energy of particle after collision
             index (int): cell identifier in simulation domain
         """
-        pass
 
     @abstractmethod
     def getEstimator(self) -> np.ndarray:
@@ -29,7 +28,6 @@ class MCEstimator(ABC):
         Returns:
             np.ndarray: quantity of interest
         """
-        pass
 
 
 class DoseEstimator(MCEstimator):
@@ -105,7 +103,7 @@ class FluenceEstimator(MCEstimator):
             Earray[0] = newEnergy
             Earray[-1] = energy
             diff = np.diff(Earray)
-            for diffIndex, bin in enumerate(range(bin2, bin1+1)):
-                self.scoreMatrix[bin-1, index] += stepsize*diff[diffIndex]/dE
+            for diffIndex, Ebin in enumerate(range(bin2, bin1+1)):
+                self.scoreMatrix[Ebin-1, index] += stepsize*diff[diffIndex]/dE
 
         return None

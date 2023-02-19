@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 import numpy as np
-from electronTransportCode.utils import tuple2d
+from electronTransportCode.ProjectUtils import tuple2d
 
 
 class SimOptions(ABC):
@@ -13,16 +13,18 @@ class SimOptions(ABC):
 
     @abstractmethod
     def initialDirection(self) -> tuple2d:
-        # Result must be a unit vector
-        pass
+        """Sample initial direction of particle
+        """
 
     @abstractmethod
     def initialPosition(self) -> tuple2d:
-        pass
+        """Sample initial position of particle
+        """
 
     @abstractmethod
     def initialEnergy(self) -> float:
-        pass
+        """Sample initial energy of particle
+        """
 
 
 class LineSourceSimulation(SimOptions):

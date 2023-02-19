@@ -1,11 +1,13 @@
 from abc import ABC, abstractmethod
-import numpy as np
 from typing import Optional, Union
-from Material import Material
-from utils import CTF, E_THRESHOLD, ERE, FSC, Re
+import numpy as np
+from electronTransportCode.Material import Material
+from electronTransportCode.ProjectUtils import CTF, E_THRESHOLD, ERE, FSC, Re
 
 
 class ParticleModel(ABC):
+    """A particle is defined by its path-length distribution, angular scattering distribution and stopping power.
+    """
     def __init__(self, generator: Union[np.random.Generator, None, int] = None) -> None:
         self.rng: Optional[np.random.Generator]
         if isinstance(generator, int):
@@ -18,6 +20,11 @@ class ParticleModel(ABC):
             raise ValueError('Generator input argument invalid.')
 
     def setGenerator(self, generator: np.random.Generator) -> None:
+        """Store random number generator object as class member
+
+        Args:
+            generator (np.random.Generator):
+        """
         self.rng = generator
 
     @abstractmethod
@@ -59,6 +66,8 @@ class ParticleModel(ABC):
 
 
 class LineSourceParticle(ParticleModel):
+    """Particle for line source benchmark. See Kush & Stammer paper.
+    """
     def __init__(self, generator: Union[np.random.Generator, None, int] = None) -> None:
         super().__init__(generator)
         self.sigma = 1
