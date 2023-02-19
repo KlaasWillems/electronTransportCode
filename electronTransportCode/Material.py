@@ -1,5 +1,6 @@
 from utils import A_WATER, CTF, E_THRESHOLD, ERE, FSC, I_WATER, NB_DENSITY_WATER, RHO_WATER, Z_WATER, Z_WATER_EFF, Re
 
+
 class Material:
     """Wrapper object for all material parameters relevant to radiation therapy
     """
@@ -18,3 +19,7 @@ class Material:
         self.I = I
         self.NB_DENSITY = NB_DENSITY
         self.rho = rho
+        
+
+WaterMaterial = Material()
+unitDensityMaterial = Material(rho=1)
