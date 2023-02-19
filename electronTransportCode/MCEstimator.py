@@ -7,6 +7,8 @@ from electronTransportCode.ProjectUtils import ERE, tuple2d
 
 
 class MCEstimator(ABC):
+    """Monte Carlo estimator for particle simulations
+    """
     def __init__(self, simDomain: SimulationDomain) -> None:
         self.simDomain = simDomain
 
