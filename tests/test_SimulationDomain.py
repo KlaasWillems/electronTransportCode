@@ -15,7 +15,8 @@ sys.path.append(PROJECT_ROOT)
 from electronTransportCode.SimulationDomain import SimulationDomain
 
 class TestSimulationDomain(unittest.TestCase):
-    def test_returnIndex(self) -> None:
+    def test_returnIndexA(self) -> None:
+        # test particle's in interior of domain
         domain = SimulationDomain(0, 1, 0, 1, 3, 3)
 
         y = 0.0
@@ -24,9 +25,23 @@ class TestSimulationDomain(unittest.TestCase):
             y += 0.25
             for xi in range(3):
                 x += 0.25
-                index = domain.returnIndex(np.array((x, y)))
+                index = domain.getIndexPath(np.array((x, y)), np.array((1, 0)))
                 self.assertEqual(index, 3*yi+xi)
         return None
+
+    def test_returnIndexB(self) -> None:
+        # test particle's on a boundary
+        domain = SimulationDomain(0, 1, 0, 1, 3, 3)
+
+        x = domain.xrange[1]  # 1/3
+        y = 0.1
+        pos = np.array((x, y))
+
+        vec1 = np.array((1, 0))
+        vec2 = np.array((-1, 0))
+
+        self.assertEqual(domain.getIndexPath(pos, vec1), 1)
+        self.assertEqual(domain.getIndexPath(pos, vec2), 0)
 
     def test_returnNeighbourIndex(self) -> None:
         xbins = 4
@@ -37,7 +52,7 @@ class TestSimulationDomain(unittest.TestCase):
             for yi in range(ybins):
                 index = yi*xbins + xi
                 for edge in range(4):
-                    n1 = domain.returnNeighbourIndex(index, edge)
+                    n1 = domain.getNeighbourIndex(index, edge)
                     if edge == 0:  # Left edge
                         if xi == 0:
                             self.assertEqual(n1, -1)

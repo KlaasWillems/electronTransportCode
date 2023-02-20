@@ -65,7 +65,7 @@ class AnalogParticleTracer(MCParticleTracer):
         pos: tuple2d = self.simOptions.initialPosition()
         vec: tuple2d = self.simOptions.initialDirection()
         energy: float = self.simOptions.initialEnergy()
-        index: int = self.simDomain.returnIndex(pos)
+        index: int = self.simDomain.getIndexPath(pos, vec)
 
         loopbool: bool = True
 

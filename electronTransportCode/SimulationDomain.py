@@ -46,8 +46,8 @@ class SimulationDomain:
         # All water simulation domain. TODO: expand capabilities.
         return WaterMaterial
 
-    def returnIndex(self, pos: tuple2d) -> int:
-        """Ruturn number of grid cell
+    def getIndexPath(self, pos: tuple2d, vec: tuple2d) -> int:
+        """Ruturn index associated to the grid cell in which the next path of the particle lies. If a particle lies in the interior of a cell, return the index of the grid cell. If the particle lies on a grid cell boundary, take a tiny step such that the particle lies in the interior and return the grid cell number.
 
         Args:
             pos (tuple2d): Position tuple
@@ -56,12 +56,20 @@ class SimulationDomain:
             int: index
         """
         x, y = pos
-        col = np.argmax(self.xrange >= x) - 1
-        row = np.argmax(self.yrange >= y) - 1
+
+        xAr = self.xrange == x
+        yAr = self.yrange == y
+
+        if any(xAr) or any(yAr):  # particle on boundary --> take tiny step
+            temp_pos = pos + np.finfo(float).eps*vec
+            x, y = temp_pos
+
+        col = np.argmax(self.xrange > x) - 1
+        row = np.argmax(self.yrange > y) - 1
 
         return row*self.xbins + col  # type:ignore
 
-    def returnNeighbourIndex(self, index: int, edge: int) -> int:
+    def getNeighbourIndex(self, index: int, edge: int) -> int:
         """Given the index of the current cell, return the index of the cell that shares the vertex 'edge' with the current cell.
         -1 is returned if there is no neighbour in that direction. (no periodic boundaries)
 
@@ -95,11 +103,9 @@ class SimulationDomain:
 
     def getCellEdgeInformation(self, pos: tuple2d, vec: tuple2d, index: int) -> tuple[float, int]:
         """Return distance to nearest grid cell crossing and an integer.
-        The distance is computed by finding the intersection of the particle with the horizontal lines at xmin and xmax, and vertical lines at ymin and ymax.
-        The smallest positive distance is returned.
+        The distance is computed by finding the intersection of the particle with the horizontal lines at xmin and xmax, and vertical lines at ymin and ymax. The smallest positive distance is returned.
 
-        The extra integer is the index of the neighbouring cell if the particle were to be placed at the closest grid cell crossing.
-        If the integer is negative, there is no neighbour in that direction (particle is at the boundary).
+        The extra integer is the index of the neighbouring cell if the particle were to be placed at the closest grid cell crossing. If the integer is negative, there is no neighbour in that direction (particle is at the boundary).
 
         Args:
             pos (tuple2d): Position tuple
@@ -109,7 +115,7 @@ class SimulationDomain:
         Returns:
             tuple[float, int]: distance and domain edge boolean
         """
-        assert self.returnIndex(pos) ==  index
+        assert self.getIndexPath(pos, vec) ==  index
 
         x0, y0 = pos
         vx, vy = vec
@@ -122,6 +128,7 @@ class SimulationDomain:
         ymincell = self.yrange[row]
         ymaxcell = self.yrange[row+1]
 
+        # particle must be in cell
         assert xmincell <= x0
         assert xmaxcell >= x0
         assert ymincell <= y0
@@ -147,6 +154,7 @@ class SimulationDomain:
 
         tmin = min(tx, ty)
 
+        # Compute neighbour index
         if tmin == t2xmin:  # Particle is headed for left edge
             edge = 0
         elif tmin == t2xmax:  # Particle is headed for right edge
@@ -156,4 +164,4 @@ class SimulationDomain:
         else:  # Particle is headed for top edge
             edge = 3
 
-        return tmin, self.returnNeighbourIndex(index, edge)
+        return tmin, self.getNeighbourIndex(index, edge)
