@@ -37,15 +37,27 @@ class DoseEstimator(MCEstimator):
     """
     def __init__(self, simDomain: SimulationDomain) -> None:
         super().__init__(simDomain)
-        self.scoreMatrix = np.zeros((self.simDomain.xbins*self.simDomain.ybins, ))
+        self.scoreMatrix = np.zeros((self.simDomain.xbins*self.simDomain.ybins, ))  # Energy relative to ERE
 
     def updateEstimator(self, posTuple: tuple[tuple2d, tuple2d], vecTuple: tuple[tuple2d, tuple2d], energyTuple: tuple[float, float], index: int) -> None:
+        """Score energy at cell
+
+        Args:
+            posTuple (tuple[tuple2d, tuple2d]): old_position and new position of particle after collision
+            vecTuple (tuple[tuple2d, tuple2d]): old direction of travel and new position of travel after collision
+            energyTuple (tuple[float, float]): old energy of particle and new energy of particle after collision
+            index (int): cell identifier in simulation domain
+        """
         energy, newEnergy = energyTuple
         self.scoreMatrix[index] += energy-newEnergy
 
     def getEstimator(self) -> np.ndarray:
-        # TODO: divide by mass in cell
-        return self.scoreMatrix*ERE
+        """Return dose [MeV/g] on whole domain.
+        """
+        out = np.copy(self.scoreMatrix)*ERE  # To MeV
+        for index in range(self.simDomain.xbins*self.simDomain.ybins):
+            out[index] /= self.simDomain.getMaterial(index).rho*self.simDomain.dA  # To Mev/g
+        return out
 
 
 class FluenceEstimator(MCEstimator):
@@ -107,5 +119,3 @@ class FluenceEstimator(MCEstimator):
             diff = np.diff(Earray)
             for diffIndex, Ebin in enumerate(range(bin2, bin1+1)):
                 self.scoreMatrix[Ebin-1, index] += stepsize*diff[diffIndex]/dE
-
-        return None
