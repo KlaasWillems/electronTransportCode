@@ -80,7 +80,7 @@ class FluenceEstimator(MCEstimator):
         self.Emin = Emin
         self.Emax = Emax
 
-        self.scoreMatrix = np.zeros((self.Ebins, self.simDomain.xbins*self.simDomain.ybins))  # cell index is column index, energy bin index is row index
+        self.scoreMatrix = np.zeros((self.Ebins, self.simDomain.xbins*self.simDomain.ybins), dtype=float)  # cell index is column index, energy bin index is row index
 
         if spacing == 'lin':
             self.Erange = np.linspace(self.Emin, self.Emax, self.Ebins+1)
