@@ -138,6 +138,6 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         delta: float = 0.0
         betaSquared: float = Ekin*(Ekin+2)/np.power(Ekin+1, 2)
         eta: float = Ec/Ekin
-        G: float = -1 - betaSquared + np.log(4*eta*(1-eta)) + 1/(1-eta) + (1 - betaSquared)*(np.power(Ekin*eta, 2)/2 + (2*Ekin + 1)*np.log(1-eta))
+        G: float = -1.0 - betaSquared + np.log(4*eta*(1-eta)) + 1/(1-eta) + (1.0 - betaSquared)*(np.power(Ekin*eta, 2)/2.0 + (2.0*Ekin + 1.0)*np.log(1-eta))
         Lcoll: float = 2*np.pi*np.power(Re, 2)*NB_DENSITY*(2*np.log(Ekin_eV/I) + np.log(1 + Ekin/2) + G - delta)/betaSquared
         return Lcoll
