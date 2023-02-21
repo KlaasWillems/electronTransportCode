@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Optional, Union
 import numpy as np
 from electronTransportCode.Material import Material
-from electronTransportCode.ProjectUtils import CTF, E_THRESHOLD, ERE, FSC, Re
+from electronTransportCode.ProjectUtils import ERE, FSC, Re
 
 
 class ParticleModel(ABC):
