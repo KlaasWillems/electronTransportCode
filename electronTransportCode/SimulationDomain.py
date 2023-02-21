@@ -47,7 +47,7 @@ class SimulationDomain:
         return WaterMaterial
 
     def getIndexPath(self, pos: tuple2d, vec: tuple2d) -> int:
-        """Ruturn index associated to the grid cell in which the next path of the particle lies. If a particle lies in the interior of a cell, return the index of the grid cell. If the particle lies on a grid cell boundary, take a tiny step such that the particle lies in the interior and return the grid cell number.
+        """Ruturn index associated to the grid cell in which the next path of the particle lies. If a particle lies in the interior of a cell, return the index of the grid cell. If the particle lies on a grid cell boundary, depending on direction of travel, return the index.
 
         Args:
             pos (tuple2d): Position tuple
@@ -56,16 +56,24 @@ class SimulationDomain:
             int: index
         """
         x, y = pos
+        vecx, vecy = vec
 
         xAr = self.xrange == x
         yAr = self.yrange == y
+        col = np.argmax(self.xrange >= x) - 1
+        row = np.argmax(self.yrange >= y) - 1
 
-        if any(xAr) or any(yAr):  # particle on boundary --> take tiny step
-            temp_pos = pos + np.finfo(float).eps*vec
-            x, y = temp_pos
+        if any(xAr):  # Vertical boundary
+            if vecx > 0:
+                col += 1
+            elif vecx == 0.0:
+                raise NotImplementedError('Particle is moving along a vertical boundary')
 
-        col = np.argmax(self.xrange > x) - 1
-        row = np.argmax(self.yrange > y) - 1
+        if any(yAr):  # Horizontal boundary
+            if vecy > 0:
+                row += 1
+            elif vecx == 0.0:
+                raise NotImplementedError('Particle is moving along a horizontal boundary')
 
         return row*self.xbins + col  # type:ignore
 

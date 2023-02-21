@@ -90,7 +90,7 @@ class AnalogParticleTracer(MCParticleTracer):
 
             # Logging
             counter += 1
-            if counter % 100000 == 0:
+            if counter % 10000 == 0:
                 print(energy, counter)
 
         return None
@@ -127,7 +127,6 @@ class AnalogParticleTracer(MCParticleTracer):
         Returns:
             tuple[tuple2d, tuple2d, float, int]: state of particle after being transported to new event location and having that event applied.
         """
-        assert np.isclose(np.linalg.norm(vec), 1, rtol=1e-10)
 
         # Sample step size
         stepColl = self.particle.samplePathlength(energy, self.simDomain.getMaterial(index))
@@ -150,6 +149,7 @@ class AnalogParticleTracer(MCParticleTracer):
             sint = np.sqrt(1 - cost**2)*sign  # scatter left or right with equal probability
             new_vec[0] = vec[0]*cost - vec[1]*sint
             new_vec[1] = vec[0]*sint + vec[1]*cost
+            new_vec = new_vec/np.linalg.norm(new_vec)  # normalized for security
 
         else:  # Next event is grid cell crossing
             new_index = neighbourCellIndex
@@ -157,4 +157,7 @@ class AnalogParticleTracer(MCParticleTracer):
             if neighbourCellIndex == -1:  # Next event is domain edge crossing
                 new_energy = 0
 
+        assert self.simDomain.getIndexPath(new_pos, new_vec) == new_index
+        assert np.isclose(np.linalg.norm(vec), 1, rtol=1e-10), f'norm of vector: {np.linalg.norm(vec)}'
+        assert np.isnan(new_energy) == False, f'{new_energy}, {np.isnan(new_energy)}, {np.isnan(new_energy) is False}'
         return new_pos, new_vec, new_energy, new_index
