@@ -142,15 +142,6 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         Ekin_eV: float = Ekin*ERE*1e6  # Electron kinetic energy in eV (E or T in literature)
         betaSquared: float = Ekin*(Ekin+2)/np.power(Ekin+1, 2)
 
-        # Restricted collisional stopping power from EGSnrc. Ec parameter is weird. n in the paper is the scattering center density. By comparing EGSnrc with Olbrant, I assume n = NB_DENSITY*Z. (untested)
-        '''
-        delta: float = 0.0
-        eta: float = Ec/Ekin
-        G: float = -1.0 - betaSquared + np.log(4*eta*(1-eta)) + 1/(1-eta) + (1.0 - betaSquared)*(np.power(Ekin*eta, 2)/2.0 + (2.0*Ekin + 1.0)*np.log(1-eta))
-        Lcoll: float = 2*np.pi*np.power(Re, 2)*Z*NB_DENSITY*(2*np.log(Ekin_eV/I) + np.log(1 + Ekin/2) + G - delta)/betaSquared
-        '''
-
-        # Instead use PENELOPE stoppping power
         term1 = (1+betaSquared + 2*np.sqrt(1-betaSquared))*np.log(2)
         term2 = np.power((1 - np.sqrt(1-betaSquared)), 2)/8
         Lcoll: float = 2*np.pi*np.power(Re, 2)*NB_DENSITY*Z*(np.log(Ekin_eV/I) + 1 - term1 + term2)/betaSquared
