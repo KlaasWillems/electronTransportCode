@@ -5,12 +5,7 @@ import os
 import numpy as np
 import math
 
-# import code directory
-PROJECT_ROOT = os.path.abspath(os.path.join(
-                  os.path.dirname(__file__),
-                  os.pardir)
-)
-sys.path.append(PROJECT_ROOT)
+sys.path.insert(0, os.path.abspath('..'))
 
 from electronTransportCode.SimulationDomain import SimulationDomain
 
