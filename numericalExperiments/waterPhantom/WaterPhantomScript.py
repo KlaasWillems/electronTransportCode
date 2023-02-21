@@ -1,10 +1,4 @@
-# Add root directory to path
-import os
-import sys
-
-sys.path.insert(0, os.path.abspath('..'))
-
-# Imports
+import time
 from electronTransportCode.SimOptions import WaterPhantomSimulation
 from electronTransportCode.SimulationDomain import SimulationDomain
 from electronTransportCode.MCParticleTracer import AnalogParticleTracer
@@ -34,6 +28,8 @@ particleTracer = AnalogParticleTracer(particle=particle, simOptions=waterPhantom
 
 if __name__ == "__main__":
     # Run simulation
-    NB_PARTICLES = 30
+    NB_PARTICLES = 60
+    t1 = time.perf_counter()
     particleTracer(nbParticles=NB_PARTICLES, estimator=doseEstimator)
-    print(f'Average amount of events: {particleTracer.averageNbCollisions}')
+    t2 = time.perf_counter()
+    print(f'Simulation took {t2-t1} seconds')
