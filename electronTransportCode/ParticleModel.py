@@ -126,18 +126,33 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         return 1 - 2*eta*r/(1-r+eta)  # polar scattering angle mu
 
     def evalStoppingPower(self, Ekin: float, material: Material, Ec: float = E_THRESHOLD) -> float:
-        """ Restricted stopping power from EGS4 and EGSnrc based on Bethe-Bloch theory. Implementation does not include density effect correction that takes into account
-            the polarization of the medium due to the electron field.
+        """ Stopping power PENELOPE found in Olbrant.
 
             See abstract base class method for arguments and return value.
+        Note on EGSnrc stopping power.
+            - A previous version implemented the stopping power from EGSnrc. In that formula I assumed the scattering center density n was equal to the number density of water. This was probably wrong. Comparing with PENELOPEs stopping power, n = NB_DENSITY*Z. CHANGE THIS!
+            - I don't understand the Tc parameter in the formula from EGSnrc.
+            - This previous implementation did not include density effect correction that takes into account the polarization of the medium due to the electron field.
         """
+        # Ekin = tau in papers
         I = material.I
         NB_DENSITY = material.NB_DENSITY
+        Z = material.Z
 
         Ekin_eV: float = Ekin*ERE*1e6  # Electron kinetic energy in eV (E or T in literature)
-        delta: float = 0.0
         betaSquared: float = Ekin*(Ekin+2)/np.power(Ekin+1, 2)
+
+        # Restricted collisional stopping power from EGSnrc. Ec parameter is weird. n in the paper is the scattering center density. By comparing EGSnrc with Olbrant, I assume n = NB_DENSITY*Z. (untested)
+        '''
+        delta: float = 0.0
         eta: float = Ec/Ekin
         G: float = -1.0 - betaSquared + np.log(4*eta*(1-eta)) + 1/(1-eta) + (1.0 - betaSquared)*(np.power(Ekin*eta, 2)/2.0 + (2.0*Ekin + 1.0)*np.log(1-eta))
-        Lcoll: float = 2*np.pi*np.power(Re, 2)*NB_DENSITY*(2*np.log(Ekin_eV/I) + np.log(1 + Ekin/2) + G - delta)/betaSquared
+        Lcoll: float = 2*np.pi*np.power(Re, 2)*Z*NB_DENSITY*(2*np.log(Ekin_eV/I) + np.log(1 + Ekin/2) + G - delta)/betaSquared
+        '''
+
+        # Instead use PENELOPE stoppping power
+        term1 = (1+betaSquared + 2*np.sqrt(1-betaSquared))*np.log(2)
+        term2 = np.power((1 - np.sqrt(1-betaSquared)), 2)/8
+        Lcoll: float = 2*np.pi*np.power(Re, 2)*NB_DENSITY*Z*(np.log(Ekin_eV/I) + 1 - term1 + term2)/betaSquared
+
         return Lcoll
