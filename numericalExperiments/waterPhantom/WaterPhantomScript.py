@@ -1,4 +1,5 @@
 import time
+import pickle
 from electronTransportCode.SimOptions import WaterPhantomSimulation
 from electronTransportCode.SimulationDomain import SimulationDomain
 from electronTransportCode.MCParticleTracer import AnalogParticleTracer
@@ -28,8 +29,16 @@ particleTracer = AnalogParticleTracer(particle=particle, simOptions=waterPhantom
 
 if __name__ == "__main__":
     # Run simulation
+    print('Starting simulation')
     NB_PARTICLES = 60
     t1 = time.perf_counter()
     particleTracer(nbParticles=NB_PARTICLES, estimator=doseEstimator)
     t2 = time.perf_counter()
     print(f'Simulation took {t2-t1} seconds')
+
+    # Save files
+    with open('data/doseEstimator.pkl', 'wb') as file:
+        pickle.dump(doseEstimator, file)
+
+    with open('data/particleTracer.pkl', 'wb') as file:
+        pickle.dump(particleTracer, file)
