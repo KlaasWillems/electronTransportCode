@@ -131,7 +131,7 @@ class AnalogParticleTracer(MCParticleTracer):
 
         # Sample step size
         stepColl = self.particle.samplePathlength(energy, self.simDomain.getMaterial(index))
-        stepGeom, neighbourCellIndex = self.simDomain.getCellEdgeInformation(pos, vec, index)
+        stepGeom, domainEdge = self.simDomain.getCellEdgeInformation(pos, vec, index)
         step = min(stepColl, stepGeom)
 
         # Apply step
@@ -153,9 +153,9 @@ class AnalogParticleTracer(MCParticleTracer):
             new_vec = new_vec/np.linalg.norm(new_vec)  # normalized for security
 
         else:  # Next event is grid cell crossing
-            new_index = neighbourCellIndex
             new_vec = vec
-            if neighbourCellIndex == -1:  # Next event is domain edge crossing
+            new_index = self.simDomain.getIndexPath(new_pos, new_vec)
+            if domainEdge:  # Next event is domain edge crossing
                 new_energy = 0
 
         return new_pos, new_vec, new_energy, new_index

@@ -1,3 +1,4 @@
+from typing import Tuple
 import numpy as np
 from electronTransportCode.ProjectUtils import tuple2d
 from electronTransportCode.Material import Material, WaterMaterial
@@ -46,6 +47,19 @@ class SimulationDomain:
         # All water simulation domain. TODO: expand capabilities.
         return WaterMaterial
 
+    def getCoord(self, index: int) -> Tuple[int, int]:
+        """Return coordinate of grid cell in rectangular grid
+
+        Args:
+            index (int): grid cell index
+
+        Returns:
+            Tuple[int, int]: row and column
+        """
+        col = index % self.xbins
+        row = (index-col) // self.xbins
+        return row, col
+
     def getIndexPath(self, pos: tuple2d, vec: tuple2d) -> int:
         """Ruturn index associated to the grid cell in which the next path of the particle lies. If a particle lies in the interior of a cell, return the index of the grid cell. If the particle lies on a grid cell boundary, depending on direction of travel, return the index.
 
@@ -91,8 +105,7 @@ class SimulationDomain:
         assert index >= 0
         assert edge == 0 or edge == 1 or edge == 2 or edge == 3
 
-        col = index % self.xbins
-        row = (index-col) // self.ybins
+        row, col = self.getCoord(index)
 
         if edge == 0 and col != 0: # left border
             return row*self.xbins + col - 1
@@ -104,12 +117,32 @@ class SimulationDomain:
             return (row + 1)*self.xbins + col
         return -1
 
+    def checkDomainEdge(self, index, edge) -> bool:
+        """Return true if edge of grid cell 'index' is a domain edge
 
-    def getCellEdgeInformation(self, pos: tuple2d, vec: tuple2d, index: int) -> tuple[float, int]:
-        """Return distance to nearest grid cell crossing and an integer.
+        Args:
+            index (int): grid cell index
+            edge (int): 0 = left border, 1 = bottom border, 2 = right border, 3 = top border
+
+        Returns:
+            bool:
+        """
+        row, col = self.getCoord(index)
+        if col == 0 and edge == 0:
+            return True
+        if col == self.xbins-1 and edge == 2:
+            return True
+        if row == 0 and edge == 1:
+            return True
+        if row == self.ybins-1 and edge == 3:
+            return True
+        return False
+
+    def getCellEdgeInformation(self, pos: tuple2d, vec: tuple2d, index: int) -> tuple[float, bool]:
+        """Return distance to nearest grid cell crossing and boolean.
         The distance is computed by finding the intersection of the particle with the horizontal lines at xmin and xmax, and vertical lines at ymin and ymax. The smallest positive distance is returned.
 
-        The extra integer is the index of the neighbouring cell if the particle were to be placed at the closest grid cell crossing. If the integer is negative, there is no neighbour in that direction (particle is at the boundary).
+        The second return argument is True if the edge the particle is heading to is also a domain edge.
 
         Args:
             pos (tuple2d): Position tuple
@@ -117,14 +150,13 @@ class SimulationDomain:
             index (int): index of current cell
 
         Returns:
-            tuple[float, int]: distance and domain edge boolean
+            tuple[float, bool]: distance and domain edge boolean
         """
         assert self.getIndexPath(pos, vec) ==  index
 
         x0, y0 = pos
         vx, vy = vec
-        col = index % self.xbins
-        row = (index-col) // self.ybins
+        row, col = self.getCoord(index)
 
         # cell boundaries
         xmincell = self.xrange[col]
@@ -164,4 +196,4 @@ class SimulationDomain:
         tmin = min(tx, ty)
         edge = xEdge if tmin == tx else yEdge
 
-        return tmin, self.getNeighbourIndex(index, edge)
+        return tmin, self.checkDomainEdge(index, edge)

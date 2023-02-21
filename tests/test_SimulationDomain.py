@@ -24,6 +24,20 @@ class TestSimulationDomain(unittest.TestCase):
                 self.assertEqual(index, 3*yi+xi)
         return None
 
+    def test_checkIndex(self) -> None:
+        xbins = 71
+        ybins = 305
+        domain = SimulationDomain(0, 1, 0, 1, xbins, ybins)
+
+        domain.checkDomainEdge(60, 3)
+
+        for xi in range(xbins):
+            for yi in range(ybins):
+                index = yi*xbins + xi
+                row, col = domain.getCoord(index)
+                self.assertEqual(xi, col)
+                self.assertEqual(yi, row)
+
     def test_returnIndexB(self) -> None:
         # test particle's on a boundary
         domain = SimulationDomain(0, 1, 0, 1, 3, 3)
@@ -37,6 +51,29 @@ class TestSimulationDomain(unittest.TestCase):
 
         self.assertEqual(domain.getIndexPath(pos, vec1), 1)
         self.assertEqual(domain.getIndexPath(pos, vec2), 0)
+
+    def test_checkDomainEdge(self) -> None:
+        xbins = 10
+        ybins = 7
+        domain = SimulationDomain(0, 1, 0, 1, xbins, ybins)
+
+        domain.checkDomainEdge(60, 3)
+
+        for xi in range(xbins):
+            for yi in range(ybins):
+                for edge in range(4):
+                    index = yi*xbins + xi
+                    n1 = domain.checkDomainEdge(index, edge)
+                    if xi == 0 and edge == 0:
+                        self.assertEqual(n1, True)
+                    elif xi == xbins-1 and edge == 2:
+                        self.assertEqual(n1, True)
+                    elif yi == 0 and edge == 1:
+                        self.assertEqual(n1, True)
+                    elif yi == ybins-1 and edge == 3:
+                        self.assertEqual(n1, True)
+                    else:
+                        self.assertEqual(n1, False)
 
     def test_returnNeighbourIndex(self) -> None:
         xbins = 4
@@ -84,9 +121,9 @@ class TestSimulationDomain(unittest.TestCase):
         vec = np.array((np.cos(alfa), np.sin(alfa)))
         index = 6
 
-        t, cell = domain.getCellEdgeInformation(pos, vec, index)
+        t, domainEdgeBool = domain.getCellEdgeInformation(pos, vec, index)
         self.assertEqual(math.isclose(t, 0.05, rel_tol=TOL), True)
-        self.assertEqual(cell, 7)
+        self.assertEqual(domainEdgeBool, False)
 
         # Particle is in cell 7 and moves to the right. The domain boundary is to the right.
         pos = np.array((0.95, 0.55))
@@ -94,9 +131,9 @@ class TestSimulationDomain(unittest.TestCase):
         vec = np.array((np.cos(alfa), np.sin(alfa)))
         index = 7
 
-        t, cell = domain.getCellEdgeInformation(pos, vec, index)
+        t, domainEdgeBool = domain.getCellEdgeInformation(pos, vec, index)
         self.assertEqual(math.isclose(t, 0.05, rel_tol=TOL), True)
-        self.assertEqual(cell, -1)
+        self.assertEqual(domainEdgeBool, True)
 
         return None
 
@@ -111,16 +148,16 @@ class TestSimulationDomain(unittest.TestCase):
         # Particle is in cell 6 and is moving to the top left. Cell to which the particle is moving has index 10.
         alfa = np.radians(112)
         vec = np.array((np.cos(alfa), np.sin(alfa)))
-        t, cell = domain.getCellEdgeInformation(pos, vec, index)
+        t, domainEdgeBool = domain.getCellEdgeInformation(pos, vec, index)
         self.assertEqual(math.isclose(t, 0.1258290533124, rel_tol=TOL), True)
-        self.assertEqual(cell, 10)
+        self.assertEqual(domainEdgeBool, False)
 
         # Particle is in cell 6 and is moving to the left. Cell to which the particle is moving has index 5.
         alfa = np.radians(202)
         vec = np.array((np.cos(alfa), np.sin(alfa)))
-        t, cell = domain.getCellEdgeInformation(pos, vec, index)
+        t, domainEdgeBool = domain.getCellEdgeInformation(pos, vec, index)
         self.assertEqual(math.isclose(t, 0.2157069485355, rel_tol=TOL), True)
-        self.assertEqual(cell, 5)
+        self.assertEqual(domainEdgeBool, False)
 
         return None
 
