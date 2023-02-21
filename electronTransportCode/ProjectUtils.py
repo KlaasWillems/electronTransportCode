@@ -16,5 +16,5 @@ A_WATER: Final[float] = 18  # Relative molar mass of water
 I_WATER: Final[float] = 75  # [eV] mean excitation energy for water
 Re: Final[float] = constants.value('classical electron radius')*100  # [cm] classical electron radius
 NB_DENSITY_WATER: Final[float] = 3.3428847*1e23  # [cm^-3] electron number density of water
-E_THRESHOLD: Final[float] = 0.5
+E_THRESHOLD: Final[float] = 0.0003162278/ERE  # Stopping power becomes negative if energy is lower than this value
 RHO_WATER: Final[float] = 1.0  # [g/cm^3] density of water

@@ -1,4 +1,5 @@
-from electronTransportCode.ProjectUtils import A_WATER, I_WATER, NB_DENSITY_WATER, RHO_WATER, Z_WATER
+import numpy as np
+from electronTransportCode.ProjectUtils import A_WATER, I_WATER, NB_DENSITY_WATER, RHO_WATER, Z_WATER, FSC, CTF
 
 
 class Material:
@@ -19,6 +20,15 @@ class Material:
         self.I = I
         self.NB_DENSITY = NB_DENSITY
         self.rho = rho
+
+        # bc parameter used in steplength sampling
+        ZS: float = Z*(Z + 1)
+        ZE: float = Z*(Z + 1)*np.log(np.power(Z, -2/3))
+        ZX: float = Z*(Z + 1)*np.log(1 + 3.34*np.power(FSC*Z, 2))
+        self.bc: float = 7821.6 * rho * ZS * np.exp(ZE/ZS)/(A * np.exp(ZX/ZS))
+
+        self.eta0CONST: float = np.power(FSC, 2)*np.power(Z, 2/3)/(4*np.power(CTF, 2))
+
 
 
 WaterMaterial = Material()

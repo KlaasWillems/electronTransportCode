@@ -94,18 +94,14 @@ class SimulationDomain:
         col = index % self.xbins
         row = (index-col) // self.ybins
 
-        if edge == 0: # left border
-            if col != 0:
-                return row*self.xbins + col - 1
-        elif edge == 1:  # bottom border
-            if row != 0:
-                return (row - 1)*self.xbins + col
-        elif edge == 2:  # right border
-            if col != self.xbins - 1:
-                return row*self.xbins + col + 1
-        elif edge == 3:  # top border
-            if row != self.ybins - 1:
-                return (row + 1)*self.xbins + col
+        if edge == 0 and col != 0: # left border
+            return row*self.xbins + col - 1
+        elif edge == 1 and row != 0:  # bottom border
+            return (row - 1)*self.xbins + col
+        elif edge == 2 and col != self.xbins - 1:  # right border
+            return row*self.xbins + col + 1
+        elif edge == 3 and row != self.ybins - 1:  # top border
+            return (row + 1)*self.xbins + col
         return -1
 
 
@@ -143,33 +139,29 @@ class SimulationDomain:
         assert ymaxcell >= y0
 
         # compute distance to horizontal cell boundaries
-        if vx != 0.0:
-            t2xmin = (xmincell - x0)/vx  # One of these distances will be negative, the other positive
-            t2xmax = (xmaxcell - x0)/vx
+        xEdge: int
+        if vx < 0.0:  # Particle moving to left boundary
+            tx = (xmincell - x0)/vx
+            xEdge = 0
+        elif vx > 0.0:  # Particle moving to right boundary
+            tx = (xmaxcell - x0)/vx
+            xEdge = 2
         else:
-            t2xmin = np.infty
-            t2xmax = np.infty
-        tx = t2xmin if t2xmin > 0 else t2xmax  # Take the positive distance
+            xEdge = -1
+            tx = np.infty
 
-        # compute distance to vertical cell boundaries
-        if vy != 0.0:
-            t2ymin = (ymincell - y0)/vy  # One of these distances will be negative, the other positive
-            t2ymax = (ymaxcell - y0)/vy
+        yEdge: int
+        if vy < 0.0:  # Particle moving to lower boundary
+            ty = (ymincell - y0)/vy
+            yEdge = 1
+        elif vy > 0.0:  # Particle moving to upper boundary
+            ty = (ymaxcell - y0)/vy
+            yEdge = 3
         else:
-            t2ymin = np.infty
-            t2ymax = np.infty
-        ty = t2ymin if t2ymin > 0 else t2ymax  # Take the positive distance
+            yEdge = -1
+            ty = np.infty
 
         tmin = min(tx, ty)
-
-        # Compute neighbour index
-        if tmin == t2xmin:  # Particle is headed for left edge
-            edge = 0
-        elif tmin == t2xmax:  # Particle is headed for right edge
-            edge = 2
-        elif tmin == t2ymin:  # Particle is headed for bottom edge
-            edge = 1
-        else:  # Particle is headed for top edge
-            edge = 3
+        edge = xEdge if tmin == tx else yEdge
 
         return tmin, self.getNeighbourIndex(index, edge)

@@ -52,7 +52,7 @@ class ParticleModel(ABC):
         """
 
     @abstractmethod
-    def evalStoppingPower(self, Ekin: float, material: Material, Ec: float = E_THRESHOLD) -> float:
+    def evalStoppingPower(self, Ekin: float, material: Material) -> float:
         """Evaluate electron stopping power.
 
         Args:
@@ -81,7 +81,7 @@ class LineSourceParticle(ParticleModel):
         assert self.rng is not None
         return self.rng.uniform(low=-1, high=1)
 
-    def evalStoppingPower(self, Ekin: float, material: Material, Ec: float = E_THRESHOLD) -> float:
+    def evalStoppingPower(self, Ekin: float, material: Material) -> float:
         return 1
 
 
@@ -97,16 +97,9 @@ class SimplifiedEGSnrcElectron(ParticleModel):
             See abstract base class method for arguments and return value.
         """
         assert self.rng is not None
-        rho = material.rho
-        Z = material.Z
-        A = material.A
 
         betaSquared: float = Ekin*(Ekin+2)/np.power(Ekin+1,2)
-        ZS: float = Z*(Z + 1)
-        ZE: float = Z*(Z + 1)*np.log(np.power(Z, -2/3))
-        ZX: float = Z*(Z + 1)*np.log(1 + 3.34*np.power(FSC*Z, 2))
-        bc: float = 7821.6 * rho * ZS * np.exp(ZE/ZS)/(A * np.exp(ZX/ZS))
-        SigmaSR: float = bc/betaSquared  # total macroscopic screened Rutherford cross section
+        SigmaSR: float = material.bc/betaSquared  # total macroscopic screened Rutherford cross section
         return self.rng.exponential(1/SigmaSR)  # path-length
 
     def sampleAngle(self, Ekin: float, material: Material) -> float:
@@ -120,12 +113,12 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         betaSquared: float = Ekin*(Ekin+2)/np.power(Ekin+1,2)
         beta: float = np.sqrt(betaSquared)
         alfaPrime: float = FSC*Z/beta
-        eta0: float = np.power(FSC, 2)*np.power(Z, 2/3)/(4*np.power(CTF, 2)*Ekin*(Ekin+2))
+        eta0: float = material.eta0CONST/(Ekin*(Ekin+2))
         r: float = self.rng.uniform()
         eta: float = eta0*(1.13 + 3.76*alfaPrime**2)
         return 1 - 2*eta*r/(1-r+eta)  # polar scattering angle mu
 
-    def evalStoppingPower(self, Ekin: float, material: Material, Ec: float = E_THRESHOLD) -> float:
+    def evalStoppingPower(self, Ekin: float, material: Material) -> float:
         """ Stopping power PENELOPE found in Olbrant.
 
             See abstract base class method for arguments and return value.
@@ -140,6 +133,9 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         Z = material.Z
 
         Ekin_eV: float = Ekin*ERE*1e6  # Electron kinetic energy in eV (E or T in literature)
+        if Ekin_eV < I:
+            raise ValueError('Input energy is lower than I')
+
         betaSquared: float = Ekin*(Ekin+2)/np.power(Ekin+1, 2)
 
         term1 = (1+betaSquared + 2*np.sqrt(1-betaSquared))*np.log(2)

@@ -38,7 +38,7 @@ class WaterPhantomSimulation(SimOptions):
     def initialDirection(self) -> tuple2d:
         """Particle moving to the right
         """
-        return np.array((1.0, 0.0))
+        return np.array((np.sqrt(2), np.sqrt(2)))/2
 
     def initialPosition(self) -> tuple2d:
         """Initial position at origin
