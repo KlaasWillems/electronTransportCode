@@ -86,7 +86,7 @@ class AnalogParticleTracer(MCParticleTracer):
         new_index: int
 
         counter = 0
-        # Step untill energy is smaller than threshold
+        # Step until energy is smaller than threshold
         while loopbool:
             assert energy > 0, f'{energy=}'
             new_pos, new_vec, new_energy, new_index = self.stepParticle(pos, vec, energy, index)
@@ -100,9 +100,9 @@ class AnalogParticleTracer(MCParticleTracer):
             index = new_index
 
             # Logging
-            # counter += 1
-            # if counter % 10000 == 0:
-            #     print(energy, counter)
+            counter += 1
+            if counter % 25000 == 0:
+                print(energy, counter)
 
         return counter
 
