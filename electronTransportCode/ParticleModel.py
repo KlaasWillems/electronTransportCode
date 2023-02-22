@@ -87,8 +87,7 @@ class LineSourceParticle(ParticleModel):
 
 class SimplifiedEGSnrcElectron(ParticleModel):
     """A simplified electron model. Soft elastic collisions are taken into account using the screened Rutherford elastic cross section.
-    Energy loss is deposited continuously using the Bethe-Bloch inelastic restricted collisional stopping power. Hard-inelastic collisions and bremstrahlung are not
-    taken into account.
+    Energy loss is deposited continuously using the Bethe-Bloch inelastic restricted collisional stopping power. Hard-inelastic collisions and bremstrahlung are not taken into account.
     """
 
     def samplePathlength(self, Ekin: float, material: Material) -> float:
@@ -115,11 +114,11 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         alfaPrime: float = FSC*Z/beta
         eta0: float = material.eta0CONST/(Ekin*(Ekin+2))
         r: float = self.rng.uniform()
-        eta: float = eta0*(1.13 + 3.76*alfaPrime**2)
+        eta: float = eta0*(1.13 + 3.76*np.power(alfaPrime, 2))
         return 1 - 2*eta*r/(1-r+eta)  # polar scattering angle mu
 
     def evalStoppingPower(self, Ekin: float, material: Material) -> float:
-        """ Stopping power PENELOPE found in Olbrant.
+        """ Stopping power from PENELOPE for close and distant interactions.
 
             See abstract base class method for arguments and return value.
         Note on EGSnrc stopping power.
@@ -138,8 +137,40 @@ class SimplifiedEGSnrcElectron(ParticleModel):
 
         betaSquared: float = Ekin*(Ekin+2)/np.power(Ekin+1, 2)
 
-        term1 = (1+betaSquared + 2*np.sqrt(1-betaSquared))*np.log(2)
-        term2 = np.power((1 - np.sqrt(1-betaSquared)), 2)/8
-        Lcoll: float = 2*np.pi*np.power(Re, 2)*NB_DENSITY*Z*(np.log(Ekin_eV/I) + 1 - term1 + term2)/betaSquared
+        gamma = Ekin+1
+        term1 = np.log(np.power(Ekin_eV/I, 2)*((gamma+1)/2))
+        term2 = 1 - betaSquared - ((2*gamma - 1)/gamma)*np.log(2) + np.power((gamma-1)/gamma, 2)/8
+        Lcoll: float = 2*np.pi*np.power(Re, 2)*NB_DENSITY*Z*(term1 + term2)/betaSquared
 
         return Lcoll
+
+
+class SimplifiedPenelopeElectron(ParticleModel):
+    """Electron model as found in PENELOPE manual
+    """
+    def evalStoppingPower(self, Ekin: float, material: Material) -> float:
+        """ Stopping power from PENELOPE for close and distant interactions.
+        """
+        # Ekin = tau in papers
+        I = material.I
+        NB_DENSITY = material.NB_DENSITY
+        Z = material.Z
+
+        Ekin_eV: float = Ekin*ERE*1e6  # Electron kinetic energy in eV (E or T in literature)
+        if Ekin_eV < I:
+            raise ValueError('Input energy is lower than I')
+
+        betaSquared: float = Ekin*(Ekin+2)/np.power(Ekin+1, 2)
+
+        gamma = Ekin+1
+        term1 = np.log(np.power(Ekin_eV/I, 2)*((gamma+1)/2))
+        term2 = 1 - betaSquared - ((2*gamma - 1)/gamma)*np.log(2) + np.power((gamma-1)/gamma, 2)/8
+        Lcoll: float = 2*np.pi*np.power(Re, 2)*NB_DENSITY*Z*(term1 + term2)/betaSquared
+
+        return Lcoll
+
+    def samplePathlength(self, Ekin: float, material: Material) -> float:
+        raise NotImplementedError
+
+    def sampleAngle(self, Ekin: float, material: Material) -> float:
+        raise NotImplementedError

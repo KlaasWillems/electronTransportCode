@@ -101,8 +101,8 @@ class AnalogParticleTracer(MCParticleTracer):
 
             # Logging
             counter += 1
-            if counter % 25000 == 0:
-                print(energy, counter)
+            # if counter % 25000 == 0:
+            #     print(energy, counter)
 
         return counter
 
@@ -168,7 +168,8 @@ class AnalogParticleTracer(MCParticleTracer):
         else:  # Next event is grid cell crossing
             new_vec = vec
             new_index = self.simDomain.getIndexPath(new_pos, new_vec)
-            assert new_index != index
+            if new_index == index:
+                print('faulty grid cell crossing')
             if domainEdge:  # Next event is domain edge crossing
                 new_energy = 0
 

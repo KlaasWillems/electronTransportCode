@@ -1,11 +1,11 @@
 import numpy as np
-from electronTransportCode.ProjectUtils import A_WATER, I_WATER, NB_DENSITY_WATER, RHO_WATER, Z_WATER, FSC, CTF
+from electronTransportCode.ProjectUtils import A_WATER, I_WATER, SC_DENSITY, RHO_WATER, Z_WATER, FSC, CTF
 
 
 class Material:
     """Wrapper object for all material parameters relevant to radiation therapy
     """
-    def __init__(self, Z: float = Z_WATER, A: float = A_WATER, I: float = I_WATER, NB_DENSITY: float = NB_DENSITY_WATER, rho: float = RHO_WATER) -> None:
+    def __init__(self, Z: float = Z_WATER, A: float = A_WATER, I: float = I_WATER, NB_DENSITY: float = SC_DENSITY, rho: float = RHO_WATER) -> None:
         """
 
         Args:
