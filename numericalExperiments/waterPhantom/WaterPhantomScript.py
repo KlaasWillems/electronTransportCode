@@ -9,9 +9,9 @@ from electronTransportCode.ParticleModel import SimplifiedEGSnrcElectron
 from electronTransportCode.ProjectUtils import E_THRESHOLD
 
 # Set up initial conditions
-eInit: float = 10.0/ERE  # 5 MeV initial energy
+eInit: float = 5.0/ERE  # 5 MeV initial energy
 SEED: int = 4  # Random number generator seed
-xVariance: float = 0.05  # Variance on initial position in x and y direction
+xVariance: float = 0.1  # Variance on initial position in x and y direction
 waterPhantomInit = WaterPhantomSimulation(minEnergy=E_THRESHOLD, Esource=eInit, xVariance=xVariance, rngSeed=SEED)
 
 # Set up simulation domain
@@ -29,7 +29,7 @@ particleTracer = AnalogParticleTracer(particle=particle, simOptions=waterPhantom
 if __name__ == "__main__":
     # Run simulation
     print('Starting simulation')
-    NB_PARTICLES = 10000
+    NB_PARTICLES = 5000
     t1 = time.perf_counter()
     particleTracer(nbParticles=NB_PARTICLES, estimator=doseEstimator)
     t2 = time.perf_counter()
