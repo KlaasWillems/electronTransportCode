@@ -97,7 +97,7 @@ class SimplifiedEGSnrcElectron(ParticleModel):
             See abstract base class method for arguments and return value.
         """
         assert self.rng is not None
-
+        assert Ekin > 0, f'{Ekin=}'
         betaSquared: float = Ekin*(Ekin+2)/np.power(Ekin+1,2)
         SigmaSR: float = material.bc/betaSquared  # total macroscopic screened Rutherford cross section
         return self.rng.exponential(1/SigmaSR)  # path-length
@@ -108,8 +108,8 @@ class SimplifiedEGSnrcElectron(ParticleModel):
             See abstract base class method for arguments and return value.
         """
         assert self.rng is not None
+        assert Ekin > 0, f'{Ekin=}'
         Z = material.Z
-
         betaSquared: float = Ekin*(Ekin+2)/np.power(Ekin+1,2)
         beta: float = np.sqrt(betaSquared)
         alfaPrime: float = FSC*Z/beta

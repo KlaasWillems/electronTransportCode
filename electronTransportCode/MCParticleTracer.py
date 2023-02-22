@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import time
 import numpy as np
 from electronTransportCode.MCEstimator import MCEstimator
 from electronTransportCode.ParticleModel import ParticleModel
@@ -25,10 +26,15 @@ class MCParticleTracer(ABC):
             estimator (MCEstimator): Estimator object which implements scoring of all quantities of interest
 
         """
+        t1 = time.perf_counter()
         for particle in range(1, nbParticles+1):
-            # simulate particle
             nb_events = self.traceParticle(estimator)
             self.averageNbCollisions += (nb_events - self.averageNbCollisions)/particle
+
+            if particle % 1000 == 0:  # every 1000 particles
+                t2 = time.perf_counter()
+                print(f'Last 1000 particles took {t2-t1} seconds')
+                t1 = time.perf_counter()
 
         return None
 
@@ -43,7 +49,10 @@ class MCParticleTracer(ABC):
         Returns:
             float: Energy loss DeltaE
         """
+        assert Ekin > 0, f'{Ekin=}'
+        assert stepsize > 0, f'{stepsize=}'
         Emid = Ekin + self.particle.evalStoppingPower(Ekin, self.simDomain.getMaterial(index))*stepsize/2
+        assert Emid > 0, f'{Emid=}'
         return self.particle.evalStoppingPower(Emid, self.simDomain.getMaterial(index))*stepsize
 
     @abstractmethod
@@ -79,6 +88,7 @@ class AnalogParticleTracer(MCParticleTracer):
         counter = 0
         # Step untill energy is smaller than threshold
         while loopbool:
+            assert energy > 0, f'{energy=}'
             new_pos, new_vec, new_energy, new_index = self.stepParticle(pos, vec, energy, index)
             if new_energy < self.simOptions.minEnergy:
                 new_energy = 0  # have estimator deposit all energy
@@ -90,9 +100,9 @@ class AnalogParticleTracer(MCParticleTracer):
             index = new_index
 
             # Logging
-            counter += 1
-            if counter % 10000 == 0:
-                print(energy, counter)
+            # counter += 1
+            # if counter % 10000 == 0:
+            #     print(energy, counter)
 
         return counter
 
@@ -141,6 +151,9 @@ class AnalogParticleTracer(MCParticleTracer):
         deltaE = self.energyLoss(energy, step, index)
         new_energy = energy - deltaE
 
+        if new_energy < self.simOptions.minEnergy:  # return without sampling a new angles and such
+            return new_pos, vec, 0.0, index
+
         # Select event
         if stepColl < stepGeom:  # Next event is collision
             new_vec: tuple2d = np.zeros_like(vec, dtype=float)
@@ -155,6 +168,7 @@ class AnalogParticleTracer(MCParticleTracer):
         else:  # Next event is grid cell crossing
             new_vec = vec
             new_index = self.simDomain.getIndexPath(new_pos, new_vec)
+            assert new_index != index
             if domainEdge:  # Next event is domain edge crossing
                 new_energy = 0
 
