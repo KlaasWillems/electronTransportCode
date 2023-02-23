@@ -29,7 +29,7 @@ particleTracer = AnalogParticleTracer(particle=particle, simOptions=waterPhantom
 if __name__ == "__main__":
     # Run simulation
     print('Starting simulation')
-    NB_PARTICLES = 5000
+    NB_PARTICLES = 10000
     t1 = time.perf_counter()
     particleTracer(nbParticles=NB_PARTICLES, estimator=doseEstimator)
     t2 = time.perf_counter()
