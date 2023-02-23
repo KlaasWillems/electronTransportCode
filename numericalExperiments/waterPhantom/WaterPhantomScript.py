@@ -7,6 +7,7 @@ from electronTransportCode.MCEstimator import DoseEstimator
 from electronTransportCode.ProjectUtils import ERE
 from electronTransportCode.ParticleModel import SimplifiedEGSnrcElectron
 from electronTransportCode.ProjectUtils import E_THRESHOLD
+from electronTransportCode.Material import WaterMaterial
 
 # Set up initial conditions
 eInit: float = 5.0/ERE  # 5 MeV initial energy
@@ -15,7 +16,7 @@ xVariance: float = 0.1  # Variance on initial position in x and y direction
 waterPhantomInit = WaterPhantomSimulation(minEnergy=E_THRESHOLD, eSource=eInit, xVariance=xVariance, rngSeed=SEED)
 
 # Set up simulation domain
-simDomain = SimulationDomain(-2.5, 7.5, -2.5, 7.5, 200, 200)
+simDomain = SimulationDomain(-2.5, 7.5, -2.5, 7.5, 200, 200, material=WaterMaterial)
 
 # Set up dose estimator
 doseEstimator = DoseEstimator(simDomain=simDomain)

@@ -14,7 +14,7 @@ class SimulationDomain:
     The number associated to a grid cell is referred to as the index.
     No periodic boundary conditions.
     """
-    def __init__(self, xmin: float, xmax: float, ymin: float, ymax: float, xbins: int, ybins: int) -> None:
+    def __init__(self, xmin: float, xmax: float, ymin: float, ymax: float, xbins: int, ybins: int, material: Material) -> None:
         """Initialize rectangular simulation domain
 
         Args:
@@ -24,6 +24,7 @@ class SimulationDomain:
             ymax (float): Largest coordinate in vertical direction
             xbins (int): Amount of columns in rectangular grid
             ybins (int): Amount of rows in rectangular grid
+            material (Material): domain is made up of uniform material
         """
         self.xmin = xmin
         self.xmax = xmax
@@ -34,6 +35,7 @@ class SimulationDomain:
         self.xrange: np.ndarray = np.linspace(self.xmin, self.xmax, self.xbins+1)
         self.yrange: np.ndarray = np.linspace(self.ymin, self.ymax, self.ybins+1)
         self.dA: float = (self.xrange[1] - self.xrange[0])*(self.yrange[1] - self.yrange[0])
+        self.material = material
 
     def getMaterial(self, index: int) -> Material:
         """Return material at grid cell index
@@ -44,8 +46,7 @@ class SimulationDomain:
         Returns:
             Material:
         """
-        # All water simulation domain. TODO: expand capabilities.
-        return WaterMaterial
+        return self.material
 
     def getCoord(self, index: int) -> Tuple[int, int]:
         """Return coordinate of grid cell in rectangular grid
