@@ -12,7 +12,7 @@ from electronTransportCode.ProjectUtils import E_THRESHOLD
 eInit: float = 5.0/ERE  # 5 MeV initial energy
 SEED: int = 4  # Random number generator seed
 xVariance: float = 0.1  # Variance on initial position in x and y direction
-waterPhantomInit = WaterPhantomSimulation(minEnergy=E_THRESHOLD, Esource=eInit, xVariance=xVariance, rngSeed=SEED)
+waterPhantomInit = WaterPhantomSimulation(minEnergy=E_THRESHOLD, eSource=eInit, xVariance=xVariance, rngSeed=SEED)
 
 # Set up simulation domain
 simDomain = SimulationDomain(-2.5, 7.5, -2.5, 7.5, 200, 200)

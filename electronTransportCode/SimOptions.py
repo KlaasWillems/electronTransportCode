@@ -30,9 +30,9 @@ class SimOptions(ABC):
 class WaterPhantomSimulation(SimOptions):
     """Initial conditions for water phantom experiment
     """
-    def __init__(self, minEnergy: float, Esource: float, xVariance: float, rngSeed: int = 12) -> None:
+    def __init__(self, minEnergy: float, eSource: float, xVariance: float, rngSeed: int = 12) -> None:
         super().__init__(minEnergy, rngSeed)
-        self.Esource = Esource
+        self.eSource = eSource
         self.xVariance = xVariance
 
     def initialDirection(self) -> tuple2d:
@@ -50,15 +50,15 @@ class WaterPhantomSimulation(SimOptions):
     def initialEnergy(self) -> float:
         """Constant particle energy source at self.Esource
         """
-        return self.Esource
+        return self.eSource
 
 
 class LineSourceSimulation(SimOptions):
     """Initial conditions for line source benchmark
     """
-    def __init__(self, minEnergy: float, Esource: float, rngSeed: int = 12) -> None:
+    def __init__(self, minEnergy: float, eSource: float, rngSeed: int = 12) -> None:
         super().__init__(minEnergy, rngSeed)
-        self.Esource = Esource
+        self.eSource = eSource
 
     def initialDirection(self) -> tuple2d:
         """Uniformly distributed initial direction
@@ -74,4 +74,4 @@ class LineSourceSimulation(SimOptions):
     def initialEnergy(self) -> float:
         """Constant particle energy source at self.Esource
         """
-        return self.Esource
+        return self.eSource
