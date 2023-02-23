@@ -3,5 +3,5 @@
 electronTransportCode/__pycache__
 .mypy_cache
 tests/__pycache__
-numericalExperiments/.ipynb_checkpoints
+*.ipynb_checkpoints
 .pylintrc
