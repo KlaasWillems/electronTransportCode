@@ -10,6 +10,7 @@ class SimOptions(ABC):
     def __init__(self, minEnergy: float, rngSeed: int = 12) -> None:
         self.minEnergy: float = minEnergy
         self.rng: np.random.Generator = np.random.default_rng(rngSeed)
+        self.DEPOSIT_REMAINDING_E_LOCALLY = True
 
     @abstractmethod
     def initialDirection(self) -> tuple2d:

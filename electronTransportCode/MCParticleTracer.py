@@ -91,7 +91,8 @@ class AnalogParticleTracer(MCParticleTracer):
             assert energy > self.simOptions.minEnergy, f'{energy=}'
             new_pos, new_vec, new_energy, new_index = self.stepParticle(pos, vec, energy, index)
             if new_energy <= self.simOptions.minEnergy:
-                new_energy = 0  # have estimator deposit all energy
+                if self.simOptions.DEPOSIT_REMAINDING_E_LOCALLY:
+                    new_energy = 0  # have estimator deposit all energy
                 loopbool = False  # make this the last iterations
             estimator.updateEstimator((pos, new_pos), (vec, new_vec), (energy, new_energy), index)
             pos = new_pos
@@ -155,9 +156,9 @@ class AnalogParticleTracer(MCParticleTracer):
         new_energy = energy - deltaE
 
         if new_energy < self.simOptions.minEnergy:  # return without sampling a new angle and such
-            # linearly back up such stepsize is consistent
+            # linearly back up such that stepsize is consistent with energy loss
             new_pos = pos + step*vec*(energy - self.simOptions.minEnergy)/deltaE
-            return new_pos, vec, 0.0, index
+            return new_pos, vec, self.simOptions.minEnergy, index
 
         # Select event
         if stepColl < stepGeom:  # Next event is collision
