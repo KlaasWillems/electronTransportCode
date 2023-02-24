@@ -119,7 +119,7 @@ class FluenceEstimator(MCEstimator):
         # score
         if bin1 == bin2:  # same energy bin
             self.scoreMatrix[bin1-1, index] += stepsize
-        elif bin1-bin2 == 1:  # one bin apart: energy < Emind < newEnergy
+        elif bin1-bin2 == 1:  # one bin apart: energy > Emid > newEnergy
             Emid = self.Erange[bin2]
             self.scoreMatrix[bin1-1, index] += stepsize*(energy - Emid)/dE
             self.scoreMatrix[bin2-1, index] += stepsize*(Emid - newEnergy)/dE
