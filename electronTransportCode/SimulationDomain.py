@@ -139,11 +139,12 @@ class SimulationDomain:
             return True
         return False
 
-    def getCellEdgeInformation(self, pos: tuple2d, vec: tuple2d, index: int) -> tuple[float, bool]:
-        """Return distance to nearest grid cell crossing and boolean.
+    def getCellEdgeInformation(self, pos: tuple2d, vec: tuple2d, index: int) -> tuple[float, bool, tuple2d]:
+        """Return distance to nearest grid cell crossing, boolean and the grid cell crossing location
         The distance is computed by finding the intersection of the particle with the horizontal lines at xmin and xmax, and vertical lines at ymin and ymax. The smallest positive distance is returned.
 
         The second return argument is True if the edge the particle is heading to is also a domain edge.
+        The third argument is the location of the next grid cell crossing.
 
         Args:
             pos (tuple2d): Position tuple
@@ -158,6 +159,7 @@ class SimulationDomain:
         x0, y0 = pos
         vx, vy = vec
         row, col = self.getCoord(index)
+        new_pos = np.array((0.0, 0.0), dtype=float)
 
         # cell boundaries
         xmincell = self.xrange[col]
@@ -173,28 +175,43 @@ class SimulationDomain:
 
         # compute distance to horizontal cell boundaries
         xEdge: int
+        x_new_pos: float
         if vx < 0.0:  # Particle moving to left boundary
             tx = (xmincell - x0)/vx
             xEdge = 0
+            x_new_pos = xmincell
         elif vx > 0.0:  # Particle moving to right boundary
             tx = (xmaxcell - x0)/vx
             xEdge = 2
-        else:
+            x_new_pos = xmaxcell
+        else:  # particle is moving in the vertical direction
             xEdge = -1
             tx = np.infty
+            x_new_pos = x0
 
         yEdge: int
+        y_new_pos: float
         if vy < 0.0:  # Particle moving to lower boundary
             ty = (ymincell - y0)/vy
             yEdge = 1
+            y_new_pos = ymincell
         elif vy > 0.0:  # Particle moving to upper boundary
             ty = (ymaxcell - y0)/vy
             yEdge = 3
-        else:
+            y_new_pos = ymaxcell
+        else:  # particle is moving in the horizontal direction
             yEdge = -1
             ty = np.infty
+            y_new_pos = y0
 
         tmin = min(tx, ty)
         edge = xEdge if tmin == tx else yEdge
 
-        return tmin, self.checkDomainEdge(index, edge)
+        if tmin == tx:
+            new_pos[0] = x_new_pos
+            new_pos[1] = y0 + tmin*vec[1]
+        else:
+            new_pos[0] = x0 + tmin*vec[0]
+            new_pos[1] = y_new_pos
+
+        return tmin, self.checkDomainEdge(index, edge), new_pos

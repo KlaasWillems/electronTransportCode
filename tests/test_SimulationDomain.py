@@ -8,11 +8,12 @@ import math
 sys.path.insert(0, os.path.abspath('..'))
 
 from electronTransportCode.SimulationDomain import SimulationDomain
+from electronTransportCode.Material import WaterMaterial
 
 class TestSimulationDomain(unittest.TestCase):
     def test_returnIndexA(self) -> None:
         # test particle's in interior of domain
-        domain = SimulationDomain(0, 1, 0, 1, 3, 3)
+        domain = SimulationDomain(0, 1, 0, 1, 3, 3, WaterMaterial)
 
         y = 0.0
         for yi in range(3):
@@ -27,7 +28,7 @@ class TestSimulationDomain(unittest.TestCase):
     def test_checkIndex(self) -> None:
         xbins = 71
         ybins = 305
-        domain = SimulationDomain(0, 1, 0, 1, xbins, ybins)
+        domain = SimulationDomain(0, 1, 0, 1, xbins, ybins, WaterMaterial)
 
         domain.checkDomainEdge(60, 3)
 
@@ -40,7 +41,7 @@ class TestSimulationDomain(unittest.TestCase):
 
     def test_returnIndexB(self) -> None:
         # test particle's on a boundary
-        domain = SimulationDomain(0, 1, 0, 1, 3, 3)
+        domain = SimulationDomain(0, 1, 0, 1, 3, 3, WaterMaterial)
 
         x = domain.xrange[1]  # 1/3
         y = 0.1
@@ -55,7 +56,7 @@ class TestSimulationDomain(unittest.TestCase):
     def test_checkDomainEdge(self) -> None:
         xbins = 10
         ybins = 7
-        domain = SimulationDomain(0, 1, 0, 1, xbins, ybins)
+        domain = SimulationDomain(0, 1, 0, 1, xbins, ybins, WaterMaterial)
 
         domain.checkDomainEdge(60, 3)
 
@@ -78,7 +79,7 @@ class TestSimulationDomain(unittest.TestCase):
     def test_returnNeighbourIndex(self) -> None:
         xbins = 4
         ybins = 3
-        domain = SimulationDomain(0, 1, 0, 1, xbins, ybins)
+        domain = SimulationDomain(0, 1, 0, 1, xbins, ybins, WaterMaterial)
 
         for xi in range(xbins):
             for yi in range(ybins):
@@ -113,7 +114,7 @@ class TestSimulationDomain(unittest.TestCase):
         TOL = 1e-14
         xbins = 4
         ybins = 3
-        domain = SimulationDomain(0, 1, 0, 1, xbins, ybins)
+        domain = SimulationDomain(0, 1, 0, 1, xbins, ybins, WaterMaterial)
 
         # Particle is in cell 6 and moves to the right. Closest cell is to the right with index 7.
         pos = np.array((0.7, 0.55))
@@ -121,7 +122,7 @@ class TestSimulationDomain(unittest.TestCase):
         vec = np.array((np.cos(alfa), np.sin(alfa)))
         index = 6
 
-        t, domainEdgeBool = domain.getCellEdgeInformation(pos, vec, index)
+        t, domainEdgeBool, _ = domain.getCellEdgeInformation(pos, vec, index)
         self.assertEqual(math.isclose(t, 0.05, rel_tol=TOL), True)
         self.assertEqual(domainEdgeBool, False)
 
@@ -131,7 +132,7 @@ class TestSimulationDomain(unittest.TestCase):
         vec = np.array((np.cos(alfa), np.sin(alfa)))
         index = 7
 
-        t, domainEdgeBool = domain.getCellEdgeInformation(pos, vec, index)
+        t, domainEdgeBool, _ = domain.getCellEdgeInformation(pos, vec, index)
         self.assertEqual(math.isclose(t, 0.05, rel_tol=TOL), True)
         self.assertEqual(domainEdgeBool, True)
 
@@ -141,21 +142,21 @@ class TestSimulationDomain(unittest.TestCase):
         TOL = 1e-10
         xbins = 4
         ybins = 3
-        domain = SimulationDomain(0, 1, 0, 1, xbins, ybins)
+        domain = SimulationDomain(0, 1, 0, 1, xbins, ybins, WaterMaterial)
         pos = np.array((0.7, 0.55))
         index = 6
 
         # Particle is in cell 6 and is moving to the top left. Cell to which the particle is moving has index 10.
         alfa = np.radians(112)
         vec = np.array((np.cos(alfa), np.sin(alfa)))
-        t, domainEdgeBool = domain.getCellEdgeInformation(pos, vec, index)
+        t, domainEdgeBool, _ = domain.getCellEdgeInformation(pos, vec, index)
         self.assertEqual(math.isclose(t, 0.1258290533124, rel_tol=TOL), True)
         self.assertEqual(domainEdgeBool, False)
 
         # Particle is in cell 6 and is moving to the left. Cell to which the particle is moving has index 5.
         alfa = np.radians(202)
         vec = np.array((np.cos(alfa), np.sin(alfa)))
-        t, domainEdgeBool = domain.getCellEdgeInformation(pos, vec, index)
+        t, domainEdgeBool, _ = domain.getCellEdgeInformation(pos, vec, index)
         self.assertEqual(math.isclose(t, 0.2157069485355, rel_tol=TOL), True)
         self.assertEqual(domainEdgeBool, False)
 
@@ -165,7 +166,7 @@ class TestSimulationDomain(unittest.TestCase):
         TOL = 1e-15
         xbins = 4
         ybins = 3
-        domain = SimulationDomain(0, 1, 0, 1, xbins, ybins)
+        domain = SimulationDomain(0, 1, 0, 1, xbins, ybins, WaterMaterial)
         area = (1/3)*(1/4)
         self.assertEqual(math.isclose(area, domain.dA, rel_tol=TOL), True)
 

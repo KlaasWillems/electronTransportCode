@@ -8,14 +8,13 @@ sys.path.insert(0, os.path.abspath('..'))
 
 from electronTransportCode.MCEstimator import FluenceEstimator
 from electronTransportCode.SimulationDomain import SimulationDomain
-from electronTransportCode.ProjectUtils import tuple2d
-
+from electronTransportCode.Material import WaterMaterial
 
 class TestMCFluenceEstimator(unittest.TestCase):
     def test_updateEstimatorA(self) -> None:
         # TEST A: energy jumps over multiple bins
         TOL = 1e-14
-        domain = SimulationDomain(0, 1, 0, 1, 3, 3)
+        domain = SimulationDomain(0, 1, 0, 1, 3, 3, WaterMaterial)
         Ebins = 10; Emin = 0; Emax = 1
         estimator = FluenceEstimator(domain, Emin, Emax, Ebins, spacing='lin')
 
@@ -40,7 +39,7 @@ class TestMCFluenceEstimator(unittest.TestCase):
     def test_updateEstimatorB(self) -> None:
         # TEST B: energy jumps over one bin
         TOL = 1e-14
-        domain = SimulationDomain(0, 1, 0, 1, 3, 3)
+        domain = SimulationDomain(0, 1, 0, 1, 3, 3, WaterMaterial)
         Ebins = 10; Emin = 0; Emax = 1
         estimator = FluenceEstimator(domain, Emin, Emax, Ebins, spacing='lin')
 
@@ -65,7 +64,7 @@ class TestMCFluenceEstimator(unittest.TestCase):
     def test_updateEstimatorC(self) -> None:
         # TEST B: particle energy remains in the same bin
         TOL = 1e-14
-        domain = SimulationDomain(0, 1, 0, 1, 3, 3)
+        domain = SimulationDomain(0, 1, 0, 1, 3, 3, WaterMaterial)
         Ebins = 10; Emin = 0; Emax = 1
         estimator = FluenceEstimator(domain, Emin, Emax, Ebins, spacing='lin')
 
