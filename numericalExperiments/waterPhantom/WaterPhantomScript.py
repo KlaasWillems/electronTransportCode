@@ -32,7 +32,7 @@ if __name__ == "__main__":
     print('Starting simulation')
     NB_PARTICLES = 10000
     t1 = time.perf_counter()
-    particleTracer(nbParticles=NB_PARTICLES, estimator=doseEstimator)
+    particleTracer(nbParticles=NB_PARTICLES, estimators=doseEstimator)
     t2 = time.perf_counter()
     print(f'Simulation took {t2-t1} seconds')
 
