@@ -154,7 +154,9 @@ class AnalogParticleTracer(MCParticleTracer):
         deltaE = self.energyLoss(energy, step, index)
         new_energy = energy - deltaE
 
-        if new_energy < self.simOptions.minEnergy:  # return without sampling a new angles and such
+        if new_energy < self.simOptions.minEnergy:  # return without sampling a new angle and such
+            # linearly back up such stepsize is consistent
+            new_pos = pos + step*vec*(energy - self.simOptions.minEnergy)/deltaE
             return new_pos, vec, 0.0, index
 
         # Select event
