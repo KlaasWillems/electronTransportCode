@@ -88,9 +88,9 @@ class AnalogParticleTracer(MCParticleTracer):
         counter = 0
         # Step until energy is smaller than threshold
         while loopbool:
-            assert energy > 0, f'{energy=}'
+            assert energy > self.simOptions.minEnergy, f'{energy=}'
             new_pos, new_vec, new_energy, new_index = self.stepParticle(pos, vec, energy, index)
-            if new_energy < self.simOptions.minEnergy:
+            if new_energy <= self.simOptions.minEnergy:
                 new_energy = 0  # have estimator deposit all energy
                 loopbool = False  # make this the last iterations
             estimator.updateEstimator((pos, new_pos), (vec, new_vec), (energy, new_energy), index)
@@ -141,11 +141,14 @@ class AnalogParticleTracer(MCParticleTracer):
 
         # Sample step size
         stepColl = self.particle.samplePathlength(energy, self.simDomain.getMaterial(index))
-        stepGeom, domainEdge = self.simDomain.getCellEdgeInformation(pos, vec, index)
+        stepGeom, domainEdge, new_pos_geom = self.simDomain.getCellEdgeInformation(pos, vec, index)
         step = min(stepColl, stepGeom)
 
         # Apply step
-        new_pos = pos + step*vec  # type: ignore
+        if step == stepGeom:
+            new_pos = new_pos_geom
+        else:
+            new_pos = pos + step*vec
 
         # Decrement energy along step
         deltaE = self.energyLoss(energy, step, index)
@@ -168,8 +171,6 @@ class AnalogParticleTracer(MCParticleTracer):
         else:  # Next event is grid cell crossing
             new_vec = vec
             new_index = self.simDomain.getIndexPath(new_pos, new_vec)
-            if new_index == index:
-                print('faulty grid cell crossing')
             if domainEdge:  # Next event is domain edge crossing
                 new_energy = 0
 

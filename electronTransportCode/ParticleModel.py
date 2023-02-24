@@ -70,11 +70,11 @@ class LineSourceParticle(ParticleModel):
     """
     def __init__(self, generator: Union[np.random.Generator, None, int] = None) -> None:
         super().__init__(generator)
-        self.sigma = 1
+        self.sigma: float = 1.0
 
     def samplePathlength(self, Ekin: float, material: Material) -> float:
         assert self.rng is not None
-        return self.rng.exponential(scale=1)/self.sigma
+        return self.rng.exponential(scale=1/self.sigma)
 
     def sampleAngle(self, Ekin: float, material: Material) -> float:
         # Isotropic scattering angle

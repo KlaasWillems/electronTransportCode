@@ -64,7 +64,8 @@ class FluenceEstimator(MCEstimator):
     """Score particle density at each collision and grid cell crossing. Energy variable is discretized in bins.
     """
     def __init__(self, simDomain: SimulationDomain, Emin: float, Emax: float, Ebins: int, spacing: str = 'lin') -> None:
-        """
+        """ Creates energy bins for fluence estimator. Energy bins include the left edge, except for the final bin.
+                e.g. [0, 0.2), [0.2, 0.4), ... , [0.8, 1.0]
         Args:
             simDomain (SimulationDomain): SimulationDomain object
             Emin (float): Energy cutOff value
@@ -98,11 +99,22 @@ class FluenceEstimator(MCEstimator):
         energy, newEnergy = energyTuple
         pos, new_pos = posTuple
 
+        assert self.Emin <= energy <= self.Emax
+        assert self.Emin <= newEnergy <= self.Emax
+
         dE = energy - newEnergy
         stepsize: float = np.linalg.norm(pos - new_pos)
 
         # bin the energies
         bin1, bin2 = np.digitize((energy, newEnergy), self.Erange)
+        # Under normal circumstances, 'bin' ranges from 1 to self.Ebins. In case that energy == self.Emax, bin is self.Ebins + 1.
+        # In case energy < self.Emin, bin is 0.
+
+        # Make final bin include right edge
+        if bin1 == self.Ebins+1:
+            bin1 = self.Ebins
+        if bin2 == self.Ebins+1:
+            bin2 = self.Ebins
 
         # score
         if bin1 == bin2:  # same energy bin
