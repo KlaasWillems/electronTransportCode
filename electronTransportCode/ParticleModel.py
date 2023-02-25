@@ -65,8 +65,8 @@ class ParticleModel(ABC):
         """
 
 
-class LineSourceParticle(ParticleModel):
-    """Particle for line source benchmark. See Kush & Stammer paper.
+class PointSourceParticle(ParticleModel):
+    """Particle for point source benchmark. See Kush & Stammer, Garret & Hauck and Ganapol 1999.
     """
     def __init__(self, generator: Union[np.random.Generator, None, int] = None) -> None:
         super().__init__(generator)

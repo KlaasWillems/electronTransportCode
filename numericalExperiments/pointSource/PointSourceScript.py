@@ -1,16 +1,16 @@
 import time
 import pickle
-from electronTransportCode.SimOptions import LineSourceSimulation
+from electronTransportCode.SimOptions import PointSourceSimulation
 from electronTransportCode.SimulationDomain import SimulationDomain
 from electronTransportCode.MCParticleTracer import AnalogParticleTracer
-from electronTransportCode.MCEstimator import FluenceEstimator
-from electronTransportCode.ParticleModel import LineSourceParticle
+from electronTransportCode.MCEstimator import FluenceEstimator, DoseEstimator
+from electronTransportCode.ParticleModel import PointSourceParticle
 from electronTransportCode.Material import unitDensityMaterial
 
 # Set up initial conditions
 eSource: float = 1.0
 SEED: int = 4  # Random number generator seed
-lineSourceSim = LineSourceSimulation(minEnergy=0, eSource=eSource, rngSeed=SEED)
+lineSourceSim = PointSourceSimulation(minEnergy=0, eSource=eSource, rngSeed=SEED)
 
 # Set up simulation domain
 xmin = -1.0; xmax = 1.0; xbins = 100
@@ -19,9 +19,10 @@ simDomain = SimulationDomain(xmin, xmax, xmin, xmax, xbins, xbins, material=unit
 # Set up dose estimator
 Ebins = 50
 fluenceEstimator = FluenceEstimator(simDomain=simDomain, Emin=0.0, Emax=eSource, Ebins=Ebins)
+doseEstimator = DoseEstimator(simDomain)
 
 # Set up particle
-particle = LineSourceParticle(generator=SEED)  # rng is later overridden by simulation object
+particle = PointSourceParticle(generator=SEED)  # rng is later overridden by simulation object
 
 # Set up particle tracer
 particleTracer = AnalogParticleTracer(particle=particle, simOptions=lineSourceSim, simDomain=simDomain)
@@ -29,7 +30,7 @@ particleTracer = AnalogParticleTracer(particle=particle, simOptions=lineSourceSi
 if __name__ == '__main__':
     NB_PARTICLES = 500000
     t1 = time.perf_counter()
-    particleTracer(nbParticles=NB_PARTICLES, estimator=fluenceEstimator)
+    particleTracer(nbParticles=NB_PARTICLES, estimators=(fluenceEstimator, doseEstimator))
     t2 = time.perf_counter()
     print(f'Average amount of events per particle: {particleTracer.averageNbCollisions}')
     print(f'Simulation took {(t2-t1)/60} minutes')
@@ -40,3 +41,6 @@ if __name__ == '__main__':
 
     with open('data/particleTracer.pkl', 'wb') as file:
         pickle.dump(particleTracer, file)
+
+    with open('data/doseEstimator.pkl', 'wb') as file:
+        pickle.dump(doseEstimator, file)

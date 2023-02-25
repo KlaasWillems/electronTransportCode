@@ -54,8 +54,8 @@ class WaterPhantomSimulation(SimOptions):
         return self.eSource
 
 
-class LineSourceSimulation(SimOptions):
-    """Initial conditions for line source benchmark
+class PointSourceSimulation(SimOptions):
+    """Initial conditions for point source benchmark
     """
     def __init__(self, minEnergy: float, eSource: float, rngSeed: int = 12) -> None:
         super().__init__(minEnergy, rngSeed)
