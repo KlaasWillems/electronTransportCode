@@ -1,13 +1,10 @@
 """Exact solution to point source benchmarkt for sigma = 1.0. See Garret & Hauck 2013 and Ganapol 1999
 """
-# TODO: try out different c
-# TODO: replace all reference of line source with point source
-
 import numpy as np
 from scipy.integrate import quad
 
-HEAVISIDE_THRESHOLD = 1/2
-C: float = 1.0/(2*np.pi)  # c constant in Ganapol 1999
+HEAVISIDE_THRESHOLD = 1.0
+C: float = 1.0/(2.0*np.pi)  # c constant in Ganapol 1999
 
 def pointSourceSolution(x: float, y: float, E: float, Emax: float) -> float:
     """Exact solution to radition equation with a pulsed point isotropic source assuming homogenous material, constant unit scattering rate, unit density and unit stopping power.
@@ -23,7 +20,11 @@ def pointSourceSolution(x: float, y: float, E: float, Emax: float) -> float:
     """
     t = Emax - E
     R = np.sqrt(np.power(x, 2) + np.power(y, 2))
-    return pt0(R, t) + pt1(R, t) + ptplus(R, t)
+    gamma = R/t
+    if gamma == 1.0:
+        return pt0(R, t)*2
+    else:
+        return pt1(R, t) + ptplus(R, t)
 
 def pt0(R: float, t: float) -> float:
     """Density of particles that haven't collided. See equation 13 Ganapol 1999
@@ -46,10 +47,10 @@ def ptplus(R: float, t: float) -> float:
     """
     gamma = R/t
     q = (1.0 + gamma)/(1.0 - gamma)
-    integrand = lambda u: (np.power(np.tan(u/2), 2) + 1.0)*ReFunc(u, q, gamma, t)*np.heaviside(1-gamma, HEAVISIDE_THRESHOLD)
+    integrand = lambda u: (np.power(np.tan(u/2), 2) + 1.0)*ReFunc(u, q, gamma, t)
 
     i1, _ = quad(integrand, 0.0, np.pi)
-    return np.exp(-t)*np.power(C, 2)*(1 - np.power(gamma, 2))*i1/(np.power(np.pi, 2)*32*R)
+    return np.exp(-t)*np.power(C, 2)*(1 - np.power(gamma, 2))*i1*np.heaviside(1-gamma, HEAVISIDE_THRESHOLD)/(np.power(np.pi, 2)*32*R)
 
 def ReFunc(u: float, q: float, gamma: float, t: float) -> float:
     """Real part in equation 13 Ganapol 1999

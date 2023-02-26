@@ -17,7 +17,7 @@ xmin = -1.0; xmax = 1.0; xbins = 100
 simDomain = SimulationDomain(xmin, xmax, xmin, xmax, xbins, xbins, material=unitDensityMaterial)
 
 # Set up dose estimator
-Ebins = 50
+Ebins = 100
 fluenceEstimator = FluenceEstimator(simDomain=simDomain, Emin=0.0, Emax=eSource, Ebins=Ebins)
 doseEstimator = DoseEstimator(simDomain)
 
@@ -28,7 +28,7 @@ particle = PointSourceParticle(generator=SEED)  # rng is later overridden by sim
 particleTracer = AnalogParticleTracer(particle=particle, simOptions=lineSourceSim, simDomain=simDomain)
 
 if __name__ == '__main__':
-    NB_PARTICLES = 500000
+    NB_PARTICLES = 1000000
     t1 = time.perf_counter()
     particleTracer(nbParticles=NB_PARTICLES, estimators=(fluenceEstimator, doseEstimator))
     t2 = time.perf_counter()
