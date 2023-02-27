@@ -3,11 +3,12 @@ import pickle
 from electronTransportCode.SimOptions import PointSourceSimulation
 from electronTransportCode.SimulationDomain import SimulationDomain
 from electronTransportCode.MCParticleTracer import AnalogParticleTracer
-from electronTransportCode.MCEstimator import FluenceEstimator, DoseEstimator
+from electronTransportCode.MCEstimator import FluenceEstimator, DoseEstimator, TrackEndEstimator
 from electronTransportCode.ParticleModel import PointSourceParticle
 from electronTransportCode.Material import unitDensityMaterial
 
 # Set up initial conditions
+NB_PARTICLES = 200000
 eSource: float = 1.0
 SEED: int = 4  # Random number generator seed
 lineSourceSim = PointSourceSimulation(minEnergy=0, eSource=eSource, rngSeed=SEED)
@@ -20,6 +21,7 @@ simDomain = SimulationDomain(xmin, xmax, xmin, xmax, xbins, xbins, material=unit
 Ebins = 100
 fluenceEstimator = FluenceEstimator(simDomain=simDomain, Emin=0.0, Emax=eSource, Ebins=Ebins)
 doseEstimator = DoseEstimator(simDomain)
+trackEndEstimator = TrackEndEstimator(simDomain, NB_PARTICLES)
 
 # Set up particle
 particle = PointSourceParticle(generator=SEED)  # rng is later overridden by simulation object
@@ -28,9 +30,8 @@ particle = PointSourceParticle(generator=SEED)  # rng is later overridden by sim
 particleTracer = AnalogParticleTracer(particle=particle, simOptions=lineSourceSim, simDomain=simDomain)
 
 if __name__ == '__main__':
-    NB_PARTICLES = 1000000
     t1 = time.perf_counter()
-    particleTracer(nbParticles=NB_PARTICLES, estimators=(fluenceEstimator, doseEstimator))
+    particleTracer(nbParticles=NB_PARTICLES, estimators=(fluenceEstimator, doseEstimator, trackEndEstimator))
     t2 = time.perf_counter()
     print(f'Average amount of events per particle: {particleTracer.averageNbCollisions}')
     print(f'Simulation took {(t2-t1)/60} minutes')
@@ -44,3 +45,6 @@ if __name__ == '__main__':
 
     with open('data/doseEstimator.pkl', 'wb') as file:
         pickle.dump(doseEstimator, file)
+
+    with open('data/trackEndEstimator.pkl', 'wb') as file:
+        pickle.dump(trackEndEstimator, file)
