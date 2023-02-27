@@ -3,8 +3,8 @@
 import numpy as np
 from scipy.integrate import quad
 
-HEAVISIDE_THRESHOLD = 1.0
-C: float = 1.0/(2.0*np.pi)  # c constant in Ganapol 1999
+HEAVISIDE_THRESHOLD = 0.0
+C: float = 1.0  # c constant in Ganapol 1999
 
 def pointSourceSolution(x: float, y: float, E: float, Emax: float) -> float:
     """Exact solution to radition equation with a pulsed point isotropic source assuming homogenous material, constant unit scattering rate, unit density and unit stopping power.
