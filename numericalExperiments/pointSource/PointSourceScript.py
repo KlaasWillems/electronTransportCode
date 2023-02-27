@@ -7,15 +7,16 @@ from electronTransportCode.MCEstimator import FluenceEstimator, DoseEstimator, T
 from electronTransportCode.ParticleModel import PointSourceParticle
 from electronTransportCode.Material import unitDensityMaterial
 
-# Set up initial conditions
-NB_PARTICLES = 200000
-eSource: float = 1.0
-SEED: int = 4  # Random number generator seed
-lineSourceSim = PointSourceSimulation(minEnergy=0, eSource=eSource, rngSeed=SEED)
-
 # Set up simulation domain
 xmin = -1.0; xmax = 1.0; xbins = 100
-simDomain = SimulationDomain(xmin, xmax, xmin, xmax, xbins, xbins, material=unitDensityMaterial)
+ymin = -1.5; ymax = 1.5; ybins = 100
+simDomain = SimulationDomain(xmin, xmax, ymin, ymax, xbins, ybins, material=unitDensityMaterial)
+
+# Set up initial conditions
+NB_PARTICLES = 500000
+eSource: float = 1.0
+SEED: int = 4  # Random number generator seed
+pointSourceSim = PointSourceSimulation(minEnergy=0.0, rngSeed=SEED, eSource=eSource, simDomain=simDomain)
 
 # Set up dose estimator
 Ebins = 100
@@ -27,7 +28,7 @@ trackEndEstimator = TrackEndEstimator(simDomain, NB_PARTICLES)
 particle = PointSourceParticle(generator=SEED)  # rng is later overridden by simulation object
 
 # Set up particle tracer
-particleTracer = AnalogParticleTracer(particle=particle, simOptions=lineSourceSim, simDomain=simDomain)
+particleTracer = AnalogParticleTracer(particle=particle, simOptions=pointSourceSim, simDomain=simDomain)
 
 if __name__ == '__main__':
     t1 = time.perf_counter()
