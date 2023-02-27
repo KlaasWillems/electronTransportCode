@@ -34,7 +34,7 @@ class MCParticleTracer(ABC):
 
             if particle % 1000 == 0:  # every 1000 particles
                 t2 = time.perf_counter()
-                print(f'Last 1000 particles took {t2-t1} seconds')
+                print(f'Last 1000 particles took {t2-t1} seconds. {100*particle/nbParticles}% completed.')
                 t1 = time.perf_counter()
 
         return None
