@@ -31,6 +31,25 @@ class MCEstimator(ABC):
             np.ndarray: quantity of interest
         """
 
+class TrackEndEstimator(MCEstimator):
+    """Record distance to origin of where the particle died.
+    """
+    def __init__(self, simDomain: SimulationDomain, nb_particles: int) -> None:
+        super().__init__(simDomain)
+        self.nb_particles = nb_particles
+        self.scoreMatrix = np.zeros((self.nb_particles, ))
+        self.index: int = 0
+
+    def updateEstimator(self, posTuple: tuple[tuple2d, tuple2d], vecTuple: tuple[tuple2d, tuple2d], energyTuple: tuple[float, float], index: int) -> None:
+        _, new_energy = energyTuple
+        _, new_pos = posTuple
+        if new_energy == 0.0:
+            self.scoreMatrix[self.index] = np.linalg.norm(new_pos)
+            self.index += 1
+
+    def getEstimator(self) -> np.ndarray:
+        return self.scoreMatrix
+
 
 class DoseEstimator(MCEstimator):
     """Score dose [MeV/g] at each collision and grid cell crossing
