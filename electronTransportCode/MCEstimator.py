@@ -110,7 +110,7 @@ class FluenceEstimator(MCEstimator):
             raise ValueError('Spacing argument is invalid. Should be "lin" or "log".')
 
     def getEstimator(self) -> np.ndarray:
-        return self.scoreMatrix/self.simDomain.dA
+        return self.scoreMatrix/self.simDomain.dA  # type: ignore
 
     def updateEstimator(self, posTuple: tuple[tuple2d, tuple2d], vecTuple: tuple[tuple2d, tuple2d], energyTuple: tuple[float, float], index: int) -> None:
 

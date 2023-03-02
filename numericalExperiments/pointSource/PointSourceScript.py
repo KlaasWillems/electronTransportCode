@@ -8,15 +8,15 @@ from electronTransportCode.ParticleModel import PointSourceParticle
 from electronTransportCode.Material import unitDensityMaterial
 
 # Set up simulation domain
-xmin = -1.0; xmax = 1.0; xbins = 100
-ymin = -1.5; ymax = 1.5; ybins = 100
+xmin = -1.1; xmax = 1.1; xbins = 100
+ymin = -1.1; ymax = 1.1; ybins = 100
 simDomain = SimulationDomain(xmin, xmax, ymin, ymax, xbins, ybins, material=unitDensityMaterial)
 
 # Set up initial conditions
 NB_PARTICLES = 500000
 eSource: float = 1.0
 SEED: int = 4  # Random number generator seed
-pointSourceSim = PointSourceSimulation(minEnergy=0.0, rngSeed=SEED, eSource=eSource, simDomain=simDomain)
+pointSourceSim = pointSourceSim = PointSourceSimulation(minEnergy=0.0, rngSeed=SEED, eSource=eSource)
 
 # Set up dose estimator
 Ebins = 100

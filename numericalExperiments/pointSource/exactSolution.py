@@ -6,8 +6,18 @@ from scipy.integrate import quad
 HEAVISIDE_THRESHOLD = 0.0
 C: float = 1.0  # c constant in Ganapol 1999
 
+def planeSourceSolution(x: float, E: float, Emax: float) -> float:
+    t = Emax - E
+    eta = x/t
+    q = (1+eta)/(1-eta)
+
+    integrand = lambda u: np.real(np.power(beta(u, q, eta), 2)*np.exp(C*t*beta(u, q, eta)*(1.0 - np.power(eta, 2))/2))*(np.power(np.tan(u/2), 2) + 1.0)
+    i1, _ = quad(integrand, 0.0, np.pi)
+
+    return np.exp(-t)*(1.0 + C*t*(1.0 - np.power(eta, 2))*i1/(4*np.pi))/(2*t)
+
 def pointSourceSolution(x: float, y: float, E: float, Emax: float) -> float:
-    """Exact solution to radition equation with a pulsed point isotropic source assuming homogenous material, constant unit scattering rate, unit density and unit stopping power.
+    """Exact solution to radiation equation with a pulsed point isotropic source assuming homogenous material, constant unit scattering rate, unit density and unit stopping power.
 
     Args:
         x (float): x coordinate

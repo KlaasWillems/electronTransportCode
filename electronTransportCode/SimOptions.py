@@ -57,15 +57,22 @@ class WaterPhantomSimulation(SimOptions):
 class PointSourceSimulation(SimOptions):
     """Initial conditions for point source benchmark
     """
-    def __init__(self, minEnergy: float, eSource: float, rngSeed: int = 12) -> None:
+    def __init__(self, minEnergy: float, rngSeed: int, eSource: float) -> None:
         super().__init__(minEnergy, rngSeed)
         self.eSource = eSource
 
     def initialDirection(self) -> tuple2d:
         """Uniformly distributed initial direction
         """
-        theta = self.rng.uniform(low=0, high=2*np.pi)
-        return np.array((np.cos(theta), np.sin(theta)))
+        # isotropic angle
+        # theta = self.rng.uniform(low=0, high=2*np.pi)
+        # return np.array((np.cos(theta), np.sin(theta)))
+
+        # isotropic cos(theta)
+        cost = self.rng.uniform(low=-1, high=1)
+        sign = self.rng.choice([-1, 1])
+        sint = np.sqrt(1 - cost**2)*sign  # scatter left or right with equal probability
+        return np.array((cost, sint), dtype=float)
 
     def initialPosition(self) -> tuple2d:
         """Initial position at origin
