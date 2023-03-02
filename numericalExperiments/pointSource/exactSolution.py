@@ -31,7 +31,7 @@ def pointSourceSolution(R: float, E: float, Emax: float) -> float:
     t = Emax - E
     gamma = R/t
     if gamma == 1.0:
-        return pt0(R, t)*2
+        return pt0(R, t)
     else:
         return pt1(R, t) + ptplus(R, t)
 
