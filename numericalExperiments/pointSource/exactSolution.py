@@ -16,7 +16,7 @@ def planeSourceSolution(x: float, E: float, Emax: float) -> float:
 
     return np.exp(-t)*(1.0 + C*t*(1.0 - np.power(eta, 2))*i1/(4*np.pi))/(2*t)
 
-def pointSourceSolution(x: float, y: float, E: float, Emax: float) -> float:
+def pointSourceSolution(R: float, E: float, Emax: float) -> float:
     """Exact solution to radiation equation with a pulsed point isotropic source assuming homogenous material, constant unit scattering rate, unit density and unit stopping power.
 
     Args:
@@ -29,7 +29,6 @@ def pointSourceSolution(x: float, y: float, E: float, Emax: float) -> float:
         float: Density at coordinate
     """
     t = Emax - E
-    R = np.sqrt(np.power(x, 2) + np.power(y, 2))
     gamma = R/t
     if gamma == 1.0:
         return pt0(R, t)*2
