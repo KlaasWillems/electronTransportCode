@@ -20,8 +20,7 @@ def pointSourceSolution(R: float, E: float, Emax: float) -> float:
     """Exact solution to radiation equation with a pulsed point isotropic source assuming homogenous material, constant unit scattering rate, unit density and unit stopping power.
 
     Args:
-        x (float): x coordinate
-        y (float): y coordinate
+        R (float): Radius to the point
         E (float): Energy of particle
         Emax (float): Initial energy of particle
 
