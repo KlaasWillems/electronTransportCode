@@ -5,12 +5,13 @@ import numpy as np
 from electronTransportCode.MCEstimator import MCEstimator
 from electronTransportCode.ParticleModel import ParticleModel
 from electronTransportCode.SimOptions import SimOptions
-from electronTransportCode.ProjectUtils import tuple2d
+from electronTransportCode.ProjectUtils import tuple3d, tuple3d
 from electronTransportCode.SimulationDomain import SimulationDomain
 
 
 class MCParticleTracer(ABC):
-    """General Monte Carlo particle tracer object for radiation therapy
+    """General Monte Carlo particle tracer object for radiation therapy. Particle move in a 3D domain however,
+    estimation and grid cell crossing are only supported in 2D (yz-plane).
     """
     def __init__(self, particle: ParticleModel, simOptions: SimOptions, simDomain: SimulationDomain) -> None:
         self.particle = particle
@@ -77,17 +78,17 @@ class AnalogParticleTracer(MCParticleTracer):
         else:
             estimatorList = estimators
 
-        # Sample initial condition
-        pos: tuple2d = self.simOptions.initialPosition()
-        vec: tuple2d = self.simOptions.initialDirection()
+        # Sample initial condition in 2D
+        pos3d: tuple3d = self.simOptions.initialPosition()
+        vec3d: tuple3d = self.simOptions.initialDirection()
         energy: float = self.simOptions.initialEnergy()
-        index: int = self.simDomain.getIndexPath(pos, vec)
+        index: int = self.simDomain.getIndexPath(pos3d, vec3d)
 
         loopbool: bool = True
 
         # Do type annotations for updated positions
-        new_pos: tuple2d
-        new_vec: tuple2d
+        new_pos3d: tuple3d
+        new_vec3d: tuple3d
         new_energy: float
         new_index: int
 
@@ -95,7 +96,7 @@ class AnalogParticleTracer(MCParticleTracer):
         # Step until energy is smaller than threshold
         while loopbool:
             assert energy > self.simOptions.minEnergy, f'{energy=}'
-            new_pos, new_vec, new_energy, new_index = self.stepParticle(pos, vec, energy, index)
+            new_pos3d, new_vec3d, new_energy, new_index = self.stepParticle(pos3d, vec3d, energy, index)
 
             if new_energy <= self.simOptions.minEnergy: # have estimator deposit all remaining energy
                 if self.simOptions.DEPOSIT_REMAINDING_E_LOCALLY:
@@ -103,10 +104,10 @@ class AnalogParticleTracer(MCParticleTracer):
                 loopbool = False  # make this the last iterations
 
             for estimator in estimatorList:
-                estimator.updateEstimator((pos, new_pos), (vec, new_vec), (energy, new_energy), index)
+                estimator.updateEstimator((pos3d, new_pos3d), (vec3d, new_vec3d), (energy, new_energy), index)
 
-            pos = new_pos
-            vec = new_vec
+            pos3d = new_pos3d
+            vec3d = new_vec3d
             energy = new_energy
             index = new_index
 
@@ -117,7 +118,7 @@ class AnalogParticleTracer(MCParticleTracer):
 
         return counter
 
-    def stepParticle(self, pos: tuple2d, vec: tuple2d, energy: float, index: int) -> tuple[tuple2d, tuple2d, float, int]:
+    def stepParticle(self, pos3d: tuple3d, vec3d: tuple3d, energy: float, index: int) -> tuple[tuple3d, tuple3d, float, int]:
         """Transport particle and apply event.
         Algorithm:
             - Sample step size
@@ -152,14 +153,14 @@ class AnalogParticleTracer(MCParticleTracer):
 
         # Sample step size
         stepColl = self.particle.samplePathlength(energy, self.simDomain.getMaterial(index))
-        stepGeom, domainEdge, new_pos_geom = self.simDomain.getCellEdgeInformation(pos, vec, index)
+        stepGeom, domainEdge, new_pos3d_geom = self.simDomain.getCellEdgeInformation(pos3d, vec3d, index)
         step = min(stepColl, stepGeom)
 
         # Apply step
         if step == stepGeom:
-            new_pos = new_pos_geom
+            new_pos3d = new_pos3d_geom
         else:
-            new_pos = pos + step*vec
+            new_pos3d = pos3d + step*vec3d
 
         # Decrement energy along step
         deltaE = self.energyLoss(energy, step, index)
@@ -167,24 +168,42 @@ class AnalogParticleTracer(MCParticleTracer):
 
         if new_energy < self.simOptions.minEnergy:  # return without sampling a new angle and such
             # linearly back up such that stepsize is consistent with energy loss
-            new_pos = pos + step*vec*(energy - self.simOptions.minEnergy)/deltaE
-            return new_pos, vec, self.simOptions.minEnergy, index
+            new_pos3d = pos3d + step*vec3d*(energy - self.simOptions.minEnergy)/deltaE
+            return new_pos3d, vec3d, self.simOptions.minEnergy, index
 
         # Select event
         if stepColl < stepGeom:  # Next event is collision
-            new_vec: tuple2d = np.zeros_like(vec, dtype=float)
+            new_vec3d: tuple3d = np.zeros_like(vec3d, dtype=float)
             new_index = index
+
+            # polar scattering angle
             cost = self.particle.sampleAngle(new_energy, self.simDomain.getMaterial(index))  # anisotropic scattering angle (mu)
-            sign = self.simOptions.rng.choice([-1, 1])
-            sint = np.sqrt(1 - cost**2)*sign  # scatter left or right with equal probability
-            new_vec[0] = vec[0]*cost - vec[1]*sint
-            new_vec[1] = vec[0]*sint + vec[1]*cost
-            new_vec = new_vec/np.linalg.norm(new_vec)  # normalized for security
+            sint = np.sqrt(1 - cost**2)*self.simOptions.rng.choice([-1, 1])  # scatter left or right with equal probability
+
+            # azimuthal scattering
+            phi = self.simOptions.rng.uniform(low=0.0, high=2*np.pi)
+            cosphi = np.cos(phi)
+            sinphi = np.sin(phi)
+
+            # Rotation matrices (See penelope documentation eq. 1.131)
+            if np.isclose(np.abs(vec3d[2]), 1.0, rtol=1e-14):  # indeterminate case
+                sign = np.sign(vec3d[2])
+                new_vec3d[0] = sign*sint*cosphi
+                new_vec3d[1] = sign*sint*sinphi
+                new_vec3d[2] = sign*cost
+            else:
+                tempVar = np.sqrt(1-np.power(vec3d[2], 2))
+                new_vec3d[0] = vec3d[0]*cost + sint*(vec3d[0]*vec3d[2]*cosphi - vec3d[1]*sinphi)/tempVar
+                new_vec3d[1] = vec3d[1]*cost + sint*(vec3d[1]*vec3d[2]*cosphi + vec3d[0]*sinphi)/tempVar
+                new_vec3d[2] = vec3d[2]*cost - tempVar*sint*cosphi
+
+            # normalized for security
+            new_vec3d = new_vec3d/np.linalg.norm(new_vec3d)
 
         else:  # Next event is grid cell crossing
-            new_vec = vec
-            new_index = self.simDomain.getIndexPath(new_pos, new_vec)
+            new_vec3d = vec3d
+            new_index = self.simDomain.getIndexPath(new_pos3d, new_vec3d)
             if domainEdge:  # Next event is domain edge crossing
                 new_energy = 0
 
-        return new_pos, new_vec, new_energy, new_index
+        return new_pos3d, new_vec3d, new_energy, new_index

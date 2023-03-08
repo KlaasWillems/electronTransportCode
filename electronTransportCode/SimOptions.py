@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 import numpy as np
-from electronTransportCode.ProjectUtils import tuple2d
+from electronTransportCode.ProjectUtils import tuple3d
 
 # TODO: Find a more elegant way for users to pick arbitrary initial conditions
 
@@ -13,12 +13,12 @@ class SimOptions(ABC):
         self.DEPOSIT_REMAINDING_E_LOCALLY = True
 
     @abstractmethod
-    def initialDirection(self) -> tuple2d:
+    def initialDirection(self) -> tuple3d:
         """Sample initial direction of particle
         """
 
     @abstractmethod
-    def initialPosition(self) -> tuple2d:
+    def initialPosition(self) -> tuple3d:
         """Sample initial position of particle
         """
 
@@ -28,7 +28,7 @@ class SimOptions(ABC):
         """
 
 
-class WaterPhantomSimulation(SimOptions):
+class WaterPhantom(SimOptions):
     """Initial conditions for water phantom experiment
     """
     def __init__(self, minEnergy: float, eSource: float, xVariance: float, rngSeed: int = 12) -> None:
@@ -36,17 +36,17 @@ class WaterPhantomSimulation(SimOptions):
         self.eSource = eSource
         self.xVariance = xVariance
 
-    def initialDirection(self) -> tuple2d:
+    def initialDirection(self) -> tuple3d:
         """Particle moving to the right
         """
-        return np.array((1.0, 1.0))*np.sqrt(2)/2
+        return np.array((0.0, 1.0, 1.0))*np.sqrt(2)/2
 
-    def initialPosition(self) -> tuple2d:
+    def initialPosition(self) -> tuple3d:
         """Initial position at origin
         """
         xSample = self.rng.normal(scale=np.sqrt(self.xVariance))
         ySample = self.rng.normal(scale=np.sqrt(self.xVariance))
-        return np.array((xSample, ySample))
+        return np.array((0.0, xSample, ySample))
 
     def initialEnergy(self) -> float:
         """Constant particle energy source at self.Esource
@@ -54,32 +54,44 @@ class WaterPhantomSimulation(SimOptions):
         return self.eSource
 
 
-class PointSourceSimulation(SimOptions):
+class PointSource(SimOptions):
     """Initial conditions for point source benchmark
     """
     def __init__(self, minEnergy: float, rngSeed: int, eSource: float) -> None:
         super().__init__(minEnergy, rngSeed)
         self.eSource = eSource
 
-    def initialDirection(self) -> tuple2d:
+    def initialDirection(self) -> tuple3d:
         """Uniformly distributed initial direction
         """
-        # isotropic angle
-        # theta = self.rng.uniform(low=0, high=2*np.pi)
-        # return np.array((np.cos(theta), np.sin(theta)))
-
         # isotropic cos(theta)
         cost = self.rng.uniform(low=-1, high=1)
         sign = self.rng.choice([-1, 1])
         sint = np.sqrt(1 - cost**2)*sign  # scatter left or right with equal probability
-        return np.array((cost, sint), dtype=float)
 
-    def initialPosition(self) -> tuple2d:
+        # uniformly distributed azimuthal scattering angle
+        phi = self.rng.uniform(low=0.0, high=2*np.pi)
+        cosphi = np.cos(phi)
+        sinphi = np.sin(phi)
+        return np.array((sint*cosphi, sint*sinphi, cost), dtype=float)
+
+    def initialPosition(self) -> tuple3d:
         """Initial position at origin
         """
-        return np.zeros((2, ))
+        return np.array((0.0, 0.0, 0.0), dtype=float)
 
     def initialEnergy(self) -> float:
         """Constant particle energy source at self.Esource
         """
         return self.eSource
+
+class LineSource(PointSource):
+    def __init__(self, minEnergy: float, rngSeed: int, eSource: float, xmin: float, xmax: float) -> None:
+        super().__init__(minEnergy, rngSeed, eSource)
+        self.xmin = xmin
+        self.xmax = xmax
+
+    def initialPosition(self) -> tuple3d:
+        """Source along the z-axis
+        """
+        return np.array((0.0, 0.0, self.rng.uniform(low=self.xmin, high=self.xmax, size=1)), dtype=float)

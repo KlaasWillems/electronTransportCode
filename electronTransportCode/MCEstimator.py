@@ -1,9 +1,7 @@
 from abc import ABC, abstractmethod
 import numpy as np
 from electronTransportCode.SimulationDomain import SimulationDomain
-from electronTransportCode.ProjectUtils import ERE, tuple2d
-
-# TODO: Estimators up to now assume grid cell crossing events. In KD Monte Carlo, particle can cross grid cell boundaries.
+from electronTransportCode.ProjectUtils import ERE, tuple3d
 
 
 class MCEstimator(ABC):
@@ -13,12 +11,12 @@ class MCEstimator(ABC):
         self.simDomain = simDomain
 
     @abstractmethod
-    def updateEstimator(self, posTuple: tuple[tuple2d, tuple2d], vecTuple: tuple[tuple2d, tuple2d], energyTuple: tuple[float, float], index: int) -> None:
+    def updateEstimator(self, posTuple: tuple[tuple3d, tuple3d], vecTuple: tuple[tuple3d, tuple3d], energyTuple: tuple[float, float], index: int) -> None:
         """Score quantity of interest after a collision
 
         Args:
-            posTuple (tuple[tuple2d, tuple2d]): old_position and new position of particle after collision
-            vecTuple (tuple[tuple2d, tuple2d]): old direction of travel and new position of travel after collision
+            posTuple (tuple[tuple3d, tuple3d]): old_position and new position of particle after collision
+            vecTuple (tuple[tuple3d, tuple3d]): old direction of travel and new position of travel after collision
             energyTuple (tuple[float, float]): old energy of particle and new energy of particle after collision
             index (int): cell identifier in simulation domain
         """
@@ -32,19 +30,43 @@ class MCEstimator(ABC):
         """
 
 class TrackEndEstimator(MCEstimator):
-    """Record distance to origin of where the particle died.
+    """Log quatities of interest at the point when the particle dies.
     """
-    def __init__(self, simDomain: SimulationDomain, nb_particles: int) -> None:
+    def __init__(self, simDomain: SimulationDomain, nb_particles: int, setting: str) -> None:
+        """
+        Args:
+            simDomain (SimulationDomain): Simulation Domain object
+            nb_particles (int): Amount of particles that will be simulated.
+            setting (str, optional): A string to indicate which quantity of interest to log at particle death. E.g. 'y' will log the particles y coorindate at particle death.
+        """
         super().__init__(simDomain)
         self.nb_particles = nb_particles
         self.scoreMatrix = np.zeros((self.nb_particles, ))
         self.index: int = 0
+        self.setting = setting
 
-    def updateEstimator(self, posTuple: tuple[tuple2d, tuple2d], vecTuple: tuple[tuple2d, tuple2d], energyTuple: tuple[float, float], index: int) -> None:
+    def updateEstimator(self, posTuple: tuple[tuple3d, tuple3d], vecTuple: tuple[tuple3d, tuple3d], energyTuple: tuple[float, float], index: int) -> None:
         _, new_energy = energyTuple
         _, new_pos = posTuple
         if new_energy == 0.0:
-            self.scoreMatrix[self.index] = np.linalg.norm(new_pos)
+            if self.setting == 'x':
+                self.scoreMatrix[self.index] = new_pos[0]
+            elif self.setting == 'y':
+                self.scoreMatrix[self.index] = new_pos[1]
+            elif self.setting == 'z':
+                self.scoreMatrix[self.index] = new_pos[2]
+            elif self.setting == 'r':
+                self.scoreMatrix[self.index] = np.linalg.norm(new_pos)
+            elif self.setting == 'rz':
+                self.scoreMatrix[self.index] = np.linalg.norm(new_pos[0:2])  # Distance to z-axis
+            elif self.setting == 'rz-Linesource':
+                z = new_pos[2]
+                if z > -0.3 and z < 0.3:
+                    self.scoreMatrix[self.index] = np.linalg.norm(new_pos[0:2])
+                else:
+                    self.index -= 1
+            else:
+                raise NotImplementedError('Requested estimator is not implemented. Check for typos.')
             self.index += 1
 
     def getEstimator(self) -> np.ndarray:
@@ -58,12 +80,12 @@ class DoseEstimator(MCEstimator):
         super().__init__(simDomain)
         self.scoreMatrix = np.zeros((self.simDomain.xbins*self.simDomain.ybins, ))  # Energy relative to ERE
 
-    def updateEstimator(self, posTuple: tuple[tuple2d, tuple2d], vecTuple: tuple[tuple2d, tuple2d], energyTuple: tuple[float, float], index: int) -> None:
+    def updateEstimator(self, posTuple: tuple[tuple3d, tuple3d], vecTuple: tuple[tuple3d, tuple3d], energyTuple: tuple[float, float], index: int) -> None:
         """Score energy at cell
 
         Args:
-            posTuple (tuple[tuple2d, tuple2d]): old_position and new position of particle after collision
-            vecTuple (tuple[tuple2d, tuple2d]): old direction of travel and new position of travel after collision
+            posTuple (tuple[tuple3d, tuple3d]): old_position and new position of particle after collision
+            vecTuple (tuple[tuple3d, tuple3d]): old direction of travel and new position of travel after collision
             energyTuple (tuple[float, float]): old energy of particle and new energy of particle after collision
             index (int): cell identifier in simulation domain
         """
@@ -112,7 +134,7 @@ class FluenceEstimator(MCEstimator):
     def getEstimator(self) -> np.ndarray:
         return self.scoreMatrix/self.simDomain.dA  # type: ignore
 
-    def updateEstimator(self, posTuple: tuple[tuple2d, tuple2d], vecTuple: tuple[tuple2d, tuple2d], energyTuple: tuple[float, float], index: int) -> None:
+    def updateEstimator(self, posTuple: tuple[tuple3d, tuple3d], vecTuple: tuple[tuple3d, tuple3d], energyTuple: tuple[float, float], index: int) -> None:
 
         # Unpack
         energy, newEnergy = energyTuple

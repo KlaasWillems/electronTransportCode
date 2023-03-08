@@ -1,10 +1,17 @@
-from typing import TypeAlias, Final
+from typing import Literal, TypeAlias, Final, Annotated, Tuple
 import numpy.typing as npt
 import numpy as np
 from scipy import constants
+from nptyping import NDArray, Shape, Float
 
 # predefined types
-tuple2d: TypeAlias = npt.NDArray[np.float64]
+tuple3d: TypeAlias = Annotated[npt.NDArray[np.float64], Literal[2]]
+tuple3d = Annotated[npt.NDArray[np.float64], Literal[3]]
+# tuple2d: TypeAlias = NDArray[Shape["2"], Float]
+# tuple3d: TypeAlias = NDArray[Shape["3"], Float]
+# tuple2d: TypeAlias = Tuple[float, float]
+# tuple3d: TypeAlias = Tuple[float, float, float]
+
 
 # Constants
 CTF: Final[float] = np.power(9*(np.pi**2)/128, 1/3)  # Thomas-Fermi constant. Dimensionless

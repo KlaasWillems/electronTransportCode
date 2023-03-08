@@ -1,6 +1,6 @@
 import time
 import pickle
-from electronTransportCode.SimOptions import WaterPhantomSimulation
+from electronTransportCode.SimOptions import WaterPhantom
 from electronTransportCode.SimulationDomain import SimulationDomain
 from electronTransportCode.MCParticleTracer import AnalogParticleTracer
 from electronTransportCode.MCEstimator import DoseEstimator
@@ -13,7 +13,7 @@ from electronTransportCode.Material import WaterMaterial
 eInit: float = 5.0/ERE  # 5 MeV initial energy
 SEED: int = 4  # Random number generator seed
 xVariance: float = 0.1  # Variance on initial position in x and y direction
-waterPhantomInit = WaterPhantomSimulation(minEnergy=E_THRESHOLD, eSource=eInit, xVariance=xVariance, rngSeed=SEED)
+waterPhantomInit = WaterPhantom(minEnergy=E_THRESHOLD, eSource=eInit, xVariance=xVariance, rngSeed=SEED)
 
 # Set up simulation domain
 simDomain = SimulationDomain(-2.5, 7.5, -2.5, 7.5, 200, 200, material=WaterMaterial)

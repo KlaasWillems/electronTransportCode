@@ -1,8 +1,9 @@
 from typing import Tuple
 import numpy as np
-from electronTransportCode.ProjectUtils import tuple2d
+from electronTransportCode.ProjectUtils import tuple3d
 from electronTransportCode.Material import Material, WaterMaterial
 
+#TODO: rename to yz terminology
 
 class SimulationDomain:
     """A simulation domain object represents a rectangular domain [x_min, xmax] \times [y_min, y_max].
@@ -61,17 +62,18 @@ class SimulationDomain:
         row = (index-col) // self.xbins
         return row, col
 
-    def getIndexPath(self, pos: tuple2d, vec: tuple2d) -> int:
+    def getIndexPath(self, pos: tuple3d, vec: tuple3d) -> int:
         """Ruturn index associated to the grid cell in which the next path of the particle lies. If a particle lies in the interior of a cell, return the index of the grid cell. If the particle lies on a grid cell boundary, depending on direction of travel, return the index.
 
         Args:
-            pos (tuple2d): Position tuple
+            pos (tuple3d): Position tuple
+            vec (tuple3d): Direction of travel tuple
 
         Returns:
             int: index
         """
-        x, y = pos
-        vecx, vecy = vec
+        _, x, y = pos
+        _, vecx, vecy = vec
 
         xAr = self.xrange == x
         yAr = self.yrange == y
@@ -139,7 +141,7 @@ class SimulationDomain:
             return True
         return False
 
-    def getCellEdgeInformation(self, pos: tuple2d, vec: tuple2d, index: int) -> tuple[float, bool, tuple2d]:
+    def getCellEdgeInformation(self, pos: tuple3d, vec: tuple3d, index: int) -> tuple[float, bool, tuple3d]:
         """Return distance to nearest grid cell crossing, boolean and the grid cell crossing location
         The distance is computed by finding the intersection of the particle with the horizontal lines at xmin and xmax, and vertical lines at ymin and ymax. The smallest positive distance is returned.
 
@@ -156,10 +158,10 @@ class SimulationDomain:
         """
         assert self.getIndexPath(pos, vec) ==  index
 
-        x0, y0 = pos
-        vx, vy = vec
+        _, x0, y0 = pos
+        _, vx, vy = vec
         row, col = self.getCoord(index)
-        new_pos = np.array((0.0, 0.0), dtype=float)
+        new_pos = np.zeros_like(pos)
 
         # cell boundaries
         xmincell = self.xrange[col]
@@ -208,10 +210,12 @@ class SimulationDomain:
         edge = xEdge if tmin == tx else yEdge
 
         if tmin == tx:
-            new_pos[0] = x_new_pos
-            new_pos[1] = y0 + tmin*vec[1]
+            new_pos[1] = x_new_pos
+            new_pos[2] = y0 + tmin*vec[2]
         else:
-            new_pos[0] = x0 + tmin*vec[0]
-            new_pos[1] = y_new_pos
+            new_pos[1] = x0 + tmin*vec[1]
+            new_pos[2] = y_new_pos
+
+        new_pos[0] = pos[0] + tmin*vec[0]
 
         return tmin, self.checkDomainEdge(index, edge), new_pos

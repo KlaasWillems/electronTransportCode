@@ -21,7 +21,7 @@ class TestSimulationDomain(unittest.TestCase):
             y += 0.25
             for xi in range(3):
                 x += 0.25
-                index = domain.getIndexPath(np.array((x, y)), np.array((1, 0)))
+                index = domain.getIndexPath(np.array((1.0, x, y)), np.array((0.0, 1, 0)))
                 self.assertEqual(index, 3*yi+xi)
         return None
 
@@ -45,10 +45,10 @@ class TestSimulationDomain(unittest.TestCase):
 
         x = domain.xrange[1]  # 1/3
         y = 0.1
-        pos = np.array((x, y))
+        pos = np.array((0.0, x, y))
 
-        vec1 = np.array((1, 0))
-        vec2 = np.array((-1, 0))
+        vec1 = np.array((0.0, 1, 0))
+        vec2 = np.array((0.0, -1, 0))
 
         self.assertEqual(domain.getIndexPath(pos, vec1), 1)
         self.assertEqual(domain.getIndexPath(pos, vec2), 0)
@@ -117,9 +117,9 @@ class TestSimulationDomain(unittest.TestCase):
         domain = SimulationDomain(0, 1, 0, 1, xbins, ybins, WaterMaterial)
 
         # Particle is in cell 6 and moves to the right. Closest cell is to the right with index 7.
-        pos = np.array((0.7, 0.55))
+        pos = np.array((0.0, 0.7, 0.55))
         alfa = 0.0
-        vec = np.array((np.cos(alfa), np.sin(alfa)))
+        vec = np.array((0.0, np.cos(alfa), np.sin(alfa)))
         index = 6
 
         t, domainEdgeBool, _ = domain.getCellEdgeInformation(pos, vec, index)
@@ -127,9 +127,9 @@ class TestSimulationDomain(unittest.TestCase):
         self.assertEqual(domainEdgeBool, False)
 
         # Particle is in cell 7 and moves to the right. The domain boundary is to the right.
-        pos = np.array((0.95, 0.55))
+        pos = np.array((0.0, 0.95, 0.55))
         alfa = 0.0
-        vec = np.array((np.cos(alfa), np.sin(alfa)))
+        vec = np.array((0.0, np.cos(alfa), np.sin(alfa)))
         index = 7
 
         t, domainEdgeBool, _ = domain.getCellEdgeInformation(pos, vec, index)
@@ -143,19 +143,19 @@ class TestSimulationDomain(unittest.TestCase):
         xbins = 4
         ybins = 3
         domain = SimulationDomain(0, 1, 0, 1, xbins, ybins, WaterMaterial)
-        pos = np.array((0.7, 0.55))
+        pos = np.array((0.0, 0.7, 0.55))
         index = 6
 
         # Particle is in cell 6 and is moving to the top left. Cell to which the particle is moving has index 10.
         alfa = np.radians(112)
-        vec = np.array((np.cos(alfa), np.sin(alfa)))
+        vec = np.array((0.0, np.cos(alfa), np.sin(alfa)))
         t, domainEdgeBool, _ = domain.getCellEdgeInformation(pos, vec, index)
         self.assertEqual(math.isclose(t, 0.1258290533124, rel_tol=TOL), True)
         self.assertEqual(domainEdgeBool, False)
 
         # Particle is in cell 6 and is moving to the left. Cell to which the particle is moving has index 5.
         alfa = np.radians(202)
-        vec = np.array((np.cos(alfa), np.sin(alfa)))
+        vec = np.array((0.0, np.cos(alfa), np.sin(alfa)))
         t, domainEdgeBool, _ = domain.getCellEdgeInformation(pos, vec, index)
         self.assertEqual(math.isclose(t, 0.2157069485355, rel_tol=TOL), True)
         self.assertEqual(domainEdgeBool, False)
