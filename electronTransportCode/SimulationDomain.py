@@ -1,10 +1,20 @@
 from typing import Tuple
 import numpy as np
 from electronTransportCode.ProjectUtils import tuple3d
-from electronTransportCode.Material import Material, WaterMaterial
+from electronTransportCode.Material import Material
+from numba.experimental import jitclass
+import numba as nb
 
-#TODO: rename to yz terminology
+# TODO: rename to yz terminology
 
+# Numba specifications of class attributes
+materialType = nb.deferred_type()
+materialType.define(Material.class_type.instance_type) # type: ignore
+spec = [('xmin', nb.float64), ('xmax', nb.float64), ('ymin', nb.float64), ('ymax', nb.float64), ('xbins', nb.int32), ('ybins', nb.int32),
+        ('xrange', nb.float64[:]), ('yrange', nb.float64[:]), ('dA', nb.float64), ('material', materialType)]
+
+
+@jitclass(spec)
 class SimulationDomain:
     """A simulation domain object represents a rectangular domain [x_min, xmax] \times [y_min, y_max].
     This domain is divided into xbins columns and ybins rows.
@@ -33,7 +43,7 @@ class SimulationDomain:
         self.ymax = ymax
         self.xbins = xbins
         self.ybins = ybins
-        self.xrange: np.ndarray = np.linspace(self.xmin, self.xmax, self.xbins+1)
+        self.xrange: np.ndarray = np.linspace(self.xmin, self.xmax, self.xbins+1).astype(np.float64)
         self.yrange: np.ndarray = np.linspace(self.ymin, self.ymax, self.ybins+1)
         self.dA: float = (self.xrange[1] - self.xrange[0])*(self.yrange[1] - self.yrange[0])
         self.material = material
@@ -80,13 +90,13 @@ class SimulationDomain:
         col = np.argmax(self.xrange >= x) - 1
         row = np.argmax(self.yrange >= y) - 1
 
-        if any(xAr):  # Vertical boundary
+        if np.any(xAr):  # Vertical boundary
             if vecx > 0:
                 col += 1
             elif vecx == 0.0:
                 raise NotImplementedError('Particle is moving along a vertical boundary')
 
-        if any(yAr):  # Horizontal boundary
+        if np.any(yAr):  # Horizontal boundary
             if vecy > 0:
                 row += 1
             elif vecx == 0.0:

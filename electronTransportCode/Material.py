@@ -1,7 +1,13 @@
 import numpy as np
 from electronTransportCode.ProjectUtils import A_WATER, I_WATER, SC_DENSITY, RHO_WATER, Z_WATER, FSC, CTF
+from numba.experimental import jitclass
+from numba import float64
 
+# Numba specifications of class attributes
+spec = [('Z', float64), ('rho', float64), ('I', float64), ('A', float64), ('NB_DENSITY', float64), ('ZS', float64), ('ZE', float64),
+        ('ZX', float64), ('bc', float64), ('eta0CONST', float64)]
 
+@jitclass(spec)
 class Material:
     """Wrapper object for all material parameters relevant to radiation therapy
     """
