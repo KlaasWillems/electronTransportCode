@@ -56,17 +56,17 @@ class TrackEndEstimator(MCEstimator):
             elif self.setting == 'z':
                 self.scoreMatrix[self.index] = new_pos[2]
             elif self.setting == 'r':
-                self.scoreMatrix[self.index] = np.linalg.norm(new_pos)
+                self.scoreMatrix[self.index] = np.sqrt(new_pos[0]**2 + new_pos[1]**2 + new_pos[2]**2)
             elif self.setting == 'rz':
-                self.scoreMatrix[self.index] = np.linalg.norm(new_pos[0:2])  # Distance to z-axis
+                self.scoreMatrix[self.index] = np.sqrt(new_pos[0]**2 + new_pos[1]**2) # Distance to z-axis
             elif self.setting == 'rx':
-                self.scoreMatrix[self.index] = np.linalg.norm(new_pos[1:3])  # Distance to x-axis
+                self.scoreMatrix[self.index] = np.sqrt(new_pos[2]**2 + new_pos[1]**2)  # Distance to x-axis
             elif self.setting == 'ry':
-                self.scoreMatrix[self.index] = np.linalg.norm(new_pos[0:3:2])  # Distance to x-axis
+                self.scoreMatrix[self.index] = np.sqrt(new_pos[0]**2 + new_pos[2]**2)  # Distance to y-axis
             elif self.setting == 'rz-Linesource':
                 z = new_pos[2]
                 if z > -0.3 and z < 0.3:
-                    self.scoreMatrix[self.index] = np.linalg.norm(new_pos[0:2])
+                    self.scoreMatrix[self.index] = np.sqrt(new_pos[0]**2 + new_pos[1]**2)
                 else:
                     self.index -= 1
             else:
@@ -148,10 +148,10 @@ class FluenceEstimator(MCEstimator):
         assert self.Emin <= newEnergy <= self.Emax
 
         dE = energy - newEnergy
-        stepsize: float = np.linalg.norm(pos - new_pos)
+        stepsize: float = np.sqrt((pos[0] - new_pos[0])**2 + (pos[1] - new_pos[1])**2 + (pos[2] - new_pos[2])**2)
 
         # bin the energies
-        bin1, bin2 = np.digitize((energy, newEnergy), self.Erange)
+        bin1, bin2 = np.searchsorted(self.Erange, (energy, newEnergy), side='right')
         # Under normal circumstances, 'bin' ranges from 1 to self.Ebins. In case that energy == self.Emax, bin is self.Ebins + 1.
         # In case energy < self.Emin, bin is 0.
 
