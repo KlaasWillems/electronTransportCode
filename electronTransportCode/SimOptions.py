@@ -85,6 +85,7 @@ class PointSource(SimOptions):
         """
         return self.eSource
 
+
 class LineSource(PointSource):
     def __init__(self, minEnergy: float, rngSeed: int, eSource: float, xmin: float, xmax: float) -> None:
         super().__init__(minEnergy, rngSeed, eSource)

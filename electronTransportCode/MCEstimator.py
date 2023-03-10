@@ -59,6 +59,10 @@ class TrackEndEstimator(MCEstimator):
                 self.scoreMatrix[self.index] = np.linalg.norm(new_pos)
             elif self.setting == 'rz':
                 self.scoreMatrix[self.index] = np.linalg.norm(new_pos[0:2])  # Distance to z-axis
+            elif self.setting == 'rx':
+                self.scoreMatrix[self.index] = np.linalg.norm(new_pos[1:3])  # Distance to x-axis
+            elif self.setting == 'ry':
+                self.scoreMatrix[self.index] = np.linalg.norm(new_pos[0:3:2])  # Distance to x-axis
             elif self.setting == 'rz-Linesource':
                 z = new_pos[2]
                 if z > -0.3 and z < 0.3:
