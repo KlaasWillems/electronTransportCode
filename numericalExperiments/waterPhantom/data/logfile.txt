@@ -10,3 +10,15 @@ Last 1000 particles took 2444.385624826973 seconds. 80.0% completed.
 Last 1000 particles took 2443.445650712005 seconds. 90.0% completed.
 Last 1000 particles took 2445.610338516999 seconds. 100.0% completed.
 Simulation took 24444.68989913701 seconds
+Starting simulation
+Last 1000 particles took 3859.7736617149785 seconds. 10.0% completed.
+Last 1000 particles took 3791.6578903209884 seconds. 20.0% completed.
+Last 1000 particles took 3791.92176184 seconds. 30.0% completed.
+Last 1000 particles took 3792.144583726069 seconds. 40.0% completed.
+Last 1000 particles took 3792.6954614929855 seconds. 50.0% completed.
+Last 1000 particles took 3794.572770018014 seconds. 60.0% completed.
+Last 1000 particles took 3793.0539544279454 seconds. 70.0% completed.
+Last 1000 particles took 3794.1844033729285 seconds. 80.0% completed.
+Last 1000 particles took 4035.09747421497 seconds. 90.0% completed.
+Last 1000 particles took 4064.714462845004 seconds. 100.0% completed.
+Simulation took 38509.81651448505 seconds
