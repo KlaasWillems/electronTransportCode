@@ -16,7 +16,7 @@ simDomain = SimulationDomain(xmin, xmax, ymin, ymax, xbins, ybins, material=unit
 NB_PARTICLES = 30000
 eSource: float = 1.0
 SEED: int = 4  # Random number generator seed
-pointSourceSim = pointSourceSim = PointSource(minEnergy=0.0, rngSeed=SEED, eSource=eSource)
+pointSourceSim = PointSource(minEnergy=0.0, rngSeed=SEED, eSource=eSource)
 
 # Set up dose estimator
 Ebins = 100
