@@ -40,7 +40,7 @@ class MCParticleTracer(ABC):
 
         return None
 
-    def energyLoss(self, Ekin: float, stepsize: float, index: int) -> float:
+    def energyLoss(self, Ekin: float, pos3d: tuple3d, stepsize: float, index: int) -> float:
         """Compute energy along step using continuous slowing down approximation. Eq. 4.11.3 from EGSnrc manual, also used in GPUMCD.
         Approximation is second order accurate: O(DeltaE^2)
 
@@ -53,9 +53,9 @@ class MCParticleTracer(ABC):
         """
         assert Ekin > 0, f'{Ekin=}'
         assert stepsize > 0, f'{stepsize=}'
-        Emid = Ekin + self.particle.evalStoppingPower(Ekin, self.simDomain.getMaterial(index))*stepsize/2
+        Emid = Ekin + self.particle.evalStoppingPower(Ekin, pos3d, self.simDomain.getMaterial(index))*stepsize/2
         assert Emid > 0, f'{Emid=}'
-        return self.particle.evalStoppingPower(Emid, self.simDomain.getMaterial(index))*stepsize
+        return self.particle.evalStoppingPower(Emid, pos3d, self.simDomain.getMaterial(index))*stepsize
 
     @abstractmethod
     def traceParticle(self, estimators: Union[MCEstimator, tuple[MCEstimator, ...]]) -> int:
@@ -152,7 +152,7 @@ class AnalogParticleTracer(MCParticleTracer):
         """
 
         # Sample step size
-        stepColl = self.particle.samplePathlength(energy, self.simDomain.getMaterial(index))
+        stepColl = self.particle.samplePathlength(energy, pos3d, self.simDomain.getMaterial(index))
         stepGeom, domainEdge, new_pos3d_geom = self.simDomain.getCellEdgeInformation(pos3d, vec3d, index)
         step = min(stepColl, stepGeom)
 
@@ -163,7 +163,7 @@ class AnalogParticleTracer(MCParticleTracer):
             new_pos3d = pos3d + step*vec3d
 
         # Decrement energy along step
-        deltaE = self.energyLoss(energy, step, index)
+        deltaE = self.energyLoss(energy, pos3d, step, index)
         new_energy = energy - deltaE
 
         if new_energy < self.simOptions.minEnergy:  # return without sampling a new angle and such
@@ -177,7 +177,7 @@ class AnalogParticleTracer(MCParticleTracer):
             new_index = index
 
             # polar scattering angle
-            cost = self.particle.sampleAngle(new_energy, self.simDomain.getMaterial(index))  # anisotropic scattering angle (mu)
+            cost = self.particle.sampleAngle(new_energy, new_pos3d, self.simDomain.getMaterial(index))  # anisotropic scattering angle (mu)
             sint = np.sqrt(1 - cost**2)*self.simOptions.rng.choice([-1, 1])  # scatter left or right with equal probability
 
             # azimuthal scattering

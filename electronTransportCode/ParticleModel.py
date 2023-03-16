@@ -3,6 +3,7 @@ from typing import Optional, Union
 import numpy as np
 from electronTransportCode.Material import Material
 from electronTransportCode.ProjectUtils import ERE, FSC, Re
+from electronTransportCode.ProjectUtils import tuple3d
 
 
 class ParticleModel(ABC):
@@ -28,11 +29,12 @@ class ParticleModel(ABC):
         self.rng = generator
 
     @abstractmethod
-    def samplePathlength(self, Ekin: float, material: Material) -> float:
+    def samplePathlength(self, Ekin: float, pos: tuple3d, material: Material) -> float:
         """Sample path-length.
 
         Args:
             Ekin (float): Incoming particle kinetic energy relative to electron rest energy (tau or epsilon in literature)
+            pos (tuple3d): position of particle
             material (Material): material of scattering medium in cell.
 
         Returns:
@@ -40,11 +42,12 @@ class ParticleModel(ABC):
         """
 
     @abstractmethod
-    def sampleAngle(self, Ekin: float, material: Material) -> float:
+    def sampleAngle(self, Ekin: float, pos: tuple3d, material: Material) -> float:
         """Sample polar scattering angle mu.
 
         Args:
             Ekin (float): Incoming particle kinetic energy relative to electron rest energy (tau or epsilon in literature)
+            pos (tuple3d): position of particle
             material (Material): material of scattering medium in cell.
 
         Returns:
@@ -52,13 +55,13 @@ class ParticleModel(ABC):
         """
 
     @abstractmethod
-    def evalStoppingPower(self, Ekin: float, material: Material) -> float:
+    def evalStoppingPower(self, Ekin: float, pos: tuple3d, material: Material) -> float:
         """Evaluate electron stopping power.
 
         Args:
             Ekin (float): Incoming particle kinetic energy relative to electron rest energy (tau or epsilon in literature)
+            pos (tuple3d): position of particle
             material (Material): material of scattering medium in cell.
-            DeltaE (float): Energy cut-off value for soft-inelastic collisions in the same units as Ekin. Defaults to E_THRESHOLD.
 
         Returns:
             float: Stopping power evaluated at Ekin and DeltaE [1/cm] (energy relative to electron rest energy)
@@ -72,16 +75,36 @@ class PointSourceParticle(ParticleModel):
         super().__init__(generator)
         self.sigma: float = 1.0
 
-    def samplePathlength(self, Ekin: float, material: Material) -> float:
+    def samplePathlength(self, Ekin: float, pos: tuple3d, material: Material) -> float:
         assert self.rng is not None
         return self.rng.exponential(scale=1/self.sigma)
 
-    def sampleAngle(self, Ekin: float, material: Material) -> float:
+    def sampleAngle(self, Ekin: float, pos: tuple3d, material: Material) -> float:
         # Isotropic scattering angle
         assert self.rng is not None
         return self.rng.uniform(low=-1, high=1)
 
-    def evalStoppingPower(self, Ekin: float, material: Material) -> float:
+    def evalStoppingPower(self, Ekin: float, pos: tuple3d, material: Material) -> float:
+        return 1
+
+
+class DiffusionTestParticle(ParticleModel):
+    """Particle for diffusion limit test case.
+    """
+    def __init__(self, generator: Union[np.random.Generator, None, int] = None, Es: float = 1.0) -> None:
+        super().__init__(generator)
+        self.Es = Es
+
+    def samplePathlength(self, Ekin: float, pos: tuple3d, material: Material) -> float:
+        assert self.rng is not None
+        return self.rng.exponential(scale=1.0/self.Es)
+
+    def sampleAngle(self, Ekin: float, pos: tuple3d, material: Material) -> float:
+        # Isotropic scattering angle
+        assert self.rng is not None
+        return self.rng.uniform(low=-1, high=1)
+
+    def evalStoppingPower(self, Ekin: float, pos: tuple3d, material: Material) -> float:
         return 1
 
 
@@ -90,7 +113,7 @@ class SimplifiedEGSnrcElectron(ParticleModel):
     Energy loss is deposited continuously using the Bethe-Bloch inelastic restricted collisional stopping power. Hard-inelastic collisions and bremstrahlung are not taken into account.
     """
 
-    def samplePathlength(self, Ekin: float, material: Material) -> float:
+    def samplePathlength(self, Ekin: float, pos: tuple3d, material: Material) -> float:
         """ Sample path-length from screened Rutherford elastic scattering cross section. See EGSnrc manual by Kawrakow et al for full details.
 
             See abstract base class method for arguments and return value.
@@ -101,7 +124,7 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         SigmaSR: float = material.bc/betaSquared  # total macroscopic screened Rutherford cross section
         return self.rng.exponential(1/SigmaSR)  # path-length
 
-    def sampleAngle(self, Ekin: float, material: Material) -> float:
+    def sampleAngle(self, Ekin: float, pos: tuple3d, material: Material) -> float:
         """ Sample polar scattering angle from screened Rutherford elastic scattering cross section. See EGSnrc manual by Kawrakow et al for full details.
 
             See abstract base class method for arguments and return value.
@@ -117,7 +140,7 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         eta: float = eta0*(1.13 + 3.76*np.power(alfaPrime, 2))
         return 1 - 2*eta*r/(1-r+eta)  # polar scattering angle mu
 
-    def evalStoppingPower(self, Ekin: float, material: Material) -> float:
+    def evalStoppingPower(self, Ekin: float, pos: tuple3d, material: Material) -> float:
         """ Stopping power from PENELOPE for close and distant interactions.
 
             See abstract base class method for arguments and return value.
@@ -148,7 +171,7 @@ class SimplifiedEGSnrcElectron(ParticleModel):
 class SimplifiedPenelopeElectron(ParticleModel):
     """Electron model as found in PENELOPE manual
     """
-    def evalStoppingPower(self, Ekin: float, material: Material) -> float:
+    def evalStoppingPower(self, Ekin: float, pos: tuple3d, material: Material) -> float:
         """ Stopping power from PENELOPE for close and distant interactions.
         """
         # Ekin = tau in papers
@@ -169,8 +192,8 @@ class SimplifiedPenelopeElectron(ParticleModel):
 
         return Lcoll
 
-    def samplePathlength(self, Ekin: float, material: Material) -> float:
+    def samplePathlength(self, Ekin: float, pos: tuple3d, material: Material) -> float:
         raise NotImplementedError
 
-    def sampleAngle(self, Ekin: float, material: Material) -> float:
+    def sampleAngle(self, Ekin: float, pos: tuple3d, material: Material) -> float:
         raise NotImplementedError

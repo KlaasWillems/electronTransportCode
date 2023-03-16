@@ -89,6 +89,25 @@ class PointSource(SimOptions):
         return self.eSource
 
 
+class DiffusionPointSource(PointSource):
+    """Initial conditions for diffusion limit point source benchmark. particle's x-coordinate is random normally distributed with mean 'loc' and standard deviation 'scale'.
+    """
+    def __init__(self, minEnergy: float, rngSeed: int, eSource: float, loc: float, std: float) -> None:
+        """
+        Args:
+            loc (float): Mean of normal distribution of particle's x-coordinate
+            scale (float): Standard deviation of normal distribution of particle's x-coordinate
+        """
+        super().__init__(minEnergy, rngSeed, eSource)
+        self.loc = loc
+        self.std = std
+
+    def initialPosition(self) -> tuple3d:
+        """Initial position at origin
+        """
+        return np.array((self.rng.normal(loc=self.loc, scale=self.std), 0.0, 0.0), dtype=float)
+
+
 class LineSource(PointSource):
     def __init__(self, minEnergy: float, rngSeed: int, eSource: float, xmin: float, xmax: float) -> None:
         super().__init__(minEnergy, rngSeed, eSource)
