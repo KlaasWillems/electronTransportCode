@@ -14,6 +14,12 @@ class MCParticleTracer(ABC):
     estimation and grid cell crossing are only supported in 2D (yz-plane).
     """
     def __init__(self, particle: ParticleModel, simOptions: SimOptions, simDomain: SimulationDomain) -> None:
+        """
+        Args:
+            particle (ParticleModel): Particle to transport
+            simOptions (SimOptions): Initial conditions & simulation parameters
+            simDomain (SimulationDomain): Simulation domain
+        """
         self.particle = particle
         self.simOptions = simOptions
         self.simDomain = simDomain
@@ -186,7 +192,7 @@ class AnalogParticleTracer(MCParticleTracer):
             sinphi = np.sin(phi)
 
             # Rotation matrices (See penelope documentation eq. 1.131)
-            if np.isclose(np.abs(vec3d[2]), 1.0, rtol=1e-14):  # indeterminate case
+            if np.isclose(np.abs(vec3d[2]), 1.0, rtol=1e-14) or self.simOptions.SAMPLE_NEW_ABSOLUTE_DIRECTION:  # indeterminate case
                 sign = np.sign(vec3d[2])
                 new_vec3d[0] = sign*sint*cosphi
                 new_vec3d[1] = sign*sint*sinphi

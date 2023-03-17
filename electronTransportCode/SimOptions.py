@@ -13,7 +13,12 @@ class SimOptions(ABC):
     def __init__(self, minEnergy: float, rngSeed: int = 12) -> None:
         self.minEnergy: float = minEnergy
         self.rng: np.random.Generator = np.random.default_rng(rngSeed)
+
+        # Once self.minEnergy is reached, deposit the energy at position of 'death'
         self.DEPOSIT_REMAINDING_E_LOCALLY = True
+
+        # When a new cos(theta) is sampled during particle tracing, is this a new absolute direction (TRUE), or a scattering angle (FALSE).
+        self.SAMPLE_NEW_ABSOLUTE_DIRECTION = False
 
     @abstractmethod
     def initialDirection(self) -> tuple3d:

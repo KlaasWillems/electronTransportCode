@@ -91,13 +91,31 @@ class PointSourceParticle(ParticleModel):
 class DiffusionTestParticle(ParticleModel):
     """Particle for diffusion limit test case.
     """
-    def __init__(self, generator: Union[np.random.Generator, None, int] = None, Es: float = 1.0) -> None:
+    def __init__(self, generator: Union[np.random.Generator, None, int] = None, Es: Union[float, str] = 1.0, sp: Union[float, str] = 1.0) -> None:
+        """-
+        Args:
+            generator (Union[np.random.Generator, None, int], optional): random number generator object. Defaults to None.
+            Es (Union[float, str], optional): Scattering rate. Either a constant or a string for energy and positional dependent scattering rates. Defaults to 1.0.
+            sp (Union[float, str], optional): Stopping power. Either a constant or a string for energy and positional dependent stopping powers. Defaults to 1.0.
+        """
         super().__init__(generator)
         self.Es = Es
+        self.sp = sp
 
     def samplePathlength(self, Ekin: float, pos: tuple3d, material: Material) -> float:
         assert self.rng is not None
-        return self.rng.exponential(scale=1.0/self.Es)
+        if isinstance(self.Es, float) or isinstance(self.Es, int):
+            return self.rng.exponential(scale=1.0/self.Es)
+        else:
+            if self.Es == '1 + 0.5*sin(x)':  # TODO: sample!
+                l = 1.0 + 0.5*np.sin(pos[0])
+            elif self.Es == '100 + 10*sin(x)':
+                l = 100.0 + 10.0*np.sin(pos[0])
+            elif self.Es == '10 + 5*sin(x)':
+                l = 10 + 5*np.sin(pos[0])
+            else:
+                raise NotImplementedError('Invalid scattering rate.')
+            return self.rng.exponential(scale=1.0/l)
 
     def sampleAngle(self, Ekin: float, pos: tuple3d, material: Material) -> float:
         # Isotropic scattering angle
@@ -105,7 +123,15 @@ class DiffusionTestParticle(ParticleModel):
         return self.rng.uniform(low=-1, high=1)
 
     def evalStoppingPower(self, Ekin: float, pos: tuple3d, material: Material) -> float:
-        return 1
+        if isinstance(self.sp, float) or isinstance(self.sp, int):
+            return self.sp
+        else:
+            if self.sp == '1 + x**2':
+                return 1 + pos[0]**2
+            elif self.sp == '1 + 0.05*sin(x*2*3.1415/20)':
+                return 1 + 0.05*np.sin(pos[0]*2*3.1415/20)
+            else:
+                raise NotImplementedError('Invalid stopping power')
 
 
 class SimplifiedEGSnrcElectron(ParticleModel):

@@ -8,7 +8,7 @@ class MCEstimator(ABC):
     """Monte Carlo estimator for particle simulations
     """
     def __init__(self, simDomain: SimulationDomain) -> None:
-        self.simDomain = simDomain
+        self.simDomain: SimulationDomain = simDomain
 
     @abstractmethod
     def updateEstimator(self, posTuple: tuple[tuple3d, tuple3d], vecTuple: tuple[tuple3d, tuple3d], energyTuple: tuple[float, float], index: int) -> None:
