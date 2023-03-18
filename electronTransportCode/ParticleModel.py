@@ -107,11 +107,11 @@ class DiffusionTestParticle(ParticleModel):
         if isinstance(self.Es, float) or isinstance(self.Es, int):
             return self.rng.exponential(scale=1.0/self.Es)
         else:
-            if self.Es == '1 + 0.5*sin(x)':  # TODO: sample!
+            if self.Es == '(1 + 0.5*sin(x))':  # TODO: sample!
                 l = 1.0 + 0.5*np.sin(pos[0])
-            elif self.Es == '100 + 10*sin(x)':
+            elif self.Es == '(100 + 10*sin(x))':
                 l = 100.0 + 10.0*np.sin(pos[0])
-            elif self.Es == '10 + 5*sin(x)':
+            elif self.Es == '(10 + 5*sin(x))':
                 l = 10 + 5*np.sin(pos[0])
             else:
                 raise NotImplementedError('Invalid scattering rate.')

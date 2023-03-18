@@ -1,3 +1,4 @@
+from __future__ import annotations
 from abc import ABC, abstractmethod
 import numpy as np
 from electronTransportCode.SimulationDomain import SimulationDomain
@@ -28,6 +29,12 @@ class MCEstimator(ABC):
         Returns:
             np.ndarray: quantity of interest
         """
+
+    @abstractmethod
+    def __add__(self, other: MCEstimator) -> MCEstimator:
+        """Add results of this estimator to results of another estimator.
+        """
+
 
 class TrackEndEstimator(MCEstimator):
     """Log quatities of interest at the point when the particle dies.
@@ -76,6 +83,17 @@ class TrackEndEstimator(MCEstimator):
     def getEstimator(self) -> np.ndarray:
         return self.scoreMatrix
 
+    def __add__(self, other: MCEstimator) -> MCEstimator:
+        if isinstance(other, TrackEndEstimator):
+            assert self.simDomain == other.simDomain
+            assert self.setting == other.setting
+            new = TrackEndEstimator(self.simDomain, other.nb_particles+self.nb_particles, self.setting)
+            new.scoreMatrix = np.concatenate((self.scoreMatrix, other.scoreMatrix))
+            new.index = self.nb_particles + other.nb_particles
+            return new
+        else:
+            raise ValueError('Not adding the same estimators!')
+
 
 class DoseEstimator(MCEstimator):
     """Score dose [MeV/g] at each collision and grid cell crossing
@@ -104,6 +122,15 @@ class DoseEstimator(MCEstimator):
             out[index] /= self.simDomain.getMaterial(index).rho*self.simDomain.dA  # To Mev/g
         return out
 
+    def __add__(self, other: MCEstimator) -> MCEstimator:
+        if isinstance(other, DoseEstimator):
+            assert self.simDomain == other.simDomain
+            new = DoseEstimator(self.simDomain)
+            new.scoreMatrix = self.scoreMatrix + other.scoreMatrix
+            return new
+        else:
+            raise ValueError('Not adding the same estimators!')
+
 
 class FluenceEstimator(MCEstimator):
     """Score particle density at each collision and grid cell crossing. Energy variable is discretized in bins.
@@ -125,7 +152,7 @@ class FluenceEstimator(MCEstimator):
         self.Ebins = Ebins  # In electron rest energy
         self.Emin = Emin
         self.Emax = Emax
-
+        self.spacing = spacing
         self.scoreMatrix = np.zeros((self.Ebins, self.simDomain.xbins*self.simDomain.ybins), dtype=float)  # cell index is column index, energy bin index is row index
 
         if spacing == 'lin':
@@ -134,6 +161,16 @@ class FluenceEstimator(MCEstimator):
             self.Erange = np.logspace(np.log10(self.Emin), np.log10(self.Emax), self.Ebins+1)
         else:
             raise ValueError('Spacing argument is invalid. Should be "lin" or "log".')
+
+    def __add__(self, other: MCEstimator) -> MCEstimator:
+        if isinstance(other, FluenceEstimator):
+            assert self.simDomain == other.simDomain
+            assert self.Ebins == other.Ebins and self.Emin == other.Emin and self.Emax == other.Emax and self.spacing == other.spacing
+            new = FluenceEstimator(self.simDomain, self.Emin, self.Emax, self.Ebins, self.spacing)
+            new.scoreMatrix = self.scoreMatrix + other.scoreMatrix
+            return new
+        else:
+            raise ValueError('Not adding the same estimators!')
 
     def getEstimator(self) -> np.ndarray:
         return self.scoreMatrix/self.simDomain.dA  # type: ignore

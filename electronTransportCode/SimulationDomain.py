@@ -48,6 +48,12 @@ class SimulationDomain:
         self.dA: float = (self.xrange[1] - self.xrange[0])*(self.yrange[1] - self.yrange[0])
         self.material = material
 
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, SimulationDomain):
+            return self.xmin == other.xmin and self.xmax == other.xmax and self.ymin == other.ymin and self.ymax == other.ymax and self.xbins == other.xbins and self.ybins == other.ybins and self.material == other.material
+        else:
+            raise NotImplementedError()
+
     def getMaterial(self, index: int) -> Material:
         """Return material at grid cell index
 

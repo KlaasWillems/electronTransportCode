@@ -35,6 +35,11 @@ class Material:
 
         self.eta0CONST: float = np.power(FSC, 2)*np.power(Z, 2/3)/(4*np.power(CTF, 2))
 
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, Material):
+            return self.Z == other.Z and self.A == other.A and self.I == other.I and self.NB_DENSITY == other.NB_DENSITY and self.rho == other.rho and self.bc == other.bc and self.eta0CONST == other.eta0CONST
+        else:
+            raise NotImplementedError()
 
 
 WaterMaterial = Material()
