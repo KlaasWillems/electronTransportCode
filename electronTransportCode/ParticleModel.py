@@ -126,10 +126,14 @@ class DiffusionTestParticle(ParticleModel):
         if isinstance(self.sp, float) or isinstance(self.sp, int):
             return self.sp
         else:
-            if self.sp == '1 + x**2':
+            if self.sp == '(1 + x**2)':
                 return 1 + pos[0]**2
-            elif self.sp == '1 + 0.05*sin(x*2*3.1415/20)':
-                return 1 + 0.05*np.sin(pos[0]*2*3.1415/20)
+            elif self.sp == '(1 + 0.05*cos(x*2*3.1415/20))':
+                return 1 + 0.05*np.cos(pos[0]*2*3.1415/20)
+            elif self.sp == '(1 + 0.5*sin(x))':
+                return 1.0 + 0.5*np.sin(pos[0])
+            elif self.sp == '0.2*(1 + E**2)':
+                return (1.0 + Ekin**2)*0.2
             else:
                 raise NotImplementedError('Invalid stopping power')
 
