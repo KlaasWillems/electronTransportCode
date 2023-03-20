@@ -20,8 +20,8 @@ class TestMCFluenceEstimator(unittest.TestCase):
 
         # set up arguments
         index = 0
-        pos1 = np.array((5, 3))
-        pos2 = np.array((0, 1))
+        pos1 = np.array((5, 3, 0))
+        pos2 = np.array((0, 1, 0))
         posTuple = (pos1, pos2)
         vecTuple = (pos1, pos2)
         stepsize = np.linalg.norm(pos2-pos1)  # type:ignore
@@ -45,8 +45,8 @@ class TestMCFluenceEstimator(unittest.TestCase):
 
         # set up arguments
         index = 0
-        pos1 = np.array((5, 3))
-        pos2 = np.array((0, 1))
+        pos1 = np.array((5, 3, 0))
+        pos2 = np.array((0, 1, 0))
         posTuple = (pos1, pos2)
         vecTuple = (pos1, pos2)
         stepsize = np.linalg.norm(pos2-pos1)  # type:ignore
@@ -70,8 +70,8 @@ class TestMCFluenceEstimator(unittest.TestCase):
 
         # set up arguments
         index = 0
-        pos1 = np.array((5, 3))
-        pos2 = np.array((0, 1))
+        pos1 = np.array((5, 3, 0))
+        pos2 = np.array((0, 1, 0))
         posTuple = (pos1, pos2)
         vecTuple = (pos1, pos2)
         stepsize = np.linalg.norm(pos2-pos1)  # type:ignore
