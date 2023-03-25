@@ -1,5 +1,7 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
+import numpy.typing as npt
+from mpi4py import MPI
 import numpy as np
 from electronTransportCode.SimulationDomain import SimulationDomain
 from electronTransportCode.ProjectUtils import ERE, tuple3d
@@ -10,6 +12,7 @@ class MCEstimator(ABC):
     """
     def __init__(self, simDomain: SimulationDomain) -> None:
         self.simDomain: SimulationDomain = simDomain
+        self.scoreMatrix: npt.NDArray
 
     @abstractmethod
     def updateEstimator(self, posTuple: tuple[tuple3d, tuple3d], vecTuple: tuple[tuple3d, tuple3d], energyTuple: tuple[float, float], index: int) -> None:
@@ -33,6 +36,11 @@ class MCEstimator(ABC):
     @abstractmethod
     def __add__(self, other: MCEstimator) -> MCEstimator:
         """Add results of this estimator to results of another estimator.
+        """
+
+    @abstractmethod
+    def combineEstimators(self, particles_per_proc: int, root: int = 0) -> None:
+        """Combine estimators from multiple processors into one.
         """
 
 
@@ -94,6 +102,25 @@ class TrackEndEstimator(MCEstimator):
         else:
             raise ValueError('Not adding the same estimators!')
 
+    def combineEstimators(self, particles_per_proc: int, root: int = 0) -> None:
+        myrank = MPI.COMM_WORLD.Get_rank()
+        nproc = MPI.COMM_WORLD.Get_size()
+
+        # gather estimator
+        if myrank == root:
+            recvbuf = np.empty((nproc, particles_per_proc), dtype=float)
+        else:
+            recvbuf = None  # type: ignore
+
+        MPI.COMM_WORLD.Gather(self.scoreMatrix, recvbuf, root=0)
+
+        if myrank == root:
+            assert recvbuf is not None
+            nb_particles = int(nproc*particles_per_proc)
+            self.scoreMatrix = recvbuf.reshape((nb_particles, ))
+            self.nb_particles = nb_particles
+            self.index = nb_particles
+
 
 class DoseEstimator(MCEstimator):
     """Score dose [MeV/g] at each collision and grid cell crossing
@@ -130,6 +157,9 @@ class DoseEstimator(MCEstimator):
             return new
         else:
             raise ValueError('Not adding the same estimators!')
+
+    def combineEstimators(self, particles_per_proc: int, root: int = 0) -> None:
+        raise NotImplementedError
 
 
 class FluenceEstimator(MCEstimator):
@@ -213,3 +243,6 @@ class FluenceEstimator(MCEstimator):
             diff = np.diff(Earray)
             for diffIndex, Ebin in enumerate(range(bin2, bin1+1)):
                 self.scoreMatrix[Ebin-1, index] += stepsize*diff[diffIndex]/dE
+
+    def combineEstimators(self, particles_per_proc: int, root: int = 0) -> None:
+        raise NotImplementedError

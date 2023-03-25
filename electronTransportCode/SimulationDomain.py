@@ -7,14 +7,7 @@ import numba as nb
 
 # TODO: rename to yz terminology
 
-# Numba specifications of class attributes
-materialType = nb.deferred_type()
-materialType.define(Material.class_type.instance_type) # type: ignore
-spec = [('xmin', nb.float64), ('xmax', nb.float64), ('ymin', nb.float64), ('ymax', nb.float64), ('xbins', nb.int32), ('ybins', nb.int32),
-        ('xrange', nb.float64[:]), ('yrange', nb.float64[:]), ('dA', nb.float64), ('material', materialType)]
 
-
-@jitclass(spec)
 class SimulationDomain:
     """A simulation domain object represents a rectangular domain [x_min, xmax] \times [y_min, y_max].
     This domain is divided into xbins columns and ybins rows.

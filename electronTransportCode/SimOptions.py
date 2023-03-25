@@ -2,10 +2,6 @@ from abc import ABC, abstractmethod
 import numpy as np
 from electronTransportCode.ProjectUtils import tuple3d
 
-# TODO: Find a more elegant way for users to pick arbitrary initial conditions
-# TODO: Numba support. Remaining issues:
-#   1) Numba doesn't support rng as class member. Use global rng in ProjectUtils.
-#   2) No support for abstract base classes
 
 class SimOptions(ABC):
     """Object which encapsulates initial condition and random number generator for Monte Carlo Simulation
