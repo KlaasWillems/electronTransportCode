@@ -47,7 +47,8 @@ if __name__ == "__main__":
     nproc = comm.Get_size()
 
     eSource = float(sys.argv[1])
-    NB_PARTICLES = int(int(sys.argv[2])/nproc)
+    NB_PARTICLES_PER_PROC = int(int(sys.argv[2])/nproc)
+    NB_PARTICLES = int(NB_PARTICLES_PER_PROC*nproc)
 
     if myrank == 0:
         storage1 = solvePDE(eSource, muInit, sigmaInit, stoppingPower, scatteringRate1, scatteringRate1_dx, varH)
@@ -62,18 +63,18 @@ if __name__ == "__main__":
     pointSourceSim = DiffusionPointSource(minEnergy=0.0, rngSeed=SEED, eSource=eSource, loc=muInit, std=sigmaInit)
 
     # Set up estimator and particle
-    trackEndEstimatorx1 = TrackEndEstimator(simDomain, NB_PARTICLES, setting='x')
+    trackEndEstimatorx1 = TrackEndEstimator(simDomain, NB_PARTICLES_PER_PROC, setting='x')
     particle1 = DiffusionTestParticle(Es=scatteringRate1)
     particleTracer1 = AnalogParticleTracer(particle=particle1, simOptions=pointSourceSim, simDomain=simDomain)
 
     print(f'Proc {myrank} starting simulation.')
 
     # --- Run simulation ---
-    particleTracer1(nbParticles=NB_PARTICLES, estimators=trackEndEstimatorx1, logAmount=1000000)
+    particleTracer1(nbParticles=NB_PARTICLES_PER_PROC, estimators=trackEndEstimatorx1, logAmount=1000000)
 
     # gather estimator
     if myrank == 0:
-        recvbuf = np.empty((nproc, NB_PARTICLES), dtype=float)
+        recvbuf = np.empty((nproc, NB_PARTICLES_PER_PROC), dtype=float)
     else:
         recvbuf = None  # type: ignore
 
@@ -81,12 +82,14 @@ if __name__ == "__main__":
 
     # --- Plot result ---
     if myrank == 0:
+        assert recvbuf is not None
+
         # Advection-diffusion solution 1
         ADres1 = storage1.data[-1]  # type:ignore
         xres = np.linspace(-xmax, xmax, xbins, endpoint=False)
 
         # MC solution 1
-        xdensity1 = trackEndEstimatorx1.scoreMatrix
+        xdensity1 = recvbuf.reshape((NB_PARTICLES, ))
         binVal1, binEdge1 = np.histogram(xdensity1, bins=100, density=True)
         binCenter1 = (binEdge1[:-1] + binEdge1[1:])/2.0
 
