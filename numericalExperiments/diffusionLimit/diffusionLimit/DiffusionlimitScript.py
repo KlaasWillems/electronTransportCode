@@ -1,14 +1,9 @@
 # Imports
 import sys
-import os
+import pickle
 import numpy as np
 from mpi4py import MPI
-from pde import PDE, CartesianGrid, MemoryStorage, ScalarField
-import matplotlib.pyplot as plt
-
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.abspath('..'),os.pardir))
-sys.path.append(PROJECT_ROOT)
-
+from pde import PDE, CartesianGrid, ScalarField
 from electronTransportCode.SimulationDomain import SimulationDomain
 from electronTransportCode.Material import unitDensityMaterial
 from electronTransportCode.MCEstimator import FluenceEstimator, DoseEstimator, TrackEndEstimator
@@ -25,7 +20,6 @@ sigmaInit = 1.0
 muInit = 0.0
 
 # Initialize simulation parameters
-tmax = 1.0
 xbins = 512
 xmax = 15.0
 
@@ -44,7 +38,7 @@ simDomain = SimulationDomain(ymin, ymax, zmin, zmax, ybins, zbins, material=unit
 
 # Set up initial conditions
 
-eSource: float = tmax
+eSource: float = 1.0  # Dummy
 SEED: int = 4  # Random number generator seed
 pointSourceSim = DiffusionPointSource(minEnergy=0.0, rngSeed=SEED, eSource=eSource, loc=muInit, std=sigmaInit)
 
@@ -58,16 +52,25 @@ file1 = 'trackEndEstimatorx1.pkl'
 file2 = 'trackEndEstimatorx2.pkl'
 
 if __name__ == '__main__':
+    # Get argv
     nproc = MPI.COMM_WORLD.Get_size()
-    eSource = float(sys.argv[1])
-    NB_PARTICLES_PER_PROC = int(int(sys.argv[2])/nproc)
+    eSource1 = float(sys.argv[1])
+    eSource2 = float(sys.argv[2])
+
+    # set argv
+    NB_PARTICLES_PER_PROC = int(int(sys.argv[3])/nproc)
     NB_PARTICLES = NB_PARTICLES_PER_PROC*nproc
+    pointSourceSim.eSource = eSource1
 
     # - Set up estimator and particle
     trackEndEstimatorx1 = TrackEndEstimator(simDomain, NB_PARTICLES_PER_PROC, setting='x')
+    pointSourceSim.eSource = eSource2
     trackEndEstimatorx2 = TrackEndEstimator(simDomain, NB_PARTICLES_PER_PROC, setting='x')
-
 
     # - Run simulation
     particleTracer1.runMultiProc(nbParticles=NB_PARTICLES, estimators=(trackEndEstimatorx1, ), file=file1)
     particleTracer2.runMultiProc(nbParticles=NB_PARTICLES, estimators=(trackEndEstimatorx2, ), file=file2)
+
+    # dump argv
+    tup = (eSource1, eSource2, NB_PARTICLES)
+    pickle.dump(tup, open('simargv.pkl', 'wb'))
