@@ -159,7 +159,23 @@ class DoseEstimator(MCEstimator):
             raise ValueError('Not adding the same estimators!')
 
     def combineEstimators(self, particles_per_proc: int, root: int = 0) -> None:
-        raise NotImplementedError
+        myrank = MPI.COMM_WORLD.Get_rank()
+        nproc = MPI.COMM_WORLD.Get_size()
+
+        # gather estimator
+        if myrank == root:
+            recvbuf = np.empty((nproc, self.simDomain.xbins*self.simDomain.ybins), dtype=float)
+        else:
+            recvbuf = None  # type: ignore
+
+        MPI.COMM_WORLD.Gather(self.scoreMatrix, recvbuf, root=0)
+
+        if myrank == root:
+            assert recvbuf is not None
+            nb_particles = int(nproc*particles_per_proc)
+            self.scoreMatrix = np.sum(recvbuf, axis=0)
+            self.nb_particles = nb_particles
+            self.index = nb_particles
 
 
 class FluenceEstimator(MCEstimator):
