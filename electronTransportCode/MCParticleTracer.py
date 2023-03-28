@@ -1,4 +1,3 @@
-from abc import ABC, abstractmethod
 import time
 from mpi4py import MPI
 from typing import Union
@@ -11,7 +10,7 @@ from electronTransportCode.ProjectUtils import tuple3d, tuple3d
 from electronTransportCode.SimulationDomain import SimulationDomain
 
 
-class MCParticleTracer(ABC):
+class AnalogParticleTracer:
     """General Monte Carlo particle tracer object for radiation therapy. Particle move in a 3D domain however,
     estimation and grid cell crossing are only supported in 2D (yz-plane).
     """
@@ -95,15 +94,6 @@ class MCParticleTracer(ABC):
         assert Emid > 0, f'{Emid=}'
         return self.particle.evalStoppingPower(Emid, pos3d, self.simDomain.getMaterial(index))*stepsize
 
-    @abstractmethod
-    def traceParticle(self, estimators: Union[MCEstimator, tuple[MCEstimator, ...]]) -> int:
-        """Simulate one particle
-        """
-
-
-class AnalogParticleTracer(MCParticleTracer):
-    """Analog particle tracing algorithm
-    """
     def traceParticle(self, estimators: Union[MCEstimator, tuple[MCEstimator, ...]]) -> int:
         """Step particle through simulation domain until its energy is below a threshold value. Estimator routine is called after each step for on-the-fly estimation.
 
