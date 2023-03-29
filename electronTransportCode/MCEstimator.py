@@ -92,8 +92,8 @@ class TrackEndEstimator(MCEstimator):
     def getEstimator(self) -> np.ndarray:
         return self.scoreMatrix
 
-    def getDensityData(self) -> Tuple[np.ndarray, np.ndarray]:
-        binVal, binEdge = np.histogram(self.scoreMatrix, bins=100, density=True)
+    def getDensityData(self, bins: int = 100) -> Tuple[np.ndarray, np.ndarray]:
+        binVal, binEdge = np.histogram(self.scoreMatrix, bins=bins, density=True)
         binCenter = (binEdge[:-1] + binEdge[1:])/2.0
         return binCenter, binVal
 
