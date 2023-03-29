@@ -150,7 +150,7 @@ class DiffusionTestParticle(ParticleModel):
         if isinstance(self.Es, float) or isinstance(self.Es, int):
             return self.rng.exponential(scale=1.0/self.Es)
         else:
-            if self.Es == '(1 + 0.5*sin(x))':  # TODO: sample!
+            if self.Es == '(1 + 0.5*sin(x))':
                 l = 1.0 + 0.5*np.sin(pos3d[0])
             elif self.Es == '(100 + 10*sin(x))':
                 l = 100.0 + 10.0*np.sin(pos3d[0])
@@ -188,7 +188,7 @@ class DiffusionTestParticle(ParticleModel):
         if isinstance(self.Es, float) or isinstance(self.Es, int):
             return self.Es
         else:
-            if self.Es == '(1 + 0.5*sin(x))':  # TODO: sample!
+            if self.Es == '(1 + 0.5*sin(x))':
                 return 1.0 + 0.5*np.sin(pos3d[0])
             elif self.Es == '(100 + 10*sin(x))':
                 return 100.0 + 10.0*np.sin(pos3d[0])
@@ -201,7 +201,7 @@ class DiffusionTestParticle(ParticleModel):
         if isinstance(self.Es, float) or isinstance(self.Es, int):
             return 0.0
         else:
-            if self.Es == '(1 + 0.5*sin(x))':  # TODO: sample!
+            if self.Es == '(1 + 0.5*sin(x))':
                 return 0.5*np.cos(pos3d[0])
             elif self.Es == '(100 + 10*sin(x))':
                 return 10.0*np.cos(pos3d[0])
