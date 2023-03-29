@@ -1,6 +1,7 @@
 import time
+from matplotlib.pyplot import step
 from mpi4py import MPI
-from typing import Union
+from typing import Union, Tuple
 import numpy as np
 import pickle
 from electronTransportCode.MCEstimator import MCEstimator
@@ -55,7 +56,6 @@ class AnalogParticleTracer:
         # store results
         if myrank == root:
             pickle.dump(estimatorList, open(file, 'wb'))
-
 
     def __call__(self, nbParticles: int, estimators: Union[MCEstimator, tuple[MCEstimator, ...]], logAmount: int = 1000) -> Union[MCEstimator, tuple[MCEstimator, ...]]:
         """Execute Monte Carlo particle simulation of self.particle using self.simOptions in the simulation domain defined by self.simDomain.
@@ -124,7 +124,7 @@ class AnalogParticleTracer:
         # Step until energy is smaller than threshold
         while loopbool:
             assert energy > self.simOptions.minEnergy, f'{energy=}'
-            new_pos3d, new_vec3d, new_energy, new_index = self.stepParticle(pos3d, vec3d, energy, index)
+            new_pos3d, new_vec3d, new_energy, new_index, _ = self.stepParticleAnalog(pos3d, vec3d, energy, index)
 
             if new_energy <= self.simOptions.minEnergy: # have estimator deposit all remaining energy
                 if self.simOptions.DEPOSIT_REMAINDING_E_LOCALLY:
@@ -146,7 +146,7 @@ class AnalogParticleTracer:
 
         return counter
 
-    def stepParticle(self, pos3d: tuple3d, vec3d: tuple3d, energy: float, index: int) -> tuple[tuple3d, tuple3d, float, int]:
+    def stepParticleAnalog(self, pos3d: tuple3d, vec3d: tuple3d, energy: float, index: int) -> tuple[tuple3d, tuple3d, float, int, float]:
         """Transport particle and apply event.
         Algorithm:
             - Sample step size
@@ -176,7 +176,7 @@ class AnalogParticleTracer:
             index (int): particle position in self.simDomain at start of method
 
         Returns:
-            tuple[tuple2d, tuple2d, float, int]: state of particle after being transported to new event location and having that event applied.
+            tuple[tuple2d, tuple2d, float, int, float]: state of particle after being transported to new event location and having that event applied. Final return value is the step size.
         """
 
         # Sample step size
@@ -196,8 +196,9 @@ class AnalogParticleTracer:
 
         if new_energy < self.simOptions.minEnergy:  # return without sampling a new angle and such
             # linearly back up such that stepsize is consistent with energy loss
-            new_pos3d = pos3d + step*vec3d*(energy - self.simOptions.minEnergy)/deltaE
-            return new_pos3d, vec3d, self.simOptions.minEnergy, index
+            step_lin = step*(energy - self.simOptions.minEnergy)/deltaE
+            new_pos3d = pos3d + step_lin*vec3d
+            return new_pos3d, vec3d, self.simOptions.minEnergy, index, step_lin
 
         # Select event
         if stepColl < stepGeom:  # Next event is collision
@@ -234,4 +235,171 @@ class AnalogParticleTracer:
             if domainEdge:  # Next event is domain edge crossing
                 new_energy = 0
 
-        return new_pos3d, new_vec3d, new_energy, new_index
+        return new_pos3d, new_vec3d, new_energy, new_index, step
+
+
+class KDParticleTracer(AnalogParticleTracer):
+
+    def __init__(self, particle: ParticleModel, simOptions: SimOptions, simDomain: SimulationDomain, dS: float) -> None:
+        super().__init__(particle, simOptions, simDomain)
+        self.dS = dS  # KDMC stepsize parameter
+
+    def traceParticle(self, estimators: Union[MCEstimator, tuple[MCEstimator, ...]]) -> int:
+        """Step particle through simulation domain until its energy is below a threshold value. Estimator routine is called after each step for on-the-fly estimation.
+
+        Args:
+            estimator (MCEstimator): Estimator object which implements scoring of all quantities of interest
+
+        """
+        if isinstance(estimators, MCEstimator):  # estimator is now a list of estimators
+            estimatorList: tuple[MCEstimator, ...] = (estimators, )
+        else:
+            estimatorList = estimators
+
+        # Sample initial condition in 2D
+        pos3d: tuple3d = self.simOptions.initialPosition()
+        vec3d: tuple3d = self.simOptions.initialDirection()
+        energy: float = self.simOptions.initialEnergy()
+        index: int = self.simDomain.getIndexPath(pos3d, vec3d)
+
+        loopbool: bool = True
+
+        # Do type annotations for updated positions
+        kin_pos3d: tuple3d; diff_pos3d: tuple3d
+        kin_vec3d: tuple3d; diff_vec3d: tuple3d
+        kin_energy: float; diff_energy: float
+        kin_index: int; diff_index: int
+
+        counter = 0
+        # Step until energy is smaller than threshold
+        while loopbool:
+            assert energy > self.simOptions.minEnergy, f'{energy=}'
+
+            # do analog step
+            kin_pos3d, kin_vec3d, kin_energy, kin_index, step_kin = self.stepParticleAnalog(pos3d, vec3d, energy, index)
+
+            # If energy left
+            if kin_energy <= self.simOptions.minEnergy: # have estimator deposit all remaining energy
+                if self.simOptions.DEPOSIT_REMAINDING_E_LOCALLY:
+                    kin_energy = 0
+                loopbool = False  # make this the last iteration
+
+                pos3d = kin_pos3d
+                vec3d = kin_vec3d
+                energy = kin_energy
+                index = kin_index
+
+            else:  # Also do diffusive step
+                step_diff = self.dS - (step_kin % self.dS)
+
+                diff_pos3d, diff_vec3d, diff_energy, diff_index = self.stepParticleDiffusive(kin_pos3d, kin_vec3d, kin_energy, kin_index, step_diff)
+
+                # If energy left
+                if diff_energy <= self.simOptions.minEnergy: # have estimator deposit all remaining energy
+                    if self.simOptions.DEPOSIT_REMAINDING_E_LOCALLY:
+                        kin_energy = 0
+                    loopbool = False  # make this the last iteration
+
+                # set final state
+                pos3d = diff_pos3d
+                vec3d = diff_vec3d
+                energy = diff_energy
+                index = diff_index
+
+            # TODO: do estimation after kin and diffusive step
+            raise NotImplementedError()
+            for estimator in estimatorList:
+                estimator.updateEstimator((pos3d, kin_pos3d), (vec3d, kin_vec3d), (energy, kin_energy), index)
+
+            # Logging
+            counter += 1
+        return counter
+
+    def advectionDiffusionCoeff(self, pos3d: tuple3d, vec3d: tuple3d, stepsize: float) -> Tuple[tuple3d, tuple3d]:
+        """Return advection and diffusion coefficient
+
+        Args:
+            pos3d (tuple3d): Intermediate position x double prime
+            vec3d (tuple3d): final direction of travel on which the mean and variance are conditioned
+            stepsize (float): remaining 'time' for the diffusive movement
+
+        Returns:
+            Tuple[tuple3d, tuple3d]: Advection and diffusion coefficient
+        """
+        mu_omega, var_omega = self.particle.getOmegaMoments(pos3d)
+        Sigma_s = self.particle.getScatteringRate(pos3d)  # TODO: add material and energy dependence (also with the derivative)
+
+        # intermediate results
+        SigmaStepsize = Sigma_s*stepsize
+        exp1 = np.exp(-SigmaStepsize)
+        exp2 = np.exp(-2*SigmaStepsize)
+        vec_mean_dev = vec3d - mu_omega
+        vec_mean_dev2 = vec_mean_dev**2
+
+        # Heterogeneity correction
+        het1 = 0.5*vec_mean_dev2*(exp2 + 2*SigmaStepsize*exp1 - 1.0)/(stepsize*Sigma_s**2)
+        het2 = var_omega*(2*exp1 + SigmaStepsize + SigmaStepsize*exp1 - 2.0)/(stepsize*Sigma_s**2)
+        het3 = var_omega*(SigmaStepsize*exp1 - 1.0 + exp1)/Sigma_s
+        het4 = vec_mean_dev2*(SigmaStepsize*exp1 - exp1 + exp2)/Sigma_s
+        het_correction = het1 - het2 - het3 + het4
+
+        # Mean
+        mean = mu_omega + (1 - exp1)*vec_mean_dev/SigmaStepsize + het_correction*self.particle*self.particle.getDScatteringRate(pos3d)
+
+        # Variance
+        var_term1 = vec_mean_dev2*(1.0 - exp1*(2*SigmaStepsize) - exp2)/(2*SigmaStepsize)
+        var_term2 = var_omega*(-2.0 + 2*exp1 + SigmaStepsize + SigmaStepsize*exp1)/(SigmaStepsize)
+
+        return mean, var_term1 + var_term2
+
+    def stepParticleDiffusive(self, pos3d: tuple3d, vec3d: tuple3d, energy: float, index: int, stepsize: float) -> tuple[tuple3d, tuple3d, float, int]:
+        """Apply diffusive motion to particle
+
+        Args:
+            pos3d (tuple3d): Position of particle after kinetic step
+            vec3d (tuple3d): final velocity on which the diffusive moment is conditioned
+            energy (float): energy of particle after kinetic step
+            index (int): position of particle in estimator grid
+            stepsize (float): remaing part of step for diffusive motion
+
+        Returns:
+            tuple[tuple3d, tuple3d, float, int]: state of particle after diffusive step
+        """
+        # TODO: vec3d and index should never change!
+
+        # Get mean and variance of Omega distribution
+        mu_omega, _ = self.particle.getOmegaMoments(pos3d)
+
+        # Fix intermediate position
+        x_int = pos3d + mu_omega*stepsize/2
+
+        # Get advection and diffusion coefficient
+        A_coeff, D_coeff = self.advectionDiffusionCoeff(x_int, vec3d, stepsize)
+
+        # Apply diffusive step
+        xi = self.simOptions.rng.normal(size=(3, ))
+        new_pos3d = pos3d + A_coeff*xi + np.sqrt(2*D_coeff*stepsize)*xi
+
+        # Find equivalent kinetic step
+        pos_delta = new_pos3d - pos3d
+        equi_step = np.sqrt(pos_delta[0]**2 + pos_delta[1]**2 + pos_delta[2]**2)
+        equi_vec = pos_delta/equi_step
+
+        # Figure out if the particle when out of the grid cell.
+        stepGeom, _, _ = self.simDomain.getCellEdgeInformation(pos3d, equi_vec, index)
+        if equi_step < stepGeom: # diffusive step did not exceed boundaries
+
+            # Decrement energy along step
+            deltaE = self.energyLoss(energy, pos3d, equi_step, index)
+            new_energy = energy - deltaE
+
+            # Figure out if the particle did not exceed the amount of energy it had left
+            if new_energy < self.simOptions.minEnergy:  # linearly back up such that stepsize is consistent with energy loss
+                step_lin = equi_step*(energy - self.simOptions.minEnergy)/deltaE
+                new_pos3d_lin = pos3d + step_lin*equi_vec
+                return new_pos3d_lin, vec3d, self.simOptions.minEnergy, index
+            else:
+                return new_pos3d, vec3d, new_energy, index
+
+        else: # diffusive step exceeded cell boundaries
+            return pos3d, vec3d, energy, index  # don't move particle, return old state

@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Optional, Union
+from typing import Optional, Union, Tuple
 import numpy as np
 from electronTransportCode.Material import Material
 from electronTransportCode.ProjectUtils import ERE, FSC, Re
@@ -67,6 +67,39 @@ class ParticleModel(ABC):
             float: Stopping power evaluated at Ekin and DeltaE [1/cm] (energy relative to electron rest energy)
         """
 
+    def getOmegaMoments(self, pos3d: tuple3d) -> Tuple[tuple3d, tuple3d]:
+        """Return the mean and the variance of the postcollisional velocity distribution.
+
+        Args:
+            pos3d (tuple3d): Mean and variance can be positional dependent
+
+        Returns:
+            Tuple[tuple3d, tuple3d]: Mean and variance
+        """
+        raise NotImplementedError
+
+    def getScatteringRate(self, pos3d: tuple3d) -> float:
+        """Return the scattering rate (scale parameter of the path length distribution)
+
+        Args:
+            pos3d (tuple3d): current position of particle
+
+        Returns:
+            float: scattering rate
+        """
+        raise NotImplementedError
+
+    def getDScatteringRate(self, pos3d: tuple3d) -> float:
+        """Return derivative of scattering rate with respect to x at position pos3d
+
+        Args:
+            pos3d (tuple3d): Current position of particle
+
+        Returns:
+            float: derivative
+        """
+        raise NotImplementedError
+
 
 class PointSourceParticle(ParticleModel):
     """Particle for point source benchmark. See Kush & Stammer, Garret & Hauck and Ganapol 1999.
@@ -87,6 +120,16 @@ class PointSourceParticle(ParticleModel):
     def evalStoppingPower(self, Ekin: float, pos: tuple3d, material: Material) -> float:
         return 1
 
+    def getOmegaMoments(self, pos3d: tuple3d) -> Tuple[tuple3d, tuple3d]:
+        # 3D isotropic scattering: Mean is zero, variance is 1/3
+        return (np.array((0.0, 0.0, 0.0), dtype=float), np.array((1/3, 1/3, 1/3), dtype=float))
+
+    def getScatteringRate(self, pos3d: tuple3d) -> float:
+        return self.sigma
+
+    def getDScatteringRate(self, pos3d: tuple3d) -> float:
+        return 0.0
+
 
 class DiffusionTestParticle(ParticleModel):
     """Particle for diffusion limit test case.
@@ -102,40 +145,70 @@ class DiffusionTestParticle(ParticleModel):
         self.Es = Es
         self.sp = sp
 
-    def samplePathlength(self, Ekin: float, pos: tuple3d, material: Material) -> float:
+    def samplePathlength(self, Ekin: float, pos3d: tuple3d, material: Material) -> float:
         assert self.rng is not None
         if isinstance(self.Es, float) or isinstance(self.Es, int):
             return self.rng.exponential(scale=1.0/self.Es)
         else:
             if self.Es == '(1 + 0.5*sin(x))':  # TODO: sample!
-                l = 1.0 + 0.5*np.sin(pos[0])
+                l = 1.0 + 0.5*np.sin(pos3d[0])
             elif self.Es == '(100 + 10*sin(x))':
-                l = 100.0 + 10.0*np.sin(pos[0])
+                l = 100.0 + 10.0*np.sin(pos3d[0])
             elif self.Es == '(10 + 5*sin(x))':
-                l = 10 + 5*np.sin(pos[0])
+                l = 10 + 5*np.sin(pos3d[0])
             else:
                 raise NotImplementedError('Invalid scattering rate.')
             return self.rng.exponential(scale=1.0/l)
 
-    def sampleAngle(self, Ekin: float, pos: tuple3d, material: Material) -> float:
+    def sampleAngle(self, Ekin: float, pos3d: tuple3d, material: Material) -> float:
         # Isotropic scattering angle
         assert self.rng is not None
         return self.rng.uniform(low=-1, high=1)
 
-    def evalStoppingPower(self, Ekin: float, pos: tuple3d, material: Material) -> float:
+    def evalStoppingPower(self, Ekin: float, pos3d: tuple3d, material: Material) -> float:
         if isinstance(self.sp, float) or isinstance(self.sp, int):
             return self.sp
         else:
             if self.sp == '(1 + x**2)':
-                return 1 + pos[0]**2
+                return 1 + pos3d[0]**2
             elif self.sp == '(1 + 0.05*cos(x*2*3.1415/20))':
-                return 1 + 0.05*np.cos(pos[0]*2*3.1415/20)
+                return 1 + 0.05*np.cos(pos3d[0]*2*3.1415/20)
             elif self.sp == '(1 + 0.5*sin(x))':
-                return 1.0 + 0.5*np.sin(pos[0])
+                return 1.0 + 0.5*np.sin(pos3d[0])
             elif self.sp == '0.2*(1 + E**2)':
                 return (1.0 + Ekin**2)*0.2
             else:
                 raise NotImplementedError('Invalid stopping power')
+
+    def getOmegaMoments(self, pos3d: tuple3d) -> Tuple[tuple3d, tuple3d]:
+        # 3D isotropic scattering: Mean is zero, variance is 1/3
+        return (np.array((0.0, 0.0, 0.0), dtype=float), np.array((1/3, 1/3, 1/3), dtype=float))
+
+    def getScatteringRate(self, pos3d: tuple3d) -> float:
+        if isinstance(self.Es, float) or isinstance(self.Es, int):
+            return self.Es
+        else:
+            if self.Es == '(1 + 0.5*sin(x))':  # TODO: sample!
+                return 1.0 + 0.5*np.sin(pos3d[0])
+            elif self.Es == '(100 + 10*sin(x))':
+                return 100.0 + 10.0*np.sin(pos3d[0])
+            elif self.Es == '(10 + 5*sin(x))':
+                return 10 + 5*np.sin(pos3d[0])
+            else:
+                raise NotImplementedError('Invalid scattering rate.')
+
+    def getDScatteringRate(self, pos3d: tuple3d) -> float:
+        if isinstance(self.Es, float) or isinstance(self.Es, int):
+            return 0.0
+        else:
+            if self.Es == '(1 + 0.5*sin(x))':  # TODO: sample!
+                return 0.5*np.cos(pos3d[0])
+            elif self.Es == '(100 + 10*sin(x))':
+                return 10.0*np.cos(pos3d[0])
+            elif self.Es == '(10 + 5*sin(x))':
+                return 5*np.cos(pos3d[0])
+            else:
+                raise NotImplementedError('Invalid scattering rate.')
 
 
 class SimplifiedEGSnrcElectron(ParticleModel):
