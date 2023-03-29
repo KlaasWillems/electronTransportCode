@@ -296,22 +296,17 @@ class KDParticleTracer(AnalogParticleTracer):
             # do analog step
             kin_pos3d, kin_vec3d, kin_energy, kin_index, step_kin = self.stepParticleAnalog(pos3d, vec3d, energy, index)
 
-            # If energy left
+            # If no energy left
             if kin_energy <= self.simOptions.minEnergy: # have estimator deposit all remaining energy
                 if self.simOptions.DEPOSIT_REMAINDING_E_LOCALLY:
                     kin_energy = 0
                 loopbool = False  # make this the last iteration
 
-                # Score QOIs
-                for estimator in estimatorList:
-                    estimator.updateEstimator((pos3d, kin_pos3d), (vec3d, kin_vec3d), (energy, kin_energy), kin_index)
+            # Score QOIs of kinetic step
+            for estimator in estimatorList:
+                estimator.updateEstimator((pos3d, kin_pos3d), (vec3d, kin_vec3d), (energy, kin_energy), kin_index)
 
-                pos3d = kin_pos3d
-                vec3d = kin_vec3d
-                energy = kin_energy
-                index = kin_index
-
-            else:  # Do diffusive step
+            if kin_energy > self.simOptions.minEnergy:  # Do diffusive step if energy left
                 step_diff = self.dS - (step_kin % self.dS)
 
                 diff_pos3d, diff_vec3d, diff_energy, diff_index = self.stepParticleDiffusive(kin_pos3d, kin_vec3d, kin_energy, kin_index, step_diff)
@@ -404,7 +399,7 @@ class KDParticleTracer(AnalogParticleTracer):
 
         # Apply diffusive step
         xi = self.simOptions.rng.normal(size=(3, ))
-        new_pos3d = pos3d + A_coeff*xi + np.sqrt(2*D_coeff*stepsize)*xi
+        new_pos3d = pos3d + A_coeff*stepsize + np.sqrt(2*D_coeff*stepsize)*xi
 
         # Find equivalent kinetic step
         pos_delta = new_pos3d - pos3d
@@ -420,10 +415,13 @@ class KDParticleTracer(AnalogParticleTracer):
             new_energy = energy - deltaE
 
             # Figure out if the particle did not exceed the amount of energy it had left
-            if new_energy < self.simOptions.minEnergy:  # linearly back up such that stepsize is consistent with energy loss
-                step_lin = equi_step*(energy - self.simOptions.minEnergy)/deltaE
-                new_pos3d_lin = pos3d + step_lin*equi_vec
-                return new_pos3d_lin, vec3d, self.simOptions.minEnergy, index
+            if new_energy < self.simOptions.minEnergy:
+                return pos3d, vec3d, energy, index
+
+                # linearly back up such that stepsize is consistent with energy loss
+                # step_lin = equi_step*(energy - self.simOptions.minEnergy)/deltaE
+                # new_pos3d_lin = pos3d + step_lin*equi_vec
+                # return new_pos3d_lin, vec3d, self.simOptions.minEnergy, index
             else:
                 return new_pos3d, vec3d, new_energy, index
 
