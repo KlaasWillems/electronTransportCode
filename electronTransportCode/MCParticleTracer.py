@@ -53,7 +53,7 @@ class AnalogParticleTracer:
 
         # Run simulation
         print(f'Proc {myrank} starting simulation of {particles_per_proc} particles.')
-        self.__call__(particles_per_proc, estimatorList)
+        self.__call__(particles_per_proc, estimatorList, logAmount=logAmount)
 
         # Gather results
         for estimator in estimatorList:
@@ -73,6 +73,7 @@ class AnalogParticleTracer:
             particle (Optional[ParticleModel]) : If particle is not None, make particle self.particle and simulate it.
 
         """
+        myrank = MPI.COMM_WORLD.Get_rank()
 
         if particle is not None:
             self.particle = particle
@@ -86,7 +87,7 @@ class AnalogParticleTracer:
 
             if particleID % logAmount == 0:  # every 1000 particles
                 t2 = time.perf_counter()
-                print(f'Last {logAmount} particles took {t2-t1} seconds. {100*particleID/nbParticles}% completed.')
+                print(f'Process: {myrank}, type: {self.__class__.__name__}. Last {logAmount} particles took {t2-t1} seconds. {100*particleID/nbParticles}% completed.')
                 t1 = time.perf_counter()
 
         return estimators
