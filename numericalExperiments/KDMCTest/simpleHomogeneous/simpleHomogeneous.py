@@ -17,23 +17,23 @@ zmin = -xmax; zmax = xmax; zbins = 1
 simDomain = SimulationDomain(ymin, ymax, zmin, zmax, ybins, zbins, material=unitDensityMaterial)
 
 # Set up initial conditions
-eSource: float = 1.0  # dummy
 SEED: int = 4  # Random number generator seed
-pointSourceSim = KDTestSource(minEnergy=0.0, rngSeed=SEED, eSource=eSource)
+
 
 scatteringRate1 = 0.1; scatteringRate2 = 1.0; scatteringRate3 = 10.0
 particle1 = DiffusionTestParticle(Es=scatteringRate1, sp=1.0)
 particle2 = DiffusionTestParticle(Es=scatteringRate2, sp=1.0)
 particle3 = DiffusionTestParticle(Es=scatteringRate3, sp=1.0)
 
-particleTracerK = AnalogParticleTracer(particle=None, simOptions=pointSourceSim, simDomain=simDomain)
-particleTracerKD = KDParticleTracer(particle=None, simOptions=pointSourceSim, simDomain=simDomain, dS = eSource)  # stepsize is final time!
-
 if __name__ == '__main__':
 
     nproc = MPI.COMM_WORLD.Get_size()
+    eSource = float(sys.argv[1])
 
-    pointSourceSim.eSource = float(sys.argv[1])
+    pointSourceSim = KDTestSource(minEnergy=0.0, rngSeed=SEED, eSource=eSource)
+    particleTracerK = AnalogParticleTracer(particle=None, simOptions=pointSourceSim, simDomain=simDomain)
+    particleTracerKD = KDParticleTracer(particle=None, simOptions=pointSourceSim, simDomain=simDomain, dS = eSource)  # stepsize is final time!
+
     NB_PARTICLES = int(sys.argv[2])
     NB_PARTICLES_PER_PROC = int(NB_PARTICLES/nproc)
     NB_PARTICLES = NB_PARTICLES_PER_PROC*nproc

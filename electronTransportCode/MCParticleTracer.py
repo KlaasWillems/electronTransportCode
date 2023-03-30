@@ -349,26 +349,27 @@ class KDParticleTracer(AnalogParticleTracer):
         Sigma_s = self.particle.getScatteringRate(pos3d)  # TODO: add material and energy dependence (also with the derivative)
 
         # intermediate results
-        SigmaStepsize = Sigma_s*stepsize
-        exp1: float = np.exp(-SigmaStepsize)
-        exp2: float = np.exp(-2*SigmaStepsize)
+        stepsizeSigma2 = stepsize*(Sigma_s**2)
+        sigmaStepsize = Sigma_s*stepsize
+        exp1: float = np.exp(-sigmaStepsize)
+        exp2: float = np.exp(-2*sigmaStepsize)
         vec_mean_dev = vec3d - mu_omega
         vec_mean_dev2 = vec_mean_dev**2
 
         # Heterogeneity correction
-        het1 = 0.5*vec_mean_dev2*(exp2 + 2*SigmaStepsize*exp1 - 1.0)/(stepsize*Sigma_s**2)
-        het2 = var_omega*(2*exp1 + SigmaStepsize + SigmaStepsize*exp1 - 2.0)/(stepsize*Sigma_s**2)
-        het3 = var_omega*(SigmaStepsize*exp1 - 1.0 + exp1)/Sigma_s
-        het4 = vec_mean_dev2*(SigmaStepsize*exp1 - exp1 + exp2)/Sigma_s
+        het1 = 0.5*vec_mean_dev2*(exp2 + 2*sigmaStepsize*exp1 - 1.0)/stepsizeSigma2
+        het2 = var_omega*(2*exp1 + sigmaStepsize + sigmaStepsize*exp1 - 2.0)/stepsizeSigma2
+        het3 = var_omega*(sigmaStepsize*exp1 - 1.0 + exp1)/Sigma_s
+        het4 = vec_mean_dev2*(sigmaStepsize*exp1 - exp1 + exp2)/Sigma_s
         het_correction = het1 - het2 - het3 + het4
 
         # Mean
         dRdx = self.particle.getDScatteringRate(pos3d)
-        mean: tuple3d = mu_omega + (1 - exp1)*vec_mean_dev/SigmaStepsize + het_correction*dRdx
+        mean: tuple3d = mu_omega + (1 - exp1)*vec_mean_dev/sigmaStepsize + het_correction*dRdx
 
         # Variance
-        var_term1 = vec_mean_dev2*(1.0 - exp1*(2*SigmaStepsize) - exp2)/(2*SigmaStepsize)
-        var_term2 = var_omega*(-2.0 + 2*exp1 + SigmaStepsize + SigmaStepsize*exp1)/(SigmaStepsize)
+        var_term1 = vec_mean_dev2*(1.0 - exp1*2*sigmaStepsize - exp2)/(2*stepsizeSigma2)
+        var_term2 = var_omega*(2*exp1 + sigmaStepsize + sigmaStepsize*exp1 - 2.0)/stepsizeSigma2
 
         return mean, var_term1 + var_term2
 
@@ -411,7 +412,7 @@ class KDParticleTracer(AnalogParticleTracer):
         if equi_step < stepGeom: # diffusive step did not exceed boundaries
 
             # Decrement energy along step
-            deltaE = self.energyLoss(energy, pos3d, equi_step, index)
+            deltaE = self.energyLoss(energy, pos3d, stepsize, index)
             new_energy = energy - deltaE
 
             # Figure out if the particle did not exceed the amount of energy it had left
