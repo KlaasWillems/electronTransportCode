@@ -179,6 +179,10 @@ class DiffusionTestParticle(ParticleModel):
         else:
             if self.Es == '(1 + 0.5*sin(x))':
                 l = 1.0 + 0.5*np.sin(pos3d[0])
+            elif self.Es == '0.1*(1 + 0.5*sin(x))':
+                l = 0.1*(1.0 + 0.5*np.sin(pos3d[0]))
+            elif self.Es == '10*(1 + 0.5*sin(x))':
+                l = 10*(1.0 + 0.5*np.sin(pos3d[0]))
             elif self.Es == '(100 + 10*sin(x))':
                 l = 100.0 + 10.0*np.sin(pos3d[0])
             elif self.Es == '(10 + 5*sin(x))':
@@ -219,6 +223,10 @@ class DiffusionTestParticle(ParticleModel):
         else:
             if self.Es == '(1 + 0.5*sin(x))':
                 return 1.0 + 0.5*np.sin(pos3d[0])
+            elif self.Es == '0.1*(1 + 0.5*sin(x))':
+                return 0.1*(1.0 + 0.5*np.sin(pos3d[0]))
+            elif self.Es == '10*(1 + 0.5*sin(x))':
+                return 10*(1.0 + 0.5*np.sin(pos3d[0]))
             elif self.Es == '(100 + 10*sin(x))':
                 return 100.0 + 10.0*np.sin(pos3d[0])
             elif self.Es == '(10 + 5*sin(x))':
@@ -232,6 +240,10 @@ class DiffusionTestParticle(ParticleModel):
         else:
             if self.Es == '(1 + 0.5*sin(x))':
                 return 0.5*np.cos(pos3d[0])
+            elif self.Es == '0.1*(1 + 0.5*sin(x))':
+                return 0.05*np.cos(pos3d[0])
+            elif self.Es == '10*(1 + 0.5*sin(x))':
+                return 5*np.cos(pos3d[0])
             elif self.Es == '(100 + 10*sin(x))':
                 return 10.0*np.cos(pos3d[0])
             elif self.Es == '(10 + 5*sin(x))':
