@@ -35,11 +35,6 @@ class MCEstimator(ABC):
         """
 
     @abstractmethod
-    def __add__(self, other: MCEstimator) -> MCEstimator:
-        """Add results of this estimator to results of another estimator.
-        """
-
-    @abstractmethod
     def combineEstimators(self, particles_per_proc: int, root: int = 0) -> None:
         """Combine estimators from multiple processors into one.
         """
@@ -97,17 +92,6 @@ class TrackEndEstimator(MCEstimator):
         binCenter = (binEdge[:-1] + binEdge[1:])/2.0
         return binCenter, binVal
 
-    def __add__(self, other: MCEstimator) -> MCEstimator:
-        if isinstance(other, TrackEndEstimator):
-            assert self.simDomain == other.simDomain
-            assert self.setting == other.setting
-            new = TrackEndEstimator(self.simDomain, other.nb_particles+self.nb_particles, self.setting)
-            new.scoreMatrix = np.concatenate((self.scoreMatrix, other.scoreMatrix))
-            new.index = self.nb_particles + other.nb_particles
-            return new
-        else:
-            raise ValueError('Not adding the same estimators!')
-
     def combineEstimators(self, particles_per_proc: int, root: int = 0) -> None:
         myrank = MPI.COMM_WORLD.Get_rank()
         nproc = MPI.COMM_WORLD.Get_size()
@@ -154,15 +138,6 @@ class DoseEstimator(MCEstimator):
         for index in range(self.simDomain.xbins*self.simDomain.ybins):
             out[index] /= self.simDomain.getMaterial(index).rho*self.simDomain.dA  # To Mev/g
         return out
-
-    def __add__(self, other: MCEstimator) -> MCEstimator:
-        if isinstance(other, DoseEstimator):
-            assert self.simDomain == other.simDomain
-            new = DoseEstimator(self.simDomain)
-            new.scoreMatrix = self.scoreMatrix + other.scoreMatrix
-            return new
-        else:
-            raise ValueError('Not adding the same estimators!')
 
     def combineEstimators(self, particles_per_proc: int, root: int = 0) -> None:
         myrank = MPI.COMM_WORLD.Get_rank()
@@ -213,16 +188,6 @@ class FluenceEstimator(MCEstimator):
             self.Erange = np.logspace(np.log10(self.Emin), np.log10(self.Emax), self.Ebins+1)
         else:
             raise ValueError('Spacing argument is invalid. Should be "lin" or "log".')
-
-    def __add__(self, other: MCEstimator) -> MCEstimator:
-        if isinstance(other, FluenceEstimator):
-            assert self.simDomain == other.simDomain
-            assert self.Ebins == other.Ebins and self.Emin == other.Emin and self.Emax == other.Emax and self.spacing == other.spacing
-            new = FluenceEstimator(self.simDomain, self.Emin, self.Emax, self.Ebins, self.spacing)
-            new.scoreMatrix = self.scoreMatrix + other.scoreMatrix
-            return new
-        else:
-            raise ValueError('Not adding the same estimators!')
 
     def getEstimator(self) -> np.ndarray:
         return self.scoreMatrix/self.simDomain.dA  # type: ignore
