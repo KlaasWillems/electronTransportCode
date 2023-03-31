@@ -140,7 +140,7 @@ class AnalogParticleTracer:
         # Step until energy is smaller than threshold
         while loopbool:
             assert energy > self.simOptions.minEnergy, f'{energy=}'
-            new_pos3d, new_vec3d, new_energy, new_index, _ = self.stepParticleAnalog(pos3d, vec3d, energy, index)
+            new_pos3d, new_vec3d, new_energy, new_index, step_kin = self.stepParticleAnalog(pos3d, vec3d, energy, index)
 
             if new_energy <= self.simOptions.minEnergy: # have estimator deposit all remaining energy
                 if self.simOptions.DEPOSIT_REMAINDING_E_LOCALLY:
@@ -148,7 +148,7 @@ class AnalogParticleTracer:
                 loopbool = False  # make this the last iterations
 
             for estimator in estimatorList:
-                estimator.updateEstimator((pos3d, new_pos3d), (vec3d, new_vec3d), (energy, new_energy), index)
+                estimator.updateEstimator((pos3d, new_pos3d), (vec3d, new_vec3d), (energy, new_energy), index, step_kin)
 
             pos3d = new_pos3d
             vec3d = new_vec3d
@@ -304,7 +304,7 @@ class KDParticleTracer(AnalogParticleTracer):
 
             # Score QOIs of kinetic step
             for estimator in estimatorList:
-                estimator.updateEstimator((pos3d, kin_pos3d), (vec3d, kin_vec3d), (energy, kin_energy), kin_index)
+                estimator.updateEstimator((pos3d, kin_pos3d), (vec3d, kin_vec3d), (energy, kin_energy), kin_index, step_kin)
 
             if kin_energy > self.simOptions.minEnergy:  # Do diffusive step if energy left
                 step_diff = self.dS - (step_kin % self.dS)
@@ -321,7 +321,7 @@ class KDParticleTracer(AnalogParticleTracer):
 
                 # Score QOIs
                 for estimator in estimatorList:
-                    estimator.updateEstimator((kin_pos3d, diff_pos3d), (kin_vec3d, diff_vec3d), (kin_energy, diff_energy), kin_index)
+                    estimator.updateEstimator((kin_pos3d, diff_pos3d), (kin_vec3d, diff_vec3d), (kin_energy, diff_energy), kin_index, step_diff)
 
                 # set final state
                 pos3d = diff_pos3d

@@ -16,7 +16,7 @@ class MCEstimator(ABC):
         self.scoreMatrix: npt.NDArray
 
     @abstractmethod
-    def updateEstimator(self, posTuple: tuple[tuple3d, tuple3d], vecTuple: tuple[tuple3d, tuple3d], energyTuple: tuple[float, float], index: int) -> None:
+    def updateEstimator(self, posTuple: tuple[tuple3d, tuple3d], vecTuple: tuple[tuple3d, tuple3d], energyTuple: tuple[float, float], index: int, stepsize: float) -> None:
         """Score quantity of interest after a collision
 
         Args:
@@ -56,7 +56,7 @@ class TrackEndEstimator(MCEstimator):
         self.index: int = 0
         self.setting = setting
 
-    def updateEstimator(self, posTuple: tuple[tuple3d, tuple3d], vecTuple: tuple[tuple3d, tuple3d], energyTuple: tuple[float, float], index: int) -> None:
+    def updateEstimator(self, posTuple: tuple[tuple3d, tuple3d], vecTuple: tuple[tuple3d, tuple3d], energyTuple: tuple[float, float], index: int, stepsize: float) -> None:
         _, new_energy = energyTuple
         _, new_pos = posTuple
         if new_energy == 0.0:
@@ -119,7 +119,7 @@ class DoseEstimator(MCEstimator):
         super().__init__(simDomain)
         self.scoreMatrix = np.zeros((self.simDomain.xbins*self.simDomain.ybins, ))  # Energy relative to ERE
 
-    def updateEstimator(self, posTuple: tuple[tuple3d, tuple3d], vecTuple: tuple[tuple3d, tuple3d], energyTuple: tuple[float, float], index: int) -> None:
+    def updateEstimator(self, posTuple: tuple[tuple3d, tuple3d], vecTuple: tuple[tuple3d, tuple3d], energyTuple: tuple[float, float], index: int, stepsize: float) -> None:
         """Score energy at cell
 
         Args:
@@ -192,17 +192,14 @@ class FluenceEstimator(MCEstimator):
     def getEstimator(self) -> np.ndarray:
         return self.scoreMatrix/self.simDomain.dA  # type: ignore
 
-    def updateEstimator(self, posTuple: tuple[tuple3d, tuple3d], vecTuple: tuple[tuple3d, tuple3d], energyTuple: tuple[float, float], index: int) -> None:
-
+    def updateEstimator(self, posTuple: tuple[tuple3d, tuple3d], vecTuple: tuple[tuple3d, tuple3d], energyTuple: tuple[float, float], index: int, stepsize: float) -> None:
         # Unpack
         energy, newEnergy = energyTuple
-        pos, new_pos = posTuple
 
         assert self.Emin <= energy <= self.Emax
         assert self.Emin <= newEnergy <= self.Emax
 
         dE = energy - newEnergy
-        stepsize: float = np.sqrt((pos[0] - new_pos[0])**2 + (pos[1] - new_pos[1])**2 + (pos[2] - new_pos[2])**2)
 
         # bin the energies
         bin1, bin2 = np.searchsorted(self.Erange, (energy, newEnergy), side='right')
