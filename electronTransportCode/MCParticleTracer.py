@@ -223,7 +223,7 @@ class AnalogParticleTracer:
 
             # polar scattering angle
             cost = self.particle.sampleAngle(new_energy, new_pos3d, self.simDomain.getMaterial(index))  # anisotropic scattering angle (mu)
-            sint = np.sqrt(1 - cost**2)*self.simOptions.rng.choice([-1, 1])  # scatter left or right with equal probability
+            sint = np.sqrt(1 - cost**2)  # scatter left or right with equal probability
 
             # azimuthal scattering
             phi = self.simOptions.rng.uniform(low=0.0, high=2*np.pi)

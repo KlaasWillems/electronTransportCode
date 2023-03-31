@@ -70,8 +70,7 @@ class PointSource(SimOptions):
         """
         # isotropic cos(theta)
         cost = self.rng.uniform(low=-1, high=1)
-        sign = self.rng.choice([-1, 1])
-        sint = np.sqrt(1 - cost**2)*sign  # scatter left or right with equal probability
+        sint = np.sqrt(1 - cost**2)  # scatter left or right with equal probability
 
         # uniformly distributed azimuthal scattering angle
         phi = self.rng.uniform(low=0.0, high=2*np.pi)
