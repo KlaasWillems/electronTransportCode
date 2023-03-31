@@ -221,29 +221,8 @@ class AnalogParticleTracer:
             new_vec3d: tuple3d = np.zeros_like(vec3d, dtype=float)
             new_index = index
 
-            # polar scattering angle
-            cost = self.particle.sampleAngle(new_energy, new_pos3d, self.simDomain.getMaterial(index))  # anisotropic scattering angle (mu)
-            sint = np.sqrt(1 - cost**2)  # scatter left or right with equal probability
+            new_vec3d = self.particle.sampleNewVec(new_pos3d, vec3d, new_energy, self.simDomain.getMaterial(index))
 
-            # azimuthal scattering
-            phi = self.simOptions.rng.uniform(low=0.0, high=2*np.pi)
-            cosphi = np.cos(phi)
-            sinphi = np.sin(phi)
-
-            # Rotation matrices (See penelope documentation eq. 1.131)
-            if np.isclose(np.abs(vec3d[2]), 1.0, rtol=1e-14) or self.simOptions.SAMPLE_NEW_ABSOLUTE_DIRECTION:  # indeterminate case
-                sign = np.sign(vec3d[2])
-                new_vec3d[0] = sign*sint*cosphi
-                new_vec3d[1] = sign*sint*sinphi
-                new_vec3d[2] = sign*cost
-            else:
-                tempVar = np.sqrt(1-np.power(vec3d[2], 2))
-                new_vec3d[0] = vec3d[0]*cost + sint*(vec3d[0]*vec3d[2]*cosphi - vec3d[1]*sinphi)/tempVar
-                new_vec3d[1] = vec3d[1]*cost + sint*(vec3d[1]*vec3d[2]*cosphi + vec3d[0]*sinphi)/tempVar
-                new_vec3d[2] = vec3d[2]*cost - tempVar*sint*cosphi
-
-            # normalized for security
-            new_vec3d = new_vec3d/np.linalg.norm(new_vec3d)
 
         else:  # Next event is grid cell crossing
             new_vec3d = vec3d
