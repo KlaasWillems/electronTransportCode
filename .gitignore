@@ -4,3 +4,5 @@
 .mypy_cache
 *.ipynb_checkpoints
 .pylintrc
+*.out
+*.slurm
