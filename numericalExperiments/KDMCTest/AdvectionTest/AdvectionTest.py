@@ -20,7 +20,7 @@ simDomain = SimulationDomain(ymin, ymax, zmin, zmax, ybins, zbins, material=unit
 SEED: int = 4  # Random number generator seed
 
 scatteringRate1 = '0.1*(1 + 0.5*sin(x))'; scatteringRate2 = '(1 + 0.5*sin(x))'; scatteringRate3 = '10*(1 + 0.5*sin(x))'
-sp = '0.2*(1 + E**2)'
+sp = 1.0
 particle1 = DiffusionTestParticlev2(Es=scatteringRate1, sp=sp)
 particle2 = DiffusionTestParticlev2(Es=scatteringRate2, sp=sp)
 particle3 = DiffusionTestParticlev2(Es=scatteringRate3, sp=sp)
