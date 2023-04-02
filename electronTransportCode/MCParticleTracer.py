@@ -160,7 +160,7 @@ class AnalogParticleTracer:
         # Step until energy is smaller than threshold
         while loopbool:
             assert energy > self.simOptions.minEnergy, f'{energy=}'
-            new_pos3d, new_vec3d, new_energy, new_index, step_kin = self.stepParticleAnalog(pos3d, vec3d, energy, index)
+            new_pos3d, new_vec3d, new_energy, new_index, step_kin, kin_stepped = self.stepParticleAnalog(pos3d, vec3d, energy, index)
 
             if new_energy <= self.simOptions.minEnergy: # have estimator deposit all remaining energy
                 if self.simOptions.DEPOSIT_REMAINDING_E_LOCALLY:
@@ -175,12 +175,11 @@ class AnalogParticleTracer:
             energy = new_energy
             index = new_index
 
-            # Logging
-            counter += 1
+            if kin_stepped: counter += 1
 
         self.updateAnalytics(counter)
 
-    def stepParticleAnalog(self, pos3d: tuple3d, vec3d: tuple3d, energy: float, index: int) -> tuple[tuple3d, tuple3d, float, int, float]:
+    def stepParticleAnalog(self, pos3d: tuple3d, vec3d: tuple3d, energy: float, index: int) -> tuple[tuple3d, tuple3d, float, int, float, bool]:
         """Transport particle and apply event.
         Algorithm:
             - Sample step size
@@ -208,6 +207,7 @@ class AnalogParticleTracer:
             vec (tuple2d): particle orientation at start of method
             energy (float): particle energy at start of method
             index (int): particle position in self.simDomain at start of method
+            kin_stepped (bool): if there was a collision event or not
 
         Returns:
             tuple[tuple2d, tuple2d, float, int, float]: state of particle after being transported to new event location and having that event applied. Final return value is the step size.
@@ -232,7 +232,7 @@ class AnalogParticleTracer:
             # linearly back up such that stepsize is consistent with energy loss
             step_lin = step*(energy - self.simOptions.minEnergy)/deltaE
             new_pos3d = pos3d + step_lin*vec3d
-            return new_pos3d, vec3d, self.simOptions.minEnergy, index, step_lin
+            return new_pos3d, vec3d, self.simOptions.minEnergy, index, step_lin, False
 
         # Select event
         if stepColl < stepGeom:  # Next event is collision
@@ -240,7 +240,7 @@ class AnalogParticleTracer:
             new_index = index
 
             new_vec3d = self.particle.sampleNewVec(new_pos3d, vec3d, new_energy, self.simDomain.getMaterial(index))
-
+            return new_pos3d, new_vec3d, new_energy, new_index, step, True
 
         else:  # Next event is grid cell crossing
             new_vec3d = vec3d
@@ -248,7 +248,7 @@ class AnalogParticleTracer:
             if domainEdge:  # Next event is domain edge crossing
                 new_energy = 0
 
-        return new_pos3d, new_vec3d, new_energy, new_index, step
+            return new_pos3d, new_vec3d, new_energy, new_index, step, False
 
 
 class KDParticleTracer(AnalogParticleTracer):
@@ -304,8 +304,8 @@ class KDParticleTracer(AnalogParticleTracer):
             assert energy > self.simOptions.minEnergy, f'{energy=}'
 
             # do analog step
-            kin_pos3d, kin_vec3d, kin_energy, kin_index, step_kin = self.stepParticleAnalog(pos3d, vec3d, energy, index)
-            kin_counter += 1
+            kin_pos3d, kin_vec3d, kin_energy, kin_index, step_kin, kin_stepped = self.stepParticleAnalog(pos3d, vec3d, energy, index)
+            if kin_stepped: kin_counter += 1
 
             # If no energy left
             if kin_energy <= self.simOptions.minEnergy: # have estimator deposit all remaining energy

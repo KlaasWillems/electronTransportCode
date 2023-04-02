@@ -12,7 +12,7 @@ from electronTransportCode.MCEstimator import TrackEndEstimator
 
 
 # Set up simulation domain
-xmax = 25
+xmax = 50000
 ymin = -xmax; ymax = xmax; ybins = 1  # No internal grid cell crossings
 zmin = -xmax; zmax = xmax; zbins = 1
 simDomain = SimulationDomain(ymin, ymax, zmin, zmax, ybins, zbins, material=unitDensityMaterial)
