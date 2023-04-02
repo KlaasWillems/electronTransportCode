@@ -47,6 +47,10 @@ if __name__ == '__main__':
     timingsK = np.zeros((nbSim, repeats))
     timingsKD = np.zeros((nbSim, repeats))
 
+    # --- Collision results
+    collisionsK = np.zeros((nbSim, ))  # Average amount of collisions for a particle
+    collisionsKD = np.zeros((nbSim, 2))  # Average amount of kinetic and diffusive collisions of a particle
+
     # --- Warm-up run
     if myrank == 0:
         print('Doing warm-up simulation...')
@@ -81,6 +85,12 @@ if __name__ == '__main__':
             if myrank == 0:
                 print(f'Scattering rate: {round(scatteringRateList[sim], 4)}, repeat: {repeat}, K time: {round(timingsK[sim, repeat], 4)}s, KD time: {round(timingsKD[sim, repeat], 4)}s')
 
+            # Store collision data
+            if repeat == repeats-1:
+                collisionsK[sim] = particleTracerK.averageNbCollisions
+                collisionsKD[sim, 0] = particleTracerKD.AvgNbAnalogCollisions
+                collisionsKD[sim, 1] = particleTracerKD.AvgNbDiffCollisions
+
     t2 = time.perf_counter()
 
     # --- Write timings to file
@@ -89,5 +99,5 @@ if __name__ == '__main__':
         print(f'Test took {t2-t1} seconds. Writing results...')
 
         # dump argv
-        tup = (timingsK, timingsKD, scatteringRateList, particleTracerKD.dS)
+        tup = (timingsK, timingsKD, scatteringRateList, particleTracerKD.dS, collisionsK, collisionsKD)
         pickle.dump(tup, open('data/timings.pkl', 'wb'))
