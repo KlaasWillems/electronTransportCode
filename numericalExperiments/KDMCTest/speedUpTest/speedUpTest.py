@@ -40,12 +40,10 @@ if __name__ == '__main__':
     nbSim = 10
     scatteringRateList = np.logspace(-2, 2, nbSim)
     particleList = [DiffusionTestParticlev2(Es=scatteringRateList[i], sp=sp) for i in range(nbSim)]
-    trackEndEstimatorKList = [TrackEndEstimator(simDomain, nb_particles=NB_PARTICLES_PER_PROC, setting='x') for i in range(nbSim)]
-    trackEndEstimatorKDList = [TrackEndEstimator(simDomain, nb_particles=NB_PARTICLES_PER_PROC, setting='x') for i in range(nbSim)]
     warmUpEstimator = TrackEndEstimator(simDomain, nb_particles=NB_PARTICLES_PER_PROC, setting='x')
 
     # --- Timing results
-    repeats = 1
+    repeats = 5
     timingsK = np.zeros((nbSim, repeats))
     timingsKD = np.zeros((nbSim, repeats))
 
@@ -59,6 +57,9 @@ if __name__ == '__main__':
 
     for sim in range(nbSim):
         for repeat in range(repeats):
+            trackEndEstimatorKList = [TrackEndEstimator(simDomain, nb_particles=NB_PARTICLES_PER_PROC, setting='x') for i in range(nbSim)]
+            trackEndEstimatorKDList = [TrackEndEstimator(simDomain, nb_particles=NB_PARTICLES_PER_PROC, setting='x') for i in range(nbSim)]
+
             MPI.COMM_WORLD.Barrier()
             t3 = time.perf_counter()
 
