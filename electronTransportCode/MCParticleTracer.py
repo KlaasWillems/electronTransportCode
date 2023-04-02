@@ -215,6 +215,8 @@ class AnalogParticleTracer:
             tuple[tuple2d, tuple2d, float, int, float]: state of particle after being transported to new event location and having that event applied. Final return value is the step size.
         """
         assert self.particle is not None
+        kin_stepped: bool = False
+
         # Sample step size
         stepColl = self.particle.samplePathlength(energy, pos3d, self.simDomain.getMaterial(index))
         stepGeom, domainEdge, new_pos3d_geom = self.simDomain.getCellEdgeInformation(pos3d, vec3d, index)
@@ -224,6 +226,7 @@ class AnalogParticleTracer:
         if step == stepGeom:
             new_pos3d = new_pos3d_geom
         else:
+            kin_stepped = True
             new_pos3d = pos3d + step*vec3d
 
         # Decrement energy along step
@@ -234,7 +237,7 @@ class AnalogParticleTracer:
             # linearly back up such that stepsize is consistent with energy loss
             step_lin = step*(energy - self.simOptions.minEnergy)/deltaE
             new_pos3d = pos3d + step_lin*vec3d
-            return new_pos3d, vec3d, self.simOptions.minEnergy, index, step_lin, False
+            return new_pos3d, vec3d, self.simOptions.minEnergy, index, step_lin, kin_stepped
 
         # Select event
         if stepColl < stepGeom:  # Next event is collision
@@ -242,7 +245,7 @@ class AnalogParticleTracer:
             new_index = index
 
             new_vec3d = self.particle.sampleNewVec(new_pos3d, vec3d, new_energy, self.simDomain.getMaterial(index))
-            return new_pos3d, new_vec3d, new_energy, new_index, step, True
+            return new_pos3d, new_vec3d, new_energy, new_index, step, kin_stepped
 
         else:  # Next event is grid cell crossing
             new_vec3d = vec3d
@@ -250,7 +253,7 @@ class AnalogParticleTracer:
             if domainEdge:  # Next event is domain edge crossing
                 new_energy = 0
 
-            return new_pos3d, new_vec3d, new_energy, new_index, step, False
+            return new_pos3d, new_vec3d, new_energy, new_index, step, kin_stepped
 
 
 class KDParticleTracer(AnalogParticleTracer):
