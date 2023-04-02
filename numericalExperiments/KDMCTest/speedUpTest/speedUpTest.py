@@ -79,7 +79,7 @@ if __name__ == '__main__':
             timingsK[sim, repeat] = t4-t3
             timingsKD[sim, repeat] = t5-t4
             if myrank == 0:
-                print(f'Scattering rate: {scatteringRateList[sim]}, repeat: {repeat}, K time: {round(timingsK[sim, repeat], 4)}s, KD time: {round(timingsKD[sim, repeat], 4)}s')
+                print(f'Scattering rate: {round(scatteringRateList[sim], 4)}, repeat: {repeat}, K time: {round(timingsK[sim, repeat], 4)}s, KD time: {round(timingsKD[sim, repeat], 4)}s')
 
     t2 = time.perf_counter()
 
