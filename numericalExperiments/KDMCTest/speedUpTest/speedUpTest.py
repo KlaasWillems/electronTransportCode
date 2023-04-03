@@ -43,7 +43,7 @@ if __name__ == '__main__':
     warmUpEstimator = TrackEndEstimator(simDomain, nb_particles=NB_PARTICLES_PER_PROC, setting='x')
 
     # --- Timing results
-    repeats = 5
+    repeats = 1
     timingsK = np.zeros((nbSim, repeats))
     timingsKD = np.zeros((nbSim, repeats))
 
