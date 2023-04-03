@@ -266,8 +266,6 @@ class AnalogParticleTracer(ParticleTracer):
         self.particleIndex: int = 0
 
     def updateAnalytics(self, NbCollisions: int) -> None:
-        # assert isinstance(kwargs, int)
-        # NbCollisions: int = kwargs
         self.averageNbCollisions = (self.particleIndex*self.averageNbCollisions + NbCollisions)/(self.particleIndex+1)
         self.particleIndex += 1
 
@@ -284,8 +282,6 @@ class KDParticleTracer(ParticleTracer):
         self.AvgNbDiffCollisions: float = 0.0
 
     def updateAnalytics(self, NbAnalogCollisions: int, NbDiffCollisions: int) -> None:
-        # assert isinstance(kwargs, tuple) and len(kwargs) == 2
-        # NbAnalogCollisions, NbDiffCollisions = kwargs
         self.AvgNbAnalogCollisions = (self.particleIndex*self.AvgNbAnalogCollisions + NbAnalogCollisions)/(self.particleIndex+1)
         self.AvgNbDiffCollisions = (self.particleIndex*self.AvgNbDiffCollisions + NbDiffCollisions)/(self.particleIndex+1)
         self.particleIndex += 1
