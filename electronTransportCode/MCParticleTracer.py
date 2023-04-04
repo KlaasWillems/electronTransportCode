@@ -399,8 +399,12 @@ class KDParticleTracer(ParticleTracer):
         mean: tuple3d = mu_omega + (1 - exp1)*vec_mean_dev/sigmaStepsize + het_correction*dRdx
 
         # Variance
-        var_term1 = vec_mean_dev2*(1.0 - exp1*2*sigmaStepsize - exp2)/(2*stepsizeSigma2)
-        var_term2 = var_omega*(2*exp1 + sigmaStepsize + sigmaStepsize*exp1 - 2.0)/stepsizeSigma2
+        temp1 = 1.0 - exp1*2*sigmaStepsize - exp2  # Due to catastrophic cancellation, this thing can become negative. In this case, put it to zero.
+        if temp1 < 0: temp1 = 0
+        var_term1 = vec_mean_dev2*temp1/(2*stepsizeSigma2)
+        temp2 = 2*exp1 + sigmaStepsize + sigmaStepsize*exp1 - 2.0  # Due to catastrophic cancellation, this thing can become negative. In this case, put it to zero.
+        if temp2 < 0: temp2 = 0
+        var_term2 = var_omega*temp2/stepsizeSigma2
 
         return mean, var_term1 + var_term2
 
