@@ -183,7 +183,7 @@ class ParticleTracer:
 
         # Select event
         if stepColl < stepGeom:  # Next event is collision
-            new_vec3d: tuple3d = np.zeros_like(vec3d, dtype=float)
+            new_vec3d: tuple3d = np.array((0.0, 0.0, 0.0), dtype=float)
             new_index = index
 
             new_vec3d = self.particle.sampleNewVec(new_pos3d, vec3d, new_energy, self.simDomain.getMaterial(index))

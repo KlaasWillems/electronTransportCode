@@ -170,7 +170,7 @@ class SimulationDomain:
         _, x0, y0 = pos
         _, vx, vy = vec
         row, col = self.getCoord(index)
-        new_pos = np.zeros_like(pos)
+        new_pos = np.array((0.0, 0.0, 0.0), dtype=float)
 
         # cell boundaries
         xmincell = self.xrange[col]
