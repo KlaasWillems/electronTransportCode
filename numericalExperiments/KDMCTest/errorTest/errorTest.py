@@ -26,11 +26,11 @@ particle1 = DiffusionTestParticle(Es=scatteringRate1, sp=1.0)
 if __name__ == '__main__':
     myrank = MPI.COMM_WORLD.Get_rank()
 
+    eSource = 1.0
     nbSims = 10
-    dsArray = np.logspace(-2, 0, nbSims)
+    dsArray = np.logspace(-2, np.log10(eSource), nbSims)
 
     nproc = MPI.COMM_WORLD.Get_size()
-    eSource = 5.0
 
     pointSourceSim = KDTestSource(minEnergy=0.0, rngSeed=SEED, eSource=eSource)
     particleTracerK = AnalogParticleTracer(particle=None, simOptions=pointSourceSim, simDomain=simDomain)
