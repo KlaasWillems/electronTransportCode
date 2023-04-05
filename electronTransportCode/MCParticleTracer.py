@@ -401,10 +401,10 @@ class KDParticleTracer(ParticleTracer, ABC):
         # Find equivalent kinetic step
         pos_delta = new_pos3d - pos3d
         equi_step = np.sqrt(pos_delta[0]**2 + pos_delta[1]**2 + pos_delta[2]**2)
-        equi_vec = pos_delta/equi_step
-
         if equi_step == 0.0:  # In case mean and variance was zero, don't move particle
             return pos3d, vec3d, energy, index, False
+
+        equi_vec = pos_delta/equi_step
 
         # Figure out if the particle when out of the grid cell.
         stepGeom, _, _ = self.simDomain.getCellEdgeInformation(pos3d, equi_vec, index)
