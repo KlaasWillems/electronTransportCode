@@ -472,7 +472,7 @@ class KDMC(KDParticleTracer):
         return mean, var_term1 + var_term2
 
 
-class KDsMC(KDParticleTracer):
+class KDSMC(KDParticleTracer):
     """Implements KDMC using a mean and variance that doesn't incorporate the correlation between multiple time steps. The 's' stands for 'simple'.
     """
     def advectionDiffusionCoeff(self, pos3d: tuple3d, vec3d: tuple3d, stepsize: float) -> Tuple[tuple3d, tuple3d]:
