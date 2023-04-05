@@ -1,4 +1,4 @@
-from abc import abstractmethod
+from abc import abstractmethod, ABC
 import time
 from mpi4py import MPI
 from typing import Union, Tuple, Optional
@@ -11,7 +11,7 @@ from electronTransportCode.ProjectUtils import tuple3d, tuple3d
 from electronTransportCode.SimulationDomain import SimulationDomain
 
 
-class ParticleTracer:
+class ParticleTracer(ABC):
     """General Monte Carlo particle tracer object for radiation therapy. Particle move in a 3D domain however,
     estimation and grid cell crossing are only supported in 2D (yz-plane).
     """
@@ -211,6 +211,8 @@ class ParticleTracer:
 
 
 class AnalogParticleTracer(ParticleTracer):
+    """Analog particle tracer which executes each scattering collision explicitly.
+    """
 
     def traceParticle(self, estimators: Union[MCEstimator, tuple[MCEstimator, ...]]) -> None:
         """Step particle through simulation domain until its energy is below a threshold value. Estimator routine is called after each step for on-the-fly estimation.
@@ -270,7 +272,9 @@ class AnalogParticleTracer(ParticleTracer):
         self.particleIndex += 1
 
 
-class KDParticleTracer(ParticleTracer):
+class KDParticleTracer(ParticleTracer, ABC):
+    """Implements kinetic-diffusion Monte Carlo using a mean and variance.
+    """
 
     def __init__(self, simOptions: SimOptions, simDomain: SimulationDomain, particle: Optional[ParticleModel], dS: Optional[float] = None) -> None:
         super().__init__(simOptions, simDomain, particle)
@@ -364,50 +368,6 @@ class KDParticleTracer(ParticleTracer):
 
         self.updateAnalytics(kin_counter, diff_counter)
 
-    def advectionDiffusionCoeff(self, pos3d: tuple3d, vec3d: tuple3d, stepsize: float) -> Tuple[tuple3d, tuple3d]:
-        """Return advection and diffusion coefficient
-
-        Args:
-            pos3d (tuple3d): Intermediate position x double prime
-            vec3d (tuple3d): final direction of travel on which the mean and variance are conditioned
-            stepsize (float): remaining 'time' for the diffusive movement
-
-        Returns:
-            Tuple[tuple3d, tuple3d]: Advection and diffusion coefficient
-        """
-        assert self.particle is not None
-        mu_omega, var_omega = self.particle.getOmegaMoments(pos3d)
-        Sigma_s = self.particle.getScatteringRate(pos3d)  # TODO: add material and energy dependence (also with the derivative)
-
-        # intermediate results
-        stepsizeSigma2 = stepsize*(Sigma_s**2)
-        sigmaStepsize = Sigma_s*stepsize
-        exp1: float = np.exp(-sigmaStepsize)
-        exp2: float = np.exp(-2*sigmaStepsize)
-        vec_mean_dev = vec3d - mu_omega
-        vec_mean_dev2 = vec_mean_dev**2
-
-        # Heterogeneity correction
-        het1 = 0.5*vec_mean_dev2*(exp2 + 2*sigmaStepsize*exp1 - 1.0)/stepsizeSigma2
-        het2 = var_omega*(2*exp1 + sigmaStepsize + sigmaStepsize*exp1 - 2.0)/stepsizeSigma2
-        het3 = var_omega*(sigmaStepsize*exp1 - 1.0 + exp1)/Sigma_s
-        het4 = vec_mean_dev2*(sigmaStepsize*exp1 - exp1 + exp2)/Sigma_s
-        het_correction = het1 - het2 - het3 + het4
-
-        # Mean
-        dRdx = self.particle.getDScatteringRate(pos3d)
-        mean: tuple3d = mu_omega + (1 - exp1)*vec_mean_dev/sigmaStepsize + het_correction*dRdx
-
-        # Variance
-        temp1 = 1.0 - exp1*2*sigmaStepsize - exp2  # Due to catastrophic cancellation, this thing can become negative. In this case, put it to zero.
-        if temp1 < 0: temp1 = 0
-        var_term1 = vec_mean_dev2*temp1/(2*stepsizeSigma2)
-        temp2 = 2*exp1 + sigmaStepsize + sigmaStepsize*exp1 - 2.0  # Due to catastrophic cancellation, this thing can become negative. In this case, put it to zero.
-        if temp2 < 0: temp2 = 0
-        var_term2 = var_omega*temp2/stepsizeSigma2
-
-        return mean, var_term1 + var_term2
-
     def stepParticleDiffusive(self, pos3d: tuple3d, vec3d: tuple3d, energy: float, index: int, stepsize: float) -> tuple[tuple3d, tuple3d, float, int, bool]:
         """Apply diffusive motion to particle
 
@@ -457,3 +417,67 @@ class KDParticleTracer(ParticleTracer):
 
         else: # diffusive step exceeded cell boundaries
             return pos3d, vec3d, energy, index, False  # don't move particle, return old state
+
+    @abstractmethod
+    def advectionDiffusionCoeff(self, pos3d: tuple3d, vec3d: tuple3d, stepsize: float) -> Tuple[tuple3d, tuple3d]:
+        pass
+
+class KDMC(KDParticleTracer):
+    """Implements kinetic-diffusion Monte Carlo using the mean and variance of kinetic motion conditioned on the final velocity.
+    """
+    def advectionDiffusionCoeff(self, pos3d: tuple3d, vec3d: tuple3d, stepsize: float) -> Tuple[tuple3d, tuple3d]:
+        """Return advection and diffusion coefficient
+
+        Args:
+            pos3d (tuple3d): Intermediate position x double prime
+            vec3d (tuple3d): final direction of travel on which the mean and variance are conditioned
+            stepsize (float): remaining 'time' for the diffusive movement
+
+        Returns:
+            Tuple[tuple3d, tuple3d]: Advection and diffusion coefficient
+        """
+        assert self.particle is not None
+        mu_omega, var_omega = self.particle.getOmegaMoments(pos3d)
+        Sigma_s = self.particle.getScatteringRate(pos3d)  # TODO: add material and energy dependence (also with the derivative)
+
+        # intermediate results
+        stepsizeSigma2 = stepsize*(Sigma_s**2)
+        sigmaStepsize = Sigma_s*stepsize
+        exp1: float = np.exp(-sigmaStepsize)
+        exp2: float = np.exp(-2*sigmaStepsize)
+        vec_mean_dev = vec3d - mu_omega
+        vec_mean_dev2 = vec_mean_dev**2
+
+        # Heterogeneity correction
+        het1 = 0.5*vec_mean_dev2*(exp2 + 2*sigmaStepsize*exp1 - 1.0)/stepsizeSigma2
+        het2 = var_omega*(2*exp1 + sigmaStepsize + sigmaStepsize*exp1 - 2.0)/stepsizeSigma2
+        het3 = var_omega*(sigmaStepsize*exp1 - 1.0 + exp1)/Sigma_s
+        het4 = vec_mean_dev2*(sigmaStepsize*exp1 - exp1 + exp2)/Sigma_s
+        het_correction = het1 - het2 - het3 + het4
+
+        # Mean
+        dRdx = self.particle.getDScatteringRate(pos3d)
+        mean: tuple3d = mu_omega + (1 - exp1)*vec_mean_dev/sigmaStepsize + het_correction*dRdx
+
+        # Variance
+        temp1 = 1.0 - exp1*2*sigmaStepsize - exp2  # Due to catastrophic cancellation, this thing can become negative. In this case, put it to zero.
+        if temp1 < 0: temp1 = 0
+        var_term1 = vec_mean_dev2*temp1/(2*stepsizeSigma2)
+        temp2 = 2*exp1 + sigmaStepsize + sigmaStepsize*exp1 - 2.0  # Due to catastrophic cancellation, this thing can become negative. In this case, put it to zero.
+        if temp2 < 0: temp2 = 0
+        var_term2 = var_omega*temp2/stepsizeSigma2
+
+        return mean, var_term1 + var_term2
+
+
+class KDsMC(KDParticleTracer):
+    """Implements KDMC using a mean and variance that doesn't incorporate the correlation between multiple time steps. The 's' stands for 'simple'.
+    """
+    def advectionDiffusionCoeff(self, pos3d: tuple3d, vec3d: tuple3d, stepsize: float) -> Tuple[tuple3d, tuple3d]:
+        raise NotImplementedError
+
+class KDDLMC(KDParticleTracer):
+    """Implements KDMC using the advection and diffusion coefficients from the diffusion limit.
+    """
+    def advectionDiffusionCoeff(self, pos3d: tuple3d, vec3d: tuple3d, stepsize: float) -> Tuple[tuple3d, tuple3d]:
+        raise NotImplementedError

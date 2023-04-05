@@ -6,7 +6,7 @@ from electronTransportCode.SimulationDomain import SimulationDomain
 from electronTransportCode.Material import unitDensityMaterial
 from electronTransportCode.SimOptions import KDTestSource
 from electronTransportCode.ParticleModel import DiffusionTestParticlev2
-from electronTransportCode.MCParticleTracer import AnalogParticleTracer, KDParticleTracer
+from electronTransportCode.MCParticleTracer import AnalogParticleTracer, KDMC
 from electronTransportCode.MCEstimator import TrackEndEstimator
 
 
@@ -32,8 +32,8 @@ if __name__ == '__main__':
 
     pointSourceSim = KDTestSource(minEnergy=0.0, rngSeed=SEED, eSource=eSource)
     particleTracerK = AnalogParticleTracer(particle=None, simOptions=pointSourceSim, simDomain=simDomain)
-    particleTracerKD1 = KDParticleTracer(particle=None, simOptions=pointSourceSim, simDomain=simDomain, dS = eSource)  # stepsize is final time!
-    particleTracerKD2 = KDParticleTracer(particle=None, simOptions=pointSourceSim, simDomain=simDomain, dS = eSource/2)
+    particleTracerKD1 = KDMC(particle=None, simOptions=pointSourceSim, simDomain=simDomain, dS = eSource)  # stepsize is final time!
+    particleTracerKD2 = KDMC(particle=None, simOptions=pointSourceSim, simDomain=simDomain, dS = eSource/2)
 
     NB_PARTICLES = int(sys.argv[2])
     NB_PARTICLES_PER_PROC = int(NB_PARTICLES/nproc)
