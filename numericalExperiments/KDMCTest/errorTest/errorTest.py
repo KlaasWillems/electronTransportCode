@@ -49,31 +49,31 @@ if __name__ == '__main__':
 
     # Run analog particle tracer
     t3 = time.perf_counter()
-    particleTracerK.runMultiProc(nbParticles=NB_PARTICLES, estimators=(TrackEndEstimatorK1, ), particle=particle1, file='data/TrackEndEstimatorK.pkl')
+    particleTracerK.runMultiProc(nbParticles=NB_PARTICLES, estimators=(TrackEndEstimatorK1, ), particle=particle1, file='data/TrackEndEstimatorK.pkl', verbose=False)
     t4 = time.perf_counter()
-    if myrank == 0: print(f'Analog particle tracer took {t4-t3}s')
+    if myrank == 0: print(f'Analog particle tracer took {round(t4-t3, 4)}s')
 
     # Run KD particle tracer
     for i in range(nbSims):
         particleTracerKD.dS = dsArray[i]
         t3 = time.perf_counter()
-        particleTracerKD.runMultiProc(nbParticles=NB_PARTICLES, estimators=(TEKDList[i], ), particle=particle1, file=f'data/TrackEndEstimatorKD{i}.pkl')
+        particleTracerKD.runMultiProc(nbParticles=NB_PARTICLES, estimators=(TEKDList[i], ), particle=particle1, file=f'data/TrackEndEstimatorKD{i}.pkl', verbose=False)
         t4 = time.perf_counter()
-        if myrank == 0: print(f'KDMC ds: {dsArray[i]} took {t4-t3}s')
+        if myrank == 0: print(f'KDMC ds: {dsArray[i]} took {round(t4-t3, 4)}s')
 
     # Run KDS particle tracer
     for i in range(nbSims):
         particleTracerKDS.dS = dsArray[i]
         t3 = time.perf_counter()
-        particleTracerKDS.runMultiProc(nbParticles=NB_PARTICLES, estimators=(TEKDList[i], ), particle=particle1, file=f'data/TrackEndEstimatorKDS{i}.pkl')
+        particleTracerKDS.runMultiProc(nbParticles=NB_PARTICLES, estimators=(TEKDSList[i], ), particle=particle1, file=f'data/TrackEndEstimatorKDS{i}.pkl', verbose=False)
         t4 = t4 = time.perf_counter()
-        if myrank == 0: print(f'KDSMC ds: {dsArray[i]} took {t4-t3}s')
+        if myrank == 0: print(f'KDSMC ds: {dsArray[i]} took {round(t4-t3, 4)}s')
 
     t2 = time.perf_counter()
 
     if myrank == 0:
         print('\n')
-        print(f'Simulation took {t2-t1} seconds. Writing results...')
+        print(f'Simulation took {round(t2-t1, 4)} seconds. Writing results...')
 
         # dump argv
         tup = (eSource, NB_PARTICLES, dsArray)
