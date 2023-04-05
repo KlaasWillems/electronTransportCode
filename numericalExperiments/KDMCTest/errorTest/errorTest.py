@@ -47,6 +47,14 @@ if __name__ == '__main__':
 
     t1 = time.perf_counter()
 
+    # Run KDS particle tracer
+    for i in range(nbSims):
+        particleTracerKDS.dS = dsArray[i]
+        t3 = time.perf_counter()
+        particleTracerKDS.runMultiProc(nbParticles=NB_PARTICLES, estimators=(TEKDSList[i], ), particle=particle1, file=f'data/TrackEndEstimatorKDS{i}.pkl', verbose=False)
+        t4 = t4 = time.perf_counter()
+        if myrank == 0: print(f'KDSMC ds: {dsArray[i]} took {round(t4-t3, 4)}s')
+
     # Run analog particle tracer
     t3 = time.perf_counter()
     particleTracerK.runMultiProc(nbParticles=NB_PARTICLES, estimators=(TrackEndEstimatorK1, ), particle=particle1, file='data/TrackEndEstimatorK.pkl', verbose=False)
@@ -60,14 +68,6 @@ if __name__ == '__main__':
         particleTracerKD.runMultiProc(nbParticles=NB_PARTICLES, estimators=(TEKDList[i], ), particle=particle1, file=f'data/TrackEndEstimatorKD{i}.pkl', verbose=False)
         t4 = time.perf_counter()
         if myrank == 0: print(f'KDMC ds: {dsArray[i]} took {round(t4-t3, 4)}s')
-
-    # Run KDS particle tracer
-    for i in range(nbSims):
-        particleTracerKDS.dS = dsArray[i]
-        t3 = time.perf_counter()
-        particleTracerKDS.runMultiProc(nbParticles=NB_PARTICLES, estimators=(TEKDSList[i], ), particle=particle1, file=f'data/TrackEndEstimatorKDS{i}.pkl', verbose=False)
-        t4 = t4 = time.perf_counter()
-        if myrank == 0: print(f'KDSMC ds: {dsArray[i]} took {round(t4-t3, 4)}s')
 
     t2 = time.perf_counter()
 
