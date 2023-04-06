@@ -91,7 +91,7 @@ class ParticleModel(ABC):
         """
         raise NotImplementedError
 
-    def getDScatteringRate(self, pos3d: tuple3d) -> float:
+    def getDScatteringRate(self, pos3d: tuple3d) -> tuple3d:
         """Return derivative of scattering rate with respect to x at position pos3d
 
         Args:
@@ -154,8 +154,8 @@ class PointSourceParticle(ParticleModel):
     def getScatteringRate(self, pos3d: tuple3d) -> float:
         return self.sigma
 
-    def getDScatteringRate(self, pos3d: tuple3d) -> float:
-        return 0.0
+    def getDScatteringRate(self, pos3d: tuple3d) -> tuple3d:
+        return np.array((0.0, 0.0, 0.0), dtype=float)
 
 
 class DiffusionTestParticle(ParticleModel):
@@ -187,6 +187,12 @@ class DiffusionTestParticle(ParticleModel):
                 l = 100.0 + 10.0*np.sin(pos3d[0])
             elif self.Es == '(10 + 5*sin(x))':
                 l = 10 + 5*np.sin(pos3d[0])
+            elif self.Es == '(1 + 0.5*sin(y))':
+                l = 1.0 + 0.5*np.sin(pos3d[1])
+            elif self.Es == '0.1*(1 + 0.5*sin(y))':
+                l = 0.1*(1.0 + 0.5*np.sin(pos3d[1]))
+            elif self.Es == '10*(1 + 0.5*sin(y))':
+                l = 10*(1.0 + 0.5*np.sin(pos3d[1]))
             else:
                 raise NotImplementedError('Invalid scattering rate.')
             return self.rng.exponential(scale=1.0/l)
@@ -231,29 +237,41 @@ class DiffusionTestParticle(ParticleModel):
                 return 100.0 + 10.0*np.sin(pos3d[0])
             elif self.Es == '(10 + 5*sin(x))':
                 return 10 + 5*np.sin(pos3d[0])
+            elif self.Es == '(1 + 0.5*sin(y))':
+                return 1.0 + 0.5*np.sin(pos3d[1])
+            elif self.Es == '0.1*(1 + 0.5*sin(y))':
+                return 0.1*(1.0 + 0.5*np.sin(pos3d[1]))
+            elif self.Es == '10*(1 + 0.5*sin(y))':
+                return 10*(1.0 + 0.5*np.sin(pos3d[1]))
             else:
                 raise NotImplementedError('Invalid scattering rate.')
 
-    def getDScatteringRate(self, pos3d: tuple3d) -> float:
+    def getDScatteringRate(self, pos3d: tuple3d) -> tuple3d:
         if isinstance(self.Es, float) or isinstance(self.Es, int):
-            return 0.0
+            return np.array((0.0, 0.0, 0.0), dtype=float)
         else:
             if self.Es == '(1 + 0.5*sin(x))':
-                return 0.5*np.cos(pos3d[0])
+                return np.array((0.5*np.cos(pos3d[0]), 0.0, 0.0), dtype=float)
             elif self.Es == '0.1*(1 + 0.5*sin(x))':
-                return 0.05*np.cos(pos3d[0])
+                return np.array((0.05*np.cos(pos3d[0]), 0.0, 0.0), dtype=float)
             elif self.Es == '10*(1 + 0.5*sin(x))':
-                return 5*np.cos(pos3d[0])
+                return np.array((5*np.cos(pos3d[0]), 0.0, 0.0), dtype=float)
             elif self.Es == '(100 + 10*sin(x))':
-                return 10.0*np.cos(pos3d[0])
+                return np.array((10.0*np.cos(pos3d[0]), 0.0, 0.0), dtype=float)
             elif self.Es == '(10 + 5*sin(x))':
-                return 5*np.cos(pos3d[0])
+                return np.array((5*np.cos(pos3d[0]), 0.0, 0.0), dtype=float)
+            elif self.Es == '(1 + 0.5*sin(y))':
+                return np.array((0.0, 0.5*np.cos(pos3d[1]), 0.0), dtype=float)
+            elif self.Es == '0.1*(1 + 0.5*sin(y))':
+                return np.array((0.0, 0.05*np.cos(pos3d[1]), 0.0), dtype=float)
+            elif self.Es == '10*(1 + 0.5*sin(y))':
+                return np.array((0.0, 5*np.cos(pos3d[1]), 0.0), dtype=float)
             else:
                 raise NotImplementedError('Invalid scattering rate.')
 
 
 class DiffusionTestParticlev2(DiffusionTestParticle):
-    # Particle which is biased in the x>0 direction
+    # Particle which is biased in the y>0 direction
     def __init__(self, generator: Union[np.random.Generator, None, int] = None, Es: Union[float, str] = 1, sp: Union[float, str] = 1) -> None:
         super().__init__(generator, Es, sp)
 
@@ -263,13 +281,13 @@ class DiffusionTestParticlev2(DiffusionTestParticle):
         sint = np.sqrt(1 - cost**2)
 
         # azimuthal scattering angle
-        phiAngle = np.random.uniform(low=-np.pi/2, high=np.pi/2)
+        phiAngle = np.random.uniform(low=0, high=np.pi)
         cosphi = np.cos(phiAngle)
         sinphi = np.sin(phiAngle)
         return np.array((sint*cosphi, sint*sinphi, cost), dtype=float)
 
     def getOmegaMoments(self, pos3d: tuple3d) -> Tuple[tuple3d, tuple3d]:
-        return (np.array((0.5, 0.0, 0.0), dtype=float), np.array((1/12, 1/3, 1/3), dtype=float))
+        return (np.array((0.0, 0.5, 0.0), dtype=float), np.array((1/3, 1/12, 1/3), dtype=float))
 
 
 class SimplifiedEGSnrcElectron(ParticleModel):

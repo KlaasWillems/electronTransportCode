@@ -86,8 +86,9 @@ class PointSource(SimOptions):
         return self.eSource
 
 class KDTestSource(PointSource):
-    def __init__(self, minEnergy: float, rngSeed: int, eSource: float) -> None:
+    def __init__(self, minEnergy: float, rngSeed: int, eSource: float, dir: str = 'x') -> None:
         super().__init__(minEnergy, rngSeed, eSource)
+        self.dir = dir
 
     def initialDirection(self) -> tuple3d:
         return super().initialDirection()
@@ -97,8 +98,12 @@ class KDTestSource(PointSource):
         loc = 3
         s = self.rng.uniform(low=-0.5, high=0.5)
         x = self.rng.normal(loc=loc*np.sign(s))
-        return np.array((x, 0.0, 0.0), dtype=float)
-
+        if self.dir == 'x':
+            return np.array((x, 0.0, 0.0), dtype=float)
+        elif self.dir == 'y':
+            return np.array((0.0, x, 0.0), dtype=float)
+        else:
+            raise NotImplementedError
 
 class DiffusionPointSource(PointSource):
     """Initial conditions for diffusion limit point source benchmark. particle's x-coordinate is random normally distributed with mean 'loc' and standard deviation 'scale'.

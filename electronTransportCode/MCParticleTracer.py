@@ -67,7 +67,8 @@ class ParticleTracer(ABC):
 
         # Run simulation
         if verbose:
-            print(f'Proc {myrank} starting simulation of {particles_per_proc} particles.')
+            print(f'Proc: {myrank}, type: {self.__class__.__name__}. Starting simulation of {particles_per_proc} particles.')
+
         self.__call__(particles_per_proc, estimatorList, logAmount=logAmount)
 
         # Gather results
@@ -102,7 +103,7 @@ class ParticleTracer(ABC):
 
             if particleID % logAmount == 0:  # every 1000 particles
                 t2 = time.perf_counter()
-                print(f'Process: {myrank}, type: {self.__class__.__name__}. Last {logAmount} particles took {t2-t1} seconds. {100*particleID/nbParticles}% completed.')
+                print(f'Proc: {myrank}, type: {self.__class__.__name__}. Last {logAmount} particles took {round(t2-t1, 4)} seconds. {round(100*particleID/nbParticles, 3)}% completed.')
                 t1 = time.perf_counter()
 
         return estimators
@@ -292,6 +293,34 @@ class KDParticleTracer(ParticleTracer, ABC):
         self.AvgNbDiffCollisions = (self.particleIndex*self.AvgNbDiffCollisions + NbDiffCollisions)/(self.particleIndex+1)
         self.particleIndex += 1
 
+    def pickStepSize(self, kin_pos3d: tuple3d, kin_energy: float, kin_index: int, step_kin: float, N: int = 4) -> Tuple[float, float]:
+        """Pick a stepsize for the diffusive step. Normally diffusive step is such that after a kinetic step, the remaining part of dS is done diffusively. When this stepsize results in an energy loss below self.simOptions.minEnergy, a smaller stepsize is chosen such that minEnergy is reached.
+
+        Args:
+            kin_pos3d (tuple3d): Position of particle
+            kin_energy (float): Energy of particle after kinetic step
+            kin_index (int): Index of particle after kinetic step
+            step_kin (float): Size of kinetic step
+            N (int, optional): Amount of interpolation points for trapezoidal rule. Defaults to 4.
+
+        Returns:
+            Tuple[float, float]: Diffusive step size and new energy lost during diffusive step
+        """
+        assert self.particle is not None
+        assert self.dS is not None
+
+        step_diff = self.dS - (step_kin % self.dS)
+        deltaE = self.energyLoss(kin_energy, kin_pos3d, step_diff, kin_index)
+        new_energy = kin_energy - deltaE
+
+        if new_energy >= self.simOptions.minEnergy:  # stepsize did not exceed energy
+            return step_diff, new_energy
+        else:  # stepsize exceeded remaining energy: Approximate stepsize to reach minEnergy using trapezoidal rule
+            Erange = np.linspace(kin_energy, self.simOptions.minEnergy, N)
+            sps = [self.particle.evalStoppingPower(e, kin_pos3d, self.simDomain.getMaterial(kin_index)) for e in Erange]
+            dss = [2*(Erange[i] - Erange[i+1])/(sps[i] + sps[i+1]) for i in range(N-1)]
+            return sum(dss), self.simOptions.minEnergy
+
     def traceParticle(self, estimators: Union[MCEstimator, tuple[MCEstimator, ...]]) -> None:
         """Step particle through simulation domain until its energy is below a threshold value. Estimator routine is called after each step for on-the-fly estimation.
 
@@ -313,12 +342,6 @@ class KDParticleTracer(ParticleTracer, ABC):
         index: int = self.simDomain.getIndexPath(pos3d, vec3d)
 
         loopbool: bool = True
-
-        # Do type annotations for updated positions
-        kin_pos3d: tuple3d; diff_pos3d: tuple3d
-        kin_vec3d: tuple3d; diff_vec3d: tuple3d
-        kin_energy: float; diff_energy: float
-        kin_index: int; diff_index: int
 
         # Couter kinetic and diffusive steps
         kin_counter: int = 0
@@ -343,14 +366,17 @@ class KDParticleTracer(ParticleTracer, ABC):
                 estimator.updateEstimator((pos3d, kin_pos3d), (vec3d, kin_vec3d), (energy, kin_energy), kin_index, step_kin)
 
             if kin_energy > self.simOptions.minEnergy:  # Do diffusive step if energy left
-                step_diff = self.dS - (step_kin % self.dS)
 
-                diff_pos3d, diff_vec3d, diff_energy, diff_index, diff_stepped = self.stepParticleDiffusive(kin_pos3d, kin_vec3d, kin_energy, kin_index, step_diff)
-                if diff_stepped: diff_counter += 1
+                step_diff1, diff_energy1 = self.pickStepSize(kin_pos3d, kin_energy, kin_index, step_kin)
 
-                # Final veloctiy and index must remain the same
-                assert np.all(kin_vec3d == diff_vec3d)
-                assert diff_index == kin_index
+                diff_pos3d, diff_stepped = self.stepParticleDiffusive(kin_pos3d, kin_vec3d, kin_energy, kin_index, step_diff1)
+                if diff_stepped:
+                    diff_counter += 1
+                    step_diff = step_diff1
+                    diff_energy = diff_energy1
+                else:
+                    diff_energy = kin_energy
+                    step_diff = 0.0
 
                 # If energy left
                 if diff_energy <= self.simOptions.minEnergy: # have estimator deposit all remaining energy
@@ -360,17 +386,17 @@ class KDParticleTracer(ParticleTracer, ABC):
 
                 # Score QOIs
                 for estimator in estimatorList:
-                    estimator.updateEstimator((kin_pos3d, diff_pos3d), (kin_vec3d, diff_vec3d), (kin_energy, diff_energy), kin_index, step_diff)
+                    estimator.updateEstimator((kin_pos3d, diff_pos3d), (kin_vec3d, kin_vec3d), (kin_energy, diff_energy), kin_index, step_diff)
 
                 # set final state
                 pos3d = diff_pos3d
-                vec3d = diff_vec3d
+                vec3d = kin_vec3d
                 energy = diff_energy
-                index = diff_index
+                index = kin_index
 
         self.updateAnalytics(kin_counter, diff_counter)
 
-    def stepParticleDiffusive(self, pos3d: tuple3d, vec3d: tuple3d, energy: float, index: int, stepsize: float) -> tuple[tuple3d, tuple3d, float, int, bool]:
+    def stepParticleDiffusive(self, pos3d: tuple3d, vec3d: tuple3d, energy: float, index: int, stepsize: float) -> tuple[tuple3d, bool]:
         """Apply diffusive motion to particle
 
         Args:
@@ -402,26 +428,16 @@ class KDParticleTracer(ParticleTracer, ABC):
         pos_delta = new_pos3d - pos3d
         equi_step = np.sqrt(pos_delta[0]**2 + pos_delta[1]**2 + pos_delta[2]**2)
         if equi_step == 0.0:  # In case mean and variance was zero, don't move particle
-            return pos3d, vec3d, energy, index, False
+            return pos3d, False
 
         equi_vec = pos_delta/equi_step
 
         # Figure out if the particle when out of the grid cell.
-        stepGeom, _, _ = self.simDomain.getCellEdgeInformation(pos3d, equi_vec, index)
-        if equi_step < stepGeom: # diffusive step did not exceed boundaries
-
-            # Decrement energy along step
-            deltaE = self.energyLoss(energy, pos3d, stepsize, index)
-            new_energy = energy - deltaE
-
-            # Figure out if the particle did not exceed the amount of energy it had left
-            if new_energy < self.simOptions.minEnergy:
-                return pos3d, vec3d, energy, index, False  # don't move particle, return old state
-            else:
-                return new_pos3d, vec3d, new_energy, index, True
-
+        stepGeom, _, _ = self.simDomain.getCellEdgeInformation(pos3d, equi_vec, index)  # diffusive step did not exceed boundaries
+        if equi_step < stepGeom:
+            return new_pos3d, True
         else: # diffusive step exceeded cell boundaries
-            return pos3d, vec3d, energy, index, False  # don't move particle, return old state
+            return pos3d, False  # don't move particle, return old state
 
     @abstractmethod
     def advectionDiffusionCoeff(self, pos3d: tuple3d, vec3d: tuple3d, stepsize: float) -> Tuple[tuple3d, tuple3d]:

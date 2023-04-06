@@ -19,7 +19,7 @@ simDomain = SimulationDomain(ymin, ymax, zmin, zmax, ybins, zbins, material=unit
 # Set up initial conditions
 SEED: int = 4  # Random number generator seed
 
-scatteringRate1 = '0.1*(1 + 0.5*sin(x))'; scatteringRate2 = '(1 + 0.5*sin(x))'; scatteringRate3 = '10*(1 + 0.5*sin(x))'
+scatteringRate1 = '0.1*(1 + 0.5*sin(y))'; scatteringRate2 = '(1 + 0.5*sin(y))'; scatteringRate3 = '10*(1 + 0.5*sin(y))'
 sp = 1.0
 particle1 = DiffusionTestParticlev2(Es=scatteringRate1, sp=sp)
 particle2 = DiffusionTestParticlev2(Es=scatteringRate2, sp=sp)
@@ -30,7 +30,7 @@ if __name__ == '__main__':
     nproc = MPI.COMM_WORLD.Get_size()
     eSource = float(sys.argv[1])
 
-    pointSourceSim = KDTestSource(minEnergy=0.0, rngSeed=SEED, eSource=eSource)
+    pointSourceSim = KDTestSource(minEnergy=0.0, rngSeed=SEED, eSource=eSource, dir='y')
     particleTracerK = AnalogParticleTracer(particle=None, simOptions=pointSourceSim, simDomain=simDomain)
     particleTracerKD1 = KDMC(particle=None, simOptions=pointSourceSim, simDomain=simDomain, dS = eSource)  # stepsize is final time!
     particleTracerKD2 = KDMC(particle=None, simOptions=pointSourceSim, simDomain=simDomain, dS = eSource/2)
@@ -39,16 +39,16 @@ if __name__ == '__main__':
     NB_PARTICLES_PER_PROC = int(NB_PARTICLES/nproc)
     NB_PARTICLES = NB_PARTICLES_PER_PROC*nproc
 
-    TrackEndEstimatorK1 = TrackEndEstimator(simDomain, nb_particles=NB_PARTICLES_PER_PROC, setting='x')
-    TrackEndEstimatorK2 = TrackEndEstimator(simDomain, nb_particles=NB_PARTICLES_PER_PROC, setting='x')
-    TrackEndEstimatorK3 = TrackEndEstimator(simDomain, nb_particles=NB_PARTICLES_PER_PROC, setting='x')
+    TrackEndEstimatorK1 = TrackEndEstimator(simDomain, nb_particles=NB_PARTICLES_PER_PROC, setting='y')
+    TrackEndEstimatorK2 = TrackEndEstimator(simDomain, nb_particles=NB_PARTICLES_PER_PROC, setting='y')
+    TrackEndEstimatorK3 = TrackEndEstimator(simDomain, nb_particles=NB_PARTICLES_PER_PROC, setting='y')
 
-    TrackEndEstimatorKD1 = TrackEndEstimator(simDomain, nb_particles=NB_PARTICLES_PER_PROC, setting='x')
-    TrackEndEstimatorKD2 = TrackEndEstimator(simDomain, nb_particles=NB_PARTICLES_PER_PROC, setting='x')
-    TrackEndEstimatorKD3 = TrackEndEstimator(simDomain, nb_particles=NB_PARTICLES_PER_PROC, setting='x')
-    TrackEndEstimatorKD4 = TrackEndEstimator(simDomain, nb_particles=NB_PARTICLES_PER_PROC, setting='x')
-    TrackEndEstimatorKD5 = TrackEndEstimator(simDomain, nb_particles=NB_PARTICLES_PER_PROC, setting='x')
-    TrackEndEstimatorKD6 = TrackEndEstimator(simDomain, nb_particles=NB_PARTICLES_PER_PROC, setting='x')
+    TrackEndEstimatorKD1 = TrackEndEstimator(simDomain, nb_particles=NB_PARTICLES_PER_PROC, setting='y')
+    TrackEndEstimatorKD2 = TrackEndEstimator(simDomain, nb_particles=NB_PARTICLES_PER_PROC, setting='y')
+    TrackEndEstimatorKD3 = TrackEndEstimator(simDomain, nb_particles=NB_PARTICLES_PER_PROC, setting='y')
+    TrackEndEstimatorKD4 = TrackEndEstimator(simDomain, nb_particles=NB_PARTICLES_PER_PROC, setting='y')
+    TrackEndEstimatorKD5 = TrackEndEstimator(simDomain, nb_particles=NB_PARTICLES_PER_PROC, setting='y')
+    TrackEndEstimatorKD6 = TrackEndEstimator(simDomain, nb_particles=NB_PARTICLES_PER_PROC, setting='y')
 
     t1 = time.perf_counter()
 
