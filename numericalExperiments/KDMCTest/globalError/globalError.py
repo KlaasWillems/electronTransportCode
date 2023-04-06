@@ -52,21 +52,21 @@ if __name__ == '__main__':
         t3 = time.perf_counter()
         particleTracerKDS.runMultiProc(nbParticles=NB_PARTICLES, estimators=(TEKDSList[i], ), particle=particleList[i], file=f'data/TrackEndEstimatorKDS{i}.pkl', verbose=False)
         t4 = time.perf_counter()
-        if myrank == 0: print(f'KDSMC sigma: {sigmaArray[i]} took {round(t4-t3, 4)}s')
+        if myrank == 0: print(f'KDSMC sigma: {sigmaArray[i]} took {round(t4-t3, 4)}s. AvgNbAnalogCollisions: {particleTracerKDS.AvgNbAnalogCollisions}, AvgNbDiffCollisions: {particleTracerKDS.AvgNbDiffCollisions}.')
 
     # Run analog particle tracer
     for i in range(nbSims):
         t3 = time.perf_counter()
         particleTracerK.runMultiProc(nbParticles=NB_PARTICLES, estimators=(TEAList[i], ), particle=particleList[i], file=f'data/TrackEndEstimatorA{i}.pkl', verbose=False)
         t4 = time.perf_counter()
-        if myrank == 0: print(f'Analog sigma: {sigmaArray[i]} took {round(t4-t3, 4)}s')
+        if myrank == 0: print(f'Analog sigma: {sigmaArray[i]} took {round(t4-t3, 4)}s. AvgNbCollisions: {particleTracerK.averageNbCollisions}')
 
     # Run KD particle tracer
     for i in range(nbSims):
         t3 = time.perf_counter()
         particleTracerKD.runMultiProc(nbParticles=NB_PARTICLES, estimators=(TEKDList[i], ), particle=particleList[i], file=f'data/TrackEndEstimatorKD{i}.pkl', verbose=False)
         t4 = time.perf_counter()
-        if myrank == 0: print(f'KDMC sigma: {sigmaArray[i]} took {round(t4-t3, 4)}s')
+        if myrank == 0: print(f'KDSMC sigma: {sigmaArray[i]} took {round(t4-t3, 4)}s. AvgNbAnalogCollisions: {particleTracerKD.AvgNbAnalogCollisions}, AvgNbDiffCollisions: {particleTracerKD.AvgNbDiffCollisions}.')
 
     t2 = time.perf_counter()
 
