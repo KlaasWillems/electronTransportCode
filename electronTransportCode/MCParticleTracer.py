@@ -471,8 +471,8 @@ class KDMC(KDParticleTracer):
         # intermediate results
         stepsizeSigma2 = stepsize*(Sigma_s**2)
         sigmaStepsize = Sigma_s*stepsize
-        exp1: float = np.exp(-sigmaStepsize)
-        exp2: float = np.exp(-2*sigmaStepsize)
+        exp1: float = self.exp(-sigmaStepsize)
+        exp2: float = self.exp(-2*sigmaStepsize)
         vec_mean_dev = vec3d - mu_omega
         vec_mean_dev2 = vec_mean_dev**2
 
@@ -509,7 +509,7 @@ class KDSMC(KDParticleTracer):
         # Intermediate results
         sigmaStepsize = Sigma_s*stepsize
         sigma2Stepsize = (Sigma_s**2)*stepsize
-        exp1 = np.exp(-sigmaStepsize)
+        exp1 = self.exp(-sigmaStepsize)
 
         # Variance (divide by 2*stepsize)
         var = var_omega*(sigmaStepsize - 1.0 + exp1)/sigma2Stepsize
