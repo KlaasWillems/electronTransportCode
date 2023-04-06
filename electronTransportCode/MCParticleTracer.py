@@ -11,7 +11,6 @@ from electronTransportCode.SimOptions import SimOptions
 from electronTransportCode.ProjectUtils import tuple3d, tuple3d
 from electronTransportCode.SimulationDomain import SimulationDomain
 
-np.seterr('raise')
 
 class ParticleTracer(ABC):
     """General Monte Carlo particle tracer object for radiation therapy. Particle move in a 3D domain however,
@@ -453,12 +452,6 @@ class KDParticleTracer(ParticleTracer, ABC):
         """
         pass
 
-    def exp(self, x: float) -> float:
-        try:
-            return np.exp(x)
-        except FloatingPointError as e:
-            print(f'Proc: {MPI.COMM_WORLD.Get_rank()} experienced {e} for input {x}. Returning {0.0} instead.')
-            return 0.0
 
 class KDMC(KDParticleTracer):
     """Implements kinetic-diffusion Monte Carlo using the mean and variance of kinetic motion conditioned on the final velocity.
@@ -472,8 +465,8 @@ class KDMC(KDParticleTracer):
         stepsizeSigma2 = stepsize*(Sigma_s**2)
         sigmaStepsize = Sigma_s*stepsize
         sigmaStepsizeDouble = 2*sigmaStepsize
-        exp1: float = self.exp(-sigmaStepsize)
-        exp2: float = self.exp(-sigmaStepsizeDouble)
+        exp1: float = np.exp(-sigmaStepsize)
+        exp2: float = np.exp(-sigmaStepsizeDouble)
         vec_mean_dev = vec3d - mu_omega
         vec_mean_dev2 = vec_mean_dev**2
 
@@ -510,7 +503,7 @@ class KDSMC(KDParticleTracer):
         # Intermediate results
         sigmaStepsize = Sigma_s*stepsize
         sigma2Stepsize = (Sigma_s**2)*stepsize
-        exp1 = self.exp(-sigmaStepsize)
+        exp1 = np.exp(-sigmaStepsize)
 
         # Variance (divide by 2*stepsize)
         var = var_omega*(sigmaStepsize - 1.0 + exp1)/sigma2Stepsize

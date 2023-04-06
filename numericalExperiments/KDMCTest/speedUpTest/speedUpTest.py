@@ -33,12 +33,12 @@ if __name__ == '__main__':
     particleTracerK = AnalogParticleTracer(particle=None, simOptions=pointSourceSim, simDomain=simDomain)
     particleTracerKD = KDMC(particle=None, simOptions=pointSourceSim, simDomain=simDomain, dS = eSource)  # stepsize is final time!
 
-    NB_PARTICLES = 50000
+    NB_PARTICLES = 30000
     NB_PARTICLES_PER_PROC = int(NB_PARTICLES/nproc)
 
     # --- Set up estimators
     nbSim = 10
-    scatteringRateList = np.logspace(-2, 2, nbSim)
+    scatteringRateList = np.logspace(2, -2, nbSim)
     particleList = [DiffusionTestParticlev2(Es=scatteringRateList[i], sp=sp) for i in range(nbSim)]
     warmUpEstimator = TrackEndEstimator(simDomain, nb_particles=NB_PARTICLES_PER_PROC, setting='x')
 
