@@ -456,9 +456,9 @@ class KDParticleTracer(ParticleTracer, ABC):
     def exp(self, x: float) -> float:
         try:
             return np.exp(x)
-        except FloatingPointError:
-            print(x)
-            raise ValueError
+        except FloatingPointError as e:
+            print(f'Proc: {MPI.COMM_WORLD.Get_rank()} experienced {e} for input {x}. Returning {0.0} instead.')
+            return 0.0
 
 class KDMC(KDParticleTracer):
     """Implements kinetic-diffusion Monte Carlo using the mean and variance of kinetic motion conditioned on the final velocity.
