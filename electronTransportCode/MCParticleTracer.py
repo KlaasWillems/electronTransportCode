@@ -471,13 +471,14 @@ class KDMC(KDParticleTracer):
         # intermediate results
         stepsizeSigma2 = stepsize*(Sigma_s**2)
         sigmaStepsize = Sigma_s*stepsize
+        sigmaStepsizeDouble = 2*sigmaStepsize
         exp1: float = self.exp(-sigmaStepsize)
-        exp2: float = self.exp(-2*sigmaStepsize)
+        exp2: float = self.exp(-sigmaStepsizeDouble)
         vec_mean_dev = vec3d - mu_omega
         vec_mean_dev2 = vec_mean_dev**2
 
         # Heterogeneity correction
-        het1 = 0.5*vec_mean_dev2*(exp2 + 2*sigmaStepsize*exp1 - 1.0)/stepsizeSigma2
+        het1 = 0.5*vec_mean_dev2*(exp2 + sigmaStepsizeDouble*exp1 - 1.0)/stepsizeSigma2
         het2 = var_omega*(2*exp1 + sigmaStepsize + sigmaStepsize*exp1 - 2.0)/stepsizeSigma2
         het3 = var_omega*(sigmaStepsize*exp1 - 1.0 + exp1)/Sigma_s
         het4 = vec_mean_dev2*(sigmaStepsize*exp1 - exp1 + exp2)/Sigma_s
@@ -488,7 +489,7 @@ class KDMC(KDParticleTracer):
         mean: tuple3d = mu_omega + (1 - exp1)*vec_mean_dev/sigmaStepsize + het_correction*dRdx
 
         # Variance
-        temp1 = 1.0 - exp1*2*sigmaStepsize - exp2  # Due to catastrophic cancellation, this thing can become negative. In this case, put it to zero.
+        temp1 = 1.0 - exp1*sigmaStepsizeDouble - exp2  # Due to catastrophic cancellation, this thing can become negative. In this case, put it to zero.
         if temp1 < 0: temp1 = 0
         var_term1 = vec_mean_dev2*temp1/(2*stepsizeSigma2)
         temp2 = 2*exp1 + sigmaStepsize + sigmaStepsize*exp1 - 2.0  # Due to catastrophic cancellation, this thing can become negative. In this case, put it to zero.
