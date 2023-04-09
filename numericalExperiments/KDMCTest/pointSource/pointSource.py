@@ -51,8 +51,8 @@ if __name__ == '__main__':
         if myrank == 0: print(f'Analog particle tracer: repeat: {repeat}, simulation time: {round(t4-t3, 4)}s')
 
     # Run KD particle tracer
-    for repeat in range(repeats):
-        for i in range(nbdS):
+    for i in range(nbdS):
+        for repeat in range(repeats):
             TrackEndEstimatorK = TrackEndEstimator(simDomain, nb_particles=NB_PARTICLES_PER_PROC, setting='x')
             particleTracerKD.dS = dsArray[i]
             t3 = time.perf_counter()

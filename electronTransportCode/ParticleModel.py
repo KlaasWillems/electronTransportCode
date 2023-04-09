@@ -129,9 +129,9 @@ class ParticleModel(ABC):
 class PointSourceParticle(ParticleModel):
     """Particle for point source benchmark. See Kush & Stammer, Garret & Hauck and Ganapol 1999.
     """
-    def __init__(self, generator: Union[np.random.Generator, None, int] = None) -> None:
+    def __init__(self, generator: Union[np.random.Generator, None, int] = None, sigma: float = 1.0) -> None:
         super().__init__(generator)
-        self.sigma: float = 1.0
+        self.sigma: float = sigma
 
     def samplePathlength(self, Ekin: float, pos: tuple3d, material: Material) -> float:
         assert self.rng is not None

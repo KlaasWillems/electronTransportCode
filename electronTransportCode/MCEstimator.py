@@ -1,6 +1,6 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import Tuple
+from typing import Optional, Tuple
 import numpy.typing as npt
 from mpi4py import MPI
 import numpy as np
@@ -87,8 +87,8 @@ class TrackEndEstimator(MCEstimator):
     def getEstimator(self) -> np.ndarray:
         return self.scoreMatrix
 
-    def getDensityData(self, bins: int = 100) -> Tuple[np.ndarray, np.ndarray]:
-        binVal, binEdge = np.histogram(self.scoreMatrix, bins=bins, density=True)
+    def getDensityData(self, bins: int = 100, binRange: Optional[Tuple[float, float]]=None) -> Tuple[np.ndarray, np.ndarray]:
+        binVal, binEdge = np.histogram(self.scoreMatrix, bins=bins, density=True, range=binRange)
         binCenter = (binEdge[:-1] + binEdge[1:])/2.0
         return binCenter, binVal
 

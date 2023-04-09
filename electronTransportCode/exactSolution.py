@@ -6,8 +6,9 @@ from scipy.integrate import quad
 HEAVISIDE_THRESHOLD = 0.0
 C: float = 1.0  # c constant in Ganapol 1999
 
-def planeSourceSolution(x: float, E: float, Emax: float) -> float:
-    t = Emax - E
+def planeSourceSolution(x: float, E: float, Emax: float, sigma: float = 1.0) -> float:
+    t = (Emax - E)*sigma
+    x = sigma*x
     eta = x/t
     q = (1+eta)/(1-eta)
 
