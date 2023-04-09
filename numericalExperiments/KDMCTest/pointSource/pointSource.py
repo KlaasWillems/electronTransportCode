@@ -20,16 +20,16 @@ simDomain = SimulationDomain(ymin, ymax, zmin, zmax, ybins, zbins, material=unit
 # Set up initial conditions
 SEED: int = 4  # Random number generator seed
 
-scatteringRate1 = 1.0
-particle1 = PointSourceParticle(generator=SEED)
+scatteringRate1 = 10.0
+particle1 = PointSourceParticle(generator=SEED, sigma=scatteringRate1)
 
 if __name__ == '__main__':
     myrank = MPI.COMM_WORLD.Get_rank()
     nproc = MPI.COMM_WORLD.Get_size()
 
     eSource = 5.0
-    nbdS = 5
-    repeats = 10
+    nbdS = 10
+    repeats = 1
     dsArray = np.logspace(-3, np.log10(eSource), nbdS)
 
     pointSourceSim = PointSource(minEnergy=0.0, rngSeed=SEED, eSource=eSource)
@@ -67,7 +67,7 @@ if __name__ == '__main__':
         print(f'Simulation took {round(t2-t1, 4)} seconds. Writing results...')
 
         # dump argv
-        tup = (eSource, NB_PARTICLES, dsArray, repeats)
+        tup = (eSource, scatteringRate1, NB_PARTICLES, dsArray, repeats)
         pickle.dump(tup, open('data/simargv.pkl', 'wb'))
 
         # dump particle tracers
