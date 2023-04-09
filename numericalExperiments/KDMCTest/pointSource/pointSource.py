@@ -20,7 +20,7 @@ simDomain = SimulationDomain(ymin, ymax, zmin, zmax, ybins, zbins, material=unit
 # Set up initial conditions
 SEED: int = 4  # Random number generator seed
 
-scatteringRate1 = 10.0
+scatteringRate1 = 1.0
 particle1 = PointSourceParticle(generator=SEED, sigma=scatteringRate1)
 
 if __name__ == '__main__':
@@ -29,7 +29,7 @@ if __name__ == '__main__':
 
     eSource = 5.0
     nbdS = 10
-    repeats = 1
+    repeats = 10
     dsArray = np.logspace(-3, np.log10(eSource), nbdS)
 
     pointSourceSim = PointSource(minEnergy=0.0, rngSeed=SEED, eSource=eSource)
