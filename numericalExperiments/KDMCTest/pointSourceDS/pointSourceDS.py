@@ -29,7 +29,7 @@ if __name__ == '__main__':
 
     eSource = 5.0
     nbdS = 10
-    repeats = 10
+    repeats = int(sys.argv[2])
     dsArray = np.logspace(-3, np.log10(eSource), nbdS)
 
     pointSourceSim = PointSource(minEnergy=0.0, rngSeed=SEED, eSource=eSource)
