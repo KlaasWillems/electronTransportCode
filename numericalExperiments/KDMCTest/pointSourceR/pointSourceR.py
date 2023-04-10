@@ -34,7 +34,8 @@ if __name__ == '__main__':
 
     pointSourceSim = PointSource(minEnergy=0.0, rngSeed=SEED, eSource=eSource)
     particleTracerK = AnalogParticleTracer(particle=None, simOptions=pointSourceSim, simDomain=simDomain)
-    particleTracerKD = KDMC(particle=None, simOptions=pointSourceSim, simDomain=simDomain, dS = dS)
+    particleTracerKD = KDMC(particle=None, simOptions=pointSourceSim, simDomain=simDomain, dS=dS)
+    particleTracerKDS = KDSMC(particle=None, simOptions=pointSourceSim, simDomain=simDomain, dS=dS)
 
     NB_PARTICLES = int(sys.argv[1])
     NB_PARTICLES_PER_PROC = int(NB_PARTICLES/nproc)
@@ -60,6 +61,15 @@ if __name__ == '__main__':
             t4 = time.perf_counter()
             if myrank == 0: print(f'KDMC: sigma: {sigma:.2e}, repeat: {repeat}, simulation time: {round(t4-t3, 4)}s')
 
+    # Run KD particle tracer
+    for i, sigma in enumerate(sigmaArray):
+        for repeat in range(repeats):
+            TrackEndEstimatorK = TrackEndEstimator(simDomain, nb_particles=NB_PARTICLES_PER_PROC, setting='x')
+            t3 = time.perf_counter()
+            particleTracerKDS.runMultiProc(nbParticles=NB_PARTICLES, estimators=(TrackEndEstimatorK, ), particle=particleList[i], file=f'data/TEEKDSMC{i}_{repeat}.pkl', verbose=False)
+            t4 = time.perf_counter()
+            if myrank == 0: print(f'KDMC: sigma: {sigma:.2e}, repeat: {repeat}, simulation time: {round(t4-t3, 4)}s')
+
     t2 = time.perf_counter()
 
     if myrank == 0:
@@ -73,3 +83,4 @@ if __name__ == '__main__':
         # dump particle tracers
         pickle.dump(particleTracerK, open('data/particleTracerK.pkl', 'wb'))
         pickle.dump(particleTracerKD, open('data/particleTracerKD.pkl', 'wb'))
+        pickle.dump(particleTracerKDS, open('data/particleTracerKDS.pkl', 'wb'))
