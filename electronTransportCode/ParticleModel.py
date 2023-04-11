@@ -5,6 +5,7 @@ from electronTransportCode.Material import Material
 from electronTransportCode.ProjectUtils import ERE, FSC, Re
 from electronTransportCode.ProjectUtils import tuple3d
 
+# TODO: getScatteringRate material dependency
 
 class ParticleModel(ABC):
     """A particle is defined by its path-length distribution, angular scattering distribution and stopping power.
@@ -80,11 +81,13 @@ class ParticleModel(ABC):
         """
         raise NotImplementedError
 
-    def getScatteringRate(self, pos3d: tuple3d) -> float:
+    def getScatteringRate(self, Ekin: float, pos3d: tuple3d, material: Material) -> float:
         """Return the scattering rate (scale parameter of the path length distribution)
 
         Args:
+            Ekin (float): Energy
             pos3d (tuple3d): current position of particle
+            material (Material): material in grid cell
 
         Returns:
             float: scattering rate
@@ -151,7 +154,7 @@ class PointSourceParticle(ParticleModel):
         # 3D isotropic scattering: Mean is zero, variance is 1/3
         return (np.array((0.0, 0.0, 0.0), dtype=float), np.array((1/3, 1/3, 1/3), dtype=float))
 
-    def getScatteringRate(self, pos3d: tuple3d) -> float:
+    def getScatteringRate(self, Ekin: float, pos3d: tuple3d, material: Material) -> float:
         return self.sigma
 
     def getDScatteringRate(self, pos3d: tuple3d) -> tuple3d:
@@ -223,7 +226,7 @@ class DiffusionTestParticle(ParticleModel):
         # 3D isotropic scattering: Mean is zero, variance is 1/3
         return (np.array((0.0, 0.0, 0.0), dtype=float), np.array((1/3, 1/3, 1/3), dtype=float))
 
-    def getScatteringRate(self, pos3d: tuple3d) -> float:
+    def getScatteringRate(self, Ekin: float, pos3d: tuple3d, material: Material) -> float:
         if isinstance(self.Es, float) or isinstance(self.Es, int):
             return self.Es
         else:
@@ -294,6 +297,9 @@ class SimplifiedEGSnrcElectron(ParticleModel):
     """A simplified electron model. Soft elastic collisions are taken into account using the screened Rutherford elastic cross section.
     Energy loss is deposited continuously using the Bethe-Bloch inelastic restricted collisional stopping power. Hard-inelastic collisions and bremstrahlung are not taken into account.
     """
+    def getScatteringRate(self, Ekin: float, pos3d: tuple3d, material: Material) -> float:
+        betaSquared: float = Ekin*(Ekin+2)/np.power(Ekin+1,2)
+        return material.bc/betaSquared  # total macroscopic screened Rutherford cross section
 
     def samplePathlength(self, Ekin: float, pos: tuple3d, material: Material) -> float:
         """ Sample path-length from screened Rutherford elastic scattering cross section. See EGSnrc manual by Kawrakow et al for full details.
