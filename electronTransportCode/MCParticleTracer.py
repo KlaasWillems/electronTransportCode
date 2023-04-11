@@ -188,7 +188,8 @@ class ParticleTracer(ABC):
             new_vec3d: tuple3d = np.array((0.0, 0.0, 0.0), dtype=float)
             new_index = index
 
-            new_vec3d = self.particle.sampleNewVec(new_pos3d, vec3d, new_energy, self.simDomain.getMaterial(index))
+            mu, phi = self.particle.sampleScatteringAngles(new_energy, self.simDomain.getMaterial(index))
+            new_vec3d = self.particle.getDirection(mu, phi, vec3d)
             return new_pos3d, new_vec3d, new_energy, new_index, step, kin_stepped
 
         else:  # Next event is grid cell crossing
