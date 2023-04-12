@@ -4,7 +4,6 @@ import numpy as np
 from scipy import constants
 
 # predefined types
-tuple2d: TypeAlias = Annotated[npt.NDArray[np.float64], Literal[2]]
 tuple3d = Annotated[npt.NDArray[np.float64], Literal[3]]
 
 # Constants
