@@ -28,7 +28,7 @@ class TestMCFluenceEstimator(unittest.TestCase):
         energyTuple = (0.95, 0.45)
 
         # call routine
-        estimator.updateEstimator(posTuple, vecTuple, energyTuple, index)
+        estimator.updateEstimator(posTuple, vecTuple, energyTuple, index, stepsize)  # type: ignore
 
         # Check result
         trueFluence = np.array((0.0, 0.0, 0.0, 0.0, 0.1, 0.2, 0.2, 0.2, 0.2, 0.1))*stepsize
@@ -53,7 +53,7 @@ class TestMCFluenceEstimator(unittest.TestCase):
         energyTuple = (0.55, 0.45)
 
         # call routine
-        estimator.updateEstimator(posTuple, vecTuple, energyTuple, index)
+        estimator.updateEstimator(posTuple, vecTuple, energyTuple, index, stepsize)  # type: ignore
 
         # Check result
         trueFluence = np.array((0.0, 0.0, 0.0, 0.0, 0.5, 0.5, 0.0, 0.0, 0.0, 0.0))*stepsize
@@ -78,7 +78,7 @@ class TestMCFluenceEstimator(unittest.TestCase):
         energyTuple = (0.55, 0.56)
 
         # call routine
-        estimator.updateEstimator(posTuple, vecTuple, energyTuple, index)
+        estimator.updateEstimator(posTuple, vecTuple, energyTuple, index, stepsize)  # type: ignore
 
         # Check result
         trueFluence = np.array((0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0))*stepsize
