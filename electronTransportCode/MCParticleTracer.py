@@ -125,6 +125,40 @@ class ParticleTracer(ABC):
         assert Emid > 0, f'{Emid=}'
         return self.particle.evalStoppingPower(Emid, pos3d, self.simDomain.getMaterial(index))*stepsize
 
+    def scatterParticle(self, cost: float, phi: float, vec3d: tuple3d, NEW_ABS_DIR: bool = False) -> tuple3d:
+        """Scatter a particle across polar angle (theta) and azimuthatl scattering angle phi
+
+        Args:
+            cost (float): Cosine of polar scattering angle
+            phi (float): Azimuthal scattering angle in radians
+            vec3d (tuple3d): Direction of travel
+            NEW_ABS_DIR (bool, optional): If True, cost and phi are interpreted in speherical coordinates. Defaults to False.
+
+        Returns:
+            tuple3d: Direction of travel after scattering cost and phi with respect to vec3d
+        """
+        sint = np.sqrt(1 - cost**2)
+        cosphi = np.cos(phi)
+        sinphi = np.sin(phi)
+
+        new_vec3d = np.array((0.0, 0.0, 0.0), dtype=float)
+
+        # Rotation matrices (See penelope documentation eq. 1.131)
+        if np.isclose(np.abs(vec3d[2]), 1.0, rtol=1e-14) or NEW_ABS_DIR:  # indeterminate case
+            sign = np.sign(vec3d[2])
+            new_vec3d[0] = sign*sint*cosphi
+            new_vec3d[1] = sign*sint*sinphi
+            new_vec3d[2] = sign*cost
+        else:
+            tempVar = np.sqrt(1-np.power(vec3d[2], 2))
+            new_vec3d[0] = vec3d[0]*cost + sint*(vec3d[0]*vec3d[2]*cosphi - vec3d[1]*sinphi)/tempVar
+            new_vec3d[1] = vec3d[1]*cost + sint*(vec3d[1]*vec3d[2]*cosphi + vec3d[0]*sinphi)/tempVar
+            new_vec3d[2] = vec3d[2]*cost - tempVar*sint*cosphi
+
+        # normalized for security
+        new_vec3d = new_vec3d/np.linalg.norm(new_vec3d)
+        return new_vec3d
+
     def stepParticleAnalog(self, pos3d: tuple3d, vec3d: tuple3d, energy: float, index: int) -> tuple[tuple3d, tuple3d, float, int, float, bool]:
         """Transport particle and apply event.
         Algorithm:
@@ -189,7 +223,7 @@ class ParticleTracer(ABC):
             new_index = index
 
             mu, phi = self.particle.sampleScatteringAngles(new_energy, self.simDomain.getMaterial(index))
-            new_vec3d = self.particle.getDirection(mu, phi, vec3d)
+            new_vec3d = self.scatterParticle(mu, phi, vec3d)
             return new_pos3d, new_vec3d, new_energy, new_index, step, kin_stepped
 
         else:  # Next event is grid cell crossing

@@ -103,29 +103,6 @@ class ParticleModel(ABC):
         """
         raise NotImplementedError
 
-    def getDirection(self, cost: float, phi: float, vec3d: tuple3d, NEW_ABS_DIR: bool = False) -> tuple3d:
-        sint = np.sqrt(1 - cost**2)  # scatter left or right with equal probability
-        cosphi = np.cos(phi)
-        sinphi = np.sin(phi)
-
-        new_vec3d = np.array((0.0, 0.0, 0.0), dtype=float)
-
-        # Rotation matrices (See penelope documentation eq. 1.131)
-        if np.isclose(np.abs(vec3d[2]), 1.0, rtol=1e-14) or NEW_ABS_DIR:  # indeterminate case
-            sign = np.sign(vec3d[2])
-            new_vec3d[0] = sign*sint*cosphi
-            new_vec3d[1] = sign*sint*sinphi
-            new_vec3d[2] = sign*cost
-        else:
-            tempVar = np.sqrt(1-np.power(vec3d[2], 2))
-            new_vec3d[0] = vec3d[0]*cost + sint*(vec3d[0]*vec3d[2]*cosphi - vec3d[1]*sinphi)/tempVar
-            new_vec3d[1] = vec3d[1]*cost + sint*(vec3d[1]*vec3d[2]*cosphi + vec3d[0]*sinphi)/tempVar
-            new_vec3d[2] = vec3d[2]*cost - tempVar*sint*cosphi
-
-        # normalized for security
-        new_vec3d = new_vec3d/np.linalg.norm(new_vec3d)
-        return new_vec3d
-
 
 class PointSourceParticle(ParticleModel):
     """Particle for point source benchmark. See Kush & Stammer, Garret & Hauck and Ganapol 1999.
