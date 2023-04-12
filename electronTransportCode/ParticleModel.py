@@ -335,7 +335,7 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         """
         # Ekin = tau in papers
         I = material.I
-        NB_DENSITY = material.NB_DENSITY
+        NB_DENSITY = material.SC_DENSITY
         Z = material.Z
 
         Ekin_eV: float = Ekin*ERE*1e6  # Electron kinetic energy in eV (E or T in literature)
@@ -380,7 +380,7 @@ class SimplifiedPenelopeElectron(ParticleModel):
         """
         # Ekin = tau in papers
         I = material.I
-        NB_DENSITY = material.NB_DENSITY
+        NB_DENSITY = material.SC_DENSITY
         Z = material.Z
 
         Ekin_eV: float = Ekin*ERE*1e6  # Electron kinetic energy in eV (E or T in literature)

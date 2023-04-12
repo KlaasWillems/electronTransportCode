@@ -16,6 +16,6 @@ ERE: Final[float] = constants.value('electron mass energy equivalent in MeV')  #
 A_WATER: Final[float] = 18  # Relative molar mass of water
 I_WATER: Final[float] = 75  # [eV] mean excitation energy for water
 Re: Final[float] = constants.value('classical electron radius')*100  # [cm] classical electron radius
-SC_DENSITY: Final[float] = 3.3428847*1e22  # [cm^-3] scattering center density for Z = 1 material
+SC_DENSITY_WATER: Final[float] = 3.3428847*1e22  # [cm^-3] scattering center density for water. Electron density of water divided by Z_WATER. See Olbrant et al.
 E_THRESHOLD: Final[float] = min(0.0003162278/ERE, I_WATER/(1e6*ERE))  # Stopping power becomes negative if energy is lower than this value
 RHO_WATER: Final[float] = 1.0  # [g/cm^3] density of water

@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, Optional
 import numpy as np
 from electronTransportCode.ProjectUtils import tuple3d
 from electronTransportCode.Material import Material
@@ -18,7 +18,7 @@ class SimulationDomain:
     The number associated to a grid cell is referred to as the index.
     No periodic boundary conditions.
     """
-    def __init__(self, xmin: float, xmax: float, ymin: float, ymax: float, xbins: int, ybins: int, material: Material) -> None:
+    def __init__(self, xmin: float, xmax: float, ymin: float, ymax: float, xbins: int, ybins: int, material: Optional[Material]) -> None:
         """Initialize rectangular simulation domain
 
         Args:
@@ -56,7 +56,10 @@ class SimulationDomain:
         Returns:
             Material:
         """
-        return self.material
+        if self.material is None:
+            raise ValueError('Material is None.')
+        else:
+            return self.material
 
     def getCoord(self, index: int) -> Tuple[int, int]:
         """Return coordinate of grid cell in rectangular grid
