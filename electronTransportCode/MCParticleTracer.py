@@ -1,6 +1,6 @@
 from abc import abstractmethod, ABC
 import time
-from turtle import pos
+import math
 from mpi4py import MPI
 from typing import Union, Tuple, Optional
 import numpy as np
@@ -120,26 +120,27 @@ class ParticleTracer(ABC):
         Returns:
             tuple3d: Direction of travel after scattering cost and phi with respect to vec3d
         """
-        sint = np.sqrt(1 - cost**2)
-        cosphi = np.cos(phi)
-        sinphi = np.sin(phi)
+        sint = math.sqrt(1 - cost**2)
+        cosphi = math.cos(phi)
+        sinphi = math.sin(phi)
 
         new_vec3d = np.array((0.0, 0.0, 0.0), dtype=float)
 
         # Rotation matrices (See penelope documentation eq. 1.131)
-        if np.isclose(np.abs(vec3d[2]), 1.0, rtol=1e-14) or NEW_ABS_DIR:  # indeterminate case
-            sign = np.sign(vec3d[2])
+        if np.isclose(abs(vec3d[2]), 1.0, rtol=1e-14) or NEW_ABS_DIR:  # indeterminate case
+            sign = math.copysign(1.0, vec3d[2])
             new_vec3d[0] = sign*sint*cosphi
             new_vec3d[1] = sign*sint*sinphi
             new_vec3d[2] = sign*cost
         else:
-            tempVar = np.sqrt(1-np.power(vec3d[2], 2))
+            tempVar = math.sqrt(1-vec3d[2]**2)
             new_vec3d[0] = vec3d[0]*cost + sint*(vec3d[0]*vec3d[2]*cosphi - vec3d[1]*sinphi)/tempVar
             new_vec3d[1] = vec3d[1]*cost + sint*(vec3d[1]*vec3d[2]*cosphi + vec3d[0]*sinphi)/tempVar
             new_vec3d[2] = vec3d[2]*cost - tempVar*sint*cosphi
 
         # normalized for security
-        new_vec3d = new_vec3d/np.linalg.norm(new_vec3d)
+        norm = math.sqrt(new_vec3d[0]**2 + new_vec3d[1]**2 + new_vec3d[2]**2)
+        new_vec3d = new_vec3d/norm
         return new_vec3d
 
     def stepParticleAnalog(self, pos3d: tuple3d, vec3d: tuple3d, energy: float, index: int) -> tuple[tuple3d, tuple3d, float, int, float, bool]:
@@ -445,7 +446,7 @@ class KDParticleTracer(ParticleTracer, ABC):
 
         # Find equivalent kinetic step
         pos_delta = new_pos3d - pos3d
-        equi_step = np.sqrt(pos_delta[0]**2 + pos_delta[1]**2 + pos_delta[2]**2)
+        equi_step = math.sqrt(pos_delta[0]**2 + pos_delta[1]**2 + pos_delta[2]**2)
         if equi_step == 0.0:  # In case mean and variance was zero, don't move particle
             return pos3d, False
 
@@ -487,8 +488,8 @@ class KDMC(KDParticleTracer):
         stepsizeSigma2 = stepsize*(Sigma_s**2)
         sigmaStepsize = Sigma_s*stepsize
         sigmaStepsizeDouble = 2*sigmaStepsize
-        exp1: float = np.exp(-sigmaStepsize)
-        exp2: float = np.exp(-sigmaStepsizeDouble)
+        exp1: float = math.exp(-sigmaStepsize)
+        exp2: float = math.exp(-sigmaStepsizeDouble)
         vec_mean_dev = vec3d - mu_omega
         vec_mean_dev2 = vec_mean_dev**2
 
@@ -527,7 +528,7 @@ class KDSMC(KDParticleTracer):
         # Intermediate results
         sigmaStepsize = Sigma_s*stepsize
         sigma2Stepsize = (Sigma_s**2)*stepsize
-        exp1 = np.exp(-sigmaStepsize)
+        exp1 = math.exp(-sigmaStepsize)
 
         # Variance (divide by 2*stepsize)
         var = var_omega*(sigmaStepsize - 1.0 + exp1)/sigma2Stepsize

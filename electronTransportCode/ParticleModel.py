@@ -1,11 +1,11 @@
 from abc import ABC, abstractmethod
+import math
 from typing import Optional, Union, Tuple
 import numpy as np
 from electronTransportCode.Material import Material
 from electronTransportCode.ProjectUtils import ERE, FSC, Re
 from electronTransportCode.ProjectUtils import tuple3d
 
-# TODO: getScatteringRate material dependency
 
 class ParticleModel(ABC):
     """A particle is defined by its path-length distribution, angular scattering distribution and stopping power.
@@ -141,7 +141,7 @@ class PointSourceParticle(ParticleModel):
         # isotropic scattering
         assert self.rng is not None
         mu = self.rng.uniform(low=-1, high=1)
-        phi = self.rng.uniform(low=0.0, high=2*np.pi)
+        phi = self.rng.uniform(low=0.0, high=2*math.pi)
         return mu, phi
 
     def evalStoppingPower(self, Ekin: float, pos: tuple3d, material: Material) -> float:
@@ -201,7 +201,7 @@ class DiffusionTestParticle(ParticleModel):
         # isotropic scattering
         assert self.rng is not None
         mu = self.rng.uniform(low=-1, high=1)
-        phi = self.rng.uniform(low=0.0, high=2*np.pi)
+        phi = self.rng.uniform(low=0.0, high=2*math.pi)
         return mu, phi
 
     def evalStoppingPower(self, Ekin: float, pos3d: tuple3d, material: Material) -> float:
@@ -211,9 +211,9 @@ class DiffusionTestParticle(ParticleModel):
             if self.sp == '(1 + x**2)':
                 return 1 + pos3d[0]**2
             elif self.sp == '(1 + 0.05*cos(x*2*3.1415/20))':
-                return 1 + 0.05*np.cos(pos3d[0]*2*3.1415/20)
+                return 1 + 0.05*math.cos(pos3d[0]*2*3.1415/20)
             elif self.sp == '(1 + 0.5*sin(x))':
-                return 1.0 + 0.5*np.sin(pos3d[0])
+                return 1.0 + 0.5*math.sin(pos3d[0])
             elif self.sp == '0.2*(1 + E**2)':
                 return (1.0 + Ekin**2)*0.2
             else:
@@ -228,21 +228,21 @@ class DiffusionTestParticle(ParticleModel):
             return self.Es
         else:
             if self.Es == '(1 + 0.5*sin(x))':
-                return 1.0 + 0.5*np.sin(pos3d[0])
+                return 1.0 + 0.5*math.sin(pos3d[0])
             elif self.Es == '0.1*(1 + 0.5*sin(x))':
-                return 0.1*(1.0 + 0.5*np.sin(pos3d[0]))
+                return 0.1*(1.0 + 0.5*math.sin(pos3d[0]))
             elif self.Es == '10*(1 + 0.5*sin(x))':
-                return 10*(1.0 + 0.5*np.sin(pos3d[0]))
+                return 10*(1.0 + 0.5*math.sin(pos3d[0]))
             elif self.Es == '(100 + 10*sin(x))':
-                return 100.0 + 10.0*np.sin(pos3d[0])
+                return 100.0 + 10.0*math.sin(pos3d[0])
             elif self.Es == '(10 + 5*sin(x))':
-                return 10 + 5*np.sin(pos3d[0])
+                return 10 + 5*math.sin(pos3d[0])
             elif self.Es == '(1 + 0.5*sin(y))':
-                return 1.0 + 0.5*np.sin(pos3d[1])
+                return 1.0 + 0.5*math.sin(pos3d[1])
             elif self.Es == '0.1*(1 + 0.5*sin(y))':
-                return 0.1*(1.0 + 0.5*np.sin(pos3d[1]))
+                return 0.1*(1.0 + 0.5*math.sin(pos3d[1]))
             elif self.Es == '10*(1 + 0.5*sin(y))':
-                return 10*(1.0 + 0.5*np.sin(pos3d[1]))
+                return 10*(1.0 + 0.5*math.sin(pos3d[1]))
             else:
                 raise NotImplementedError('Invalid scattering rate.')
 
@@ -251,21 +251,21 @@ class DiffusionTestParticle(ParticleModel):
             return np.array((0.0, 0.0, 0.0), dtype=float)
         else:
             if self.Es == '(1 + 0.5*sin(x))':
-                return np.array((0.5*np.cos(pos3d[0]), 0.0, 0.0), dtype=float)
+                return np.array((0.5*math.cos(pos3d[0]), 0.0, 0.0), dtype=float)
             elif self.Es == '0.1*(1 + 0.5*sin(x))':
-                return np.array((0.05*np.cos(pos3d[0]), 0.0, 0.0), dtype=float)
+                return np.array((0.05*math.cos(pos3d[0]), 0.0, 0.0), dtype=float)
             elif self.Es == '10*(1 + 0.5*sin(x))':
-                return np.array((5*np.cos(pos3d[0]), 0.0, 0.0), dtype=float)
+                return np.array((5*math.cos(pos3d[0]), 0.0, 0.0), dtype=float)
             elif self.Es == '(100 + 10*sin(x))':
-                return np.array((10.0*np.cos(pos3d[0]), 0.0, 0.0), dtype=float)
+                return np.array((10.0*math.cos(pos3d[0]), 0.0, 0.0), dtype=float)
             elif self.Es == '(10 + 5*sin(x))':
-                return np.array((5*np.cos(pos3d[0]), 0.0, 0.0), dtype=float)
+                return np.array((5*math.cos(pos3d[0]), 0.0, 0.0), dtype=float)
             elif self.Es == '(1 + 0.5*sin(y))':
-                return np.array((0.0, 0.5*np.cos(pos3d[1]), 0.0), dtype=float)
+                return np.array((0.0, 0.5*math.cos(pos3d[1]), 0.0), dtype=float)
             elif self.Es == '0.1*(1 + 0.5*sin(y))':
-                return np.array((0.0, 0.05*np.cos(pos3d[1]), 0.0), dtype=float)
+                return np.array((0.0, 0.05*math.cos(pos3d[1]), 0.0), dtype=float)
             elif self.Es == '10*(1 + 0.5*sin(y))':
-                return np.array((0.0, 5*np.cos(pos3d[1]), 0.0), dtype=float)
+                return np.array((0.0, 5*math.cos(pos3d[1]), 0.0), dtype=float)
             else:
                 raise NotImplementedError('Invalid scattering rate.')
 
@@ -279,7 +279,7 @@ class DiffusionTestParticlev2(DiffusionTestParticle):
         # polar scattering angle
         cost = np.random.uniform(low=-1, high=1)
         # azimuthal scattering angle
-        phiAngle = np.random.uniform(low=0, high=np.pi)
+        phiAngle = np.random.uniform(low=0, high=math.pi)
         return cost, phiAngle
 
     def getOmegaMoments(self, pos3d: tuple3d) -> Tuple[tuple3d, tuple3d]:
@@ -291,7 +291,7 @@ class SimplifiedEGSnrcElectron(ParticleModel):
     Energy loss is deposited continuously using the Bethe-Bloch inelastic restricted collisional stopping power. Hard-inelastic collisions and bremstrahlung are not taken into account.
     """
     def getScatteringRate(self, pos3d: tuple3d, Ekin: float, material: Material) -> float:
-        betaSquared: float = Ekin*(Ekin+2)/np.power(Ekin+1,2)
+        betaSquared: float = Ekin*(Ekin+2)/((Ekin+1)**2)
         return material.bc/betaSquared  # total macroscopic screened Rutherford cross section
 
     def samplePathlength(self, Ekin: float, pos: tuple3d, material: Material) -> float:
@@ -301,7 +301,7 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         """
         assert self.rng is not None
         assert Ekin > 0, f'{Ekin=}'
-        betaSquared: float = Ekin*(Ekin+2)/np.power(Ekin+1,2)
+        betaSquared: float = Ekin*(Ekin+2)/((Ekin+1)**2)
         SigmaSR: float = material.bc/betaSquared  # total macroscopic screened Rutherford cross section
         return self.rng.exponential(1/SigmaSR)  # path-length
 
@@ -325,7 +325,7 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         return mu, phi
 
     def evalStoppingPower(self, Ekin: float, pos: tuple3d, material: Material) -> float:
-        """ Stopping power from PENELOPE for close and distant interactions.
+        """ Stopping power from PENELOPE for close and distant interactions. Equation 3.120 in PENELOPE 2018 Conference precedings.
 
             See abstract base class method for arguments and return value.
         Note on EGSnrc stopping power.
@@ -342,12 +342,12 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         if Ekin_eV < I:
             raise ValueError('Input energy is lower than I')
 
-        betaSquared: float = Ekin*(Ekin+2)/np.power(Ekin+1, 2)
+        betaSquared: float = Ekin*(Ekin+2)/((Ekin+1)**2)
 
         gamma = Ekin+1
-        term1 = np.log(np.power(Ekin_eV/I, 2)*((gamma+1)/2))
-        term2 = 1 - betaSquared - ((2*gamma - 1)/gamma)*np.log(2) + np.power((gamma-1)/gamma, 2)/8
-        Lcoll: float = 2*np.pi*np.power(Re, 2)*NB_DENSITY*Z*(term1 + term2)/betaSquared
+        term1 = math.log(((Ekin_eV/I)**2)*((gamma+1)/2))
+        term2 = 1 - betaSquared - ((2*gamma - 1)/gamma**2)*math.log(2) + (((gamma-1)/gamma)**2)/8
+        Lcoll: float = 2*math.pi*(Re**2)*NB_DENSITY*Z*(term1 + term2)/betaSquared
 
         return Lcoll
 
@@ -376,7 +376,7 @@ class SimplifiedPenelopeElectron(ParticleModel):
     """Electron model as found in PENELOPE manual
     """
     def evalStoppingPower(self, Ekin: float, pos: tuple3d, material: Material) -> float:
-        """ Stopping power from PENELOPE for close and distant interactions.
+        """ Stopping power from PENELOPE for close and distant interactions. Equation 3.120 in PENELOPE 2018 Conference precedings.
         """
         # Ekin = tau in papers
         I = material.I
@@ -387,12 +387,12 @@ class SimplifiedPenelopeElectron(ParticleModel):
         if Ekin_eV < I:
             raise ValueError('Input energy is lower than I')
 
-        betaSquared: float = Ekin*(Ekin+2)/np.power(Ekin+1, 2)
+        betaSquared: float = Ekin*(Ekin+2)/((Ekin+1)**2)
 
         gamma = Ekin+1
-        term1 = np.log(np.power(Ekin_eV/I, 2)*((gamma+1)/2))
-        term2 = 1 - betaSquared - ((2*gamma - 1)/gamma)*np.log(2) + np.power((gamma-1)/gamma, 2)/8
-        Lcoll: float = 2*np.pi*np.power(Re, 2)*NB_DENSITY*Z*(term1 + term2)/betaSquared
+        term1 = math.log(((Ekin_eV/I)**2)*((gamma+1)/2))
+        term2 = 1 - betaSquared - ((2*gamma - 1)/gamma**2)*math.log(2) + (((gamma-1)/gamma)**2)/8
+        Lcoll: float = 2*math.pi*(Re**2)*NB_DENSITY*Z*(term1 + term2)/betaSquared
 
         return Lcoll
 
