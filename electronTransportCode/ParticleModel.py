@@ -68,6 +68,25 @@ class ParticleModel(ABC):
             float: Stopping power evaluated at Ekin and DeltaE [1/cm] (energy relative to electron rest energy)
         """
 
+    def energyLoss(self, Ekin: float, pos3d: tuple3d, stepsize: float, material: Material) -> float:
+        """Compute energy along step using continuous slowing down approximation. Eq. 4.11.3 from EGSnrc manual, also used in GPUMCD.
+        Approximation is second order accurate: O(DeltaE^2)
+
+        Args:
+            Ekin (float): Energy at the beginning of the step. Energy unit relative to electron rest energy.
+            pos3d (tuple3d): position of particle
+            stepsize (float): [cm] path-length
+            material (Material): Material of current grid cell
+
+        Returns:
+            float: Energy loss DeltaE
+        """
+        assert Ekin > 0, f'{Ekin=}'
+        assert stepsize > 0, f'{stepsize=}'
+        Emid = Ekin + self.evalStoppingPower(Ekin, pos3d, material)*stepsize/2
+        assert Emid > 0, f'{Emid=}'
+        return self.evalStoppingPower(Emid, pos3d, material)*stepsize
+
     def getOmegaMoments(self, pos3d: tuple3d) -> Tuple[tuple3d, tuple3d]:
         """Return the mean and the variance of the postcollisional velocity distribution.
 
@@ -79,7 +98,7 @@ class ParticleModel(ABC):
         """
         raise NotImplementedError
 
-    def getScatteringRate(self, Ekin: float, pos3d: tuple3d, material: Material) -> float:
+    def getScatteringRate(self, pos3d: tuple3d, Ekin: float, material: Material) -> float:
         """Return the scattering rate (scale parameter of the path length distribution)
 
         Args:
@@ -92,11 +111,14 @@ class ParticleModel(ABC):
         """
         raise NotImplementedError
 
-    def getDScatteringRate(self, pos3d: tuple3d) -> tuple3d:
-        """Return derivative of scattering rate with respect to x at position pos3d
+    def getDScatteringRate(self, pos3d: tuple3d, vec3d: tuple3d, Ekin: float, material: Material) -> tuple3d:
+        """Return gradient (with respect to position) of scattering rate
 
         Args:
+            Ekin (float): Energy of particle
             pos3d (tuple3d): Current position of particle
+            vec3d (tuple3d): Direction of travel of particle
+            material (Material): Material of cell
 
         Returns:
             float: derivative
@@ -129,10 +151,10 @@ class PointSourceParticle(ParticleModel):
         # 3D isotropic scattering: Mean is zero, variance is 1/3
         return (np.array((0.0, 0.0, 0.0), dtype=float), np.array((1/3, 1/3, 1/3), dtype=float))
 
-    def getScatteringRate(self, Ekin: float, pos3d: tuple3d, material: Material) -> float:
+    def getScatteringRate(self, pos3d: tuple3d, Ekin: float, material: Material) -> float:
         return self.sigma
 
-    def getDScatteringRate(self, pos3d: tuple3d) -> tuple3d:
+    def getDScatteringRate(self, pos3d: tuple3d, vec3d: tuple3d, Ekin: float, material: Material) -> tuple3d:
         return np.array((0.0, 0.0, 0.0), dtype=float)
 
 
@@ -201,7 +223,7 @@ class DiffusionTestParticle(ParticleModel):
         # 3D isotropic scattering: Mean is zero, variance is 1/3
         return (np.array((0.0, 0.0, 0.0), dtype=float), np.array((1/3, 1/3, 1/3), dtype=float))
 
-    def getScatteringRate(self, Ekin: float, pos3d: tuple3d, material: Material) -> float:
+    def getScatteringRate(self, pos3d: tuple3d, Ekin: float, material: Material) -> float:
         if isinstance(self.Es, float) or isinstance(self.Es, int):
             return self.Es
         else:
@@ -224,7 +246,7 @@ class DiffusionTestParticle(ParticleModel):
             else:
                 raise NotImplementedError('Invalid scattering rate.')
 
-    def getDScatteringRate(self, pos3d: tuple3d) -> tuple3d:
+    def getDScatteringRate(self, pos3d: tuple3d, vec3d: tuple3d, Ekin: float, material: Material) -> tuple3d:
         if isinstance(self.Es, float) or isinstance(self.Es, int):
             return np.array((0.0, 0.0, 0.0), dtype=float)
         else:
@@ -268,7 +290,7 @@ class SimplifiedEGSnrcElectron(ParticleModel):
     """A simplified electron model. Soft elastic collisions are taken into account using the screened Rutherford elastic cross section.
     Energy loss is deposited continuously using the Bethe-Bloch inelastic restricted collisional stopping power. Hard-inelastic collisions and bremstrahlung are not taken into account.
     """
-    def getScatteringRate(self, Ekin: float, pos3d: tuple3d, material: Material) -> float:
+    def getScatteringRate(self, pos3d: tuple3d, Ekin: float, material: Material) -> float:
         betaSquared: float = Ekin*(Ekin+2)/np.power(Ekin+1,2)
         return material.bc/betaSquared  # total macroscopic screened Rutherford cross section
 
@@ -328,6 +350,26 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         Lcoll: float = 2*np.pi*np.power(Re, 2)*NB_DENSITY*Z*(term1 + term2)/betaSquared
 
         return Lcoll
+
+    def getDScatteringRate(self, pos3d: tuple3d, vec3d: tuple3d, Ekin: float, material: Material) -> tuple3d:
+        """Scattering rate \Sigma depends on the energy and the material. The material is piecewise constant in a cell. The energy depends on the stepsize s.
+        Thus \grad_x(\Sigma) = d\Sigma/dE * dE/ds * vec3d
+        """
+        # Take small step ds to compute gradient and compute gradient using finite difference approximation
+        ds = 1e-8
+        deltaE = self.energyLoss(Ekin, pos3d, ds, material)
+        dEds = -deltaE/ds  # Energy always decreases
+
+        # Derivative of scattering rate with respect to energy. See getScatteringRate
+        dSdE = (-2*Ekin - 2)/(Ekin**4 + 4*Ekin**3 + 4*Ekin**2)
+
+        return dSdE*dEds*vec3d
+
+    def getOmegaMoments(self, pos3d: tuple3d) -> Tuple[tuple3d, tuple3d]:
+        """Assume particle undergoes a very large amount of collisions during the diffusive step. As a result, the stationary post-collision angular distribution is the isotropic distribution. When fstat is isotropically distributed, it remains isotropic after scattering with f_postcol.
+        """
+        # 3D isotropic scattering: Mean is zero, variance is 1/3
+        return (np.array((0.0, 0.0, 0.0), dtype=float), np.array((1/3, 1/3, 1/3), dtype=float))
 
 
 class SimplifiedPenelopeElectron(ParticleModel):

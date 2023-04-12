@@ -1,5 +1,6 @@
 from abc import abstractmethod, ABC
 import time
+from turtle import pos
 from mpi4py import MPI
 from typing import Union, Tuple, Optional
 import numpy as np
@@ -107,24 +108,6 @@ class ParticleTracer(ABC):
 
         return estimators
 
-    def energyLoss(self, Ekin: float, pos3d: tuple3d, stepsize: float, index: int) -> float:
-        """Compute energy along step using continuous slowing down approximation. Eq. 4.11.3 from EGSnrc manual, also used in GPUMCD.
-        Approximation is second order accurate: O(DeltaE^2)
-
-        Args:
-            Ekin (float): Energy at the beginning of the step. Energy unit relative to electron rest energy.
-            stepsize (float): [cm] path-length
-
-        Returns:
-            float: Energy loss DeltaE
-        """
-        assert Ekin > 0, f'{Ekin=}'
-        assert stepsize > 0, f'{stepsize=}'
-        assert self.particle is not None
-        Emid = Ekin + self.particle.evalStoppingPower(Ekin, pos3d, self.simDomain.getMaterial(index))*stepsize/2
-        assert Emid > 0, f'{Emid=}'
-        return self.particle.evalStoppingPower(Emid, pos3d, self.simDomain.getMaterial(index))*stepsize
-
     def scatterParticle(self, cost: float, phi: float, vec3d: tuple3d, NEW_ABS_DIR: bool = False) -> tuple3d:
         """Scatter a particle across polar angle (theta) and azimuthatl scattering angle phi
 
@@ -208,7 +191,8 @@ class ParticleTracer(ABC):
             new_pos3d = pos3d + step*vec3d  # type: ignore
 
         # Decrement energy along step
-        deltaE = self.energyLoss(energy, pos3d, step, index)
+        material = self.simDomain.getMaterial(index)
+        deltaE = self.particle.energyLoss(energy, pos3d, step, material)
         new_energy = energy - deltaE
 
         if new_energy < self.simOptions.minEnergy:  # return without sampling a new angle and such
@@ -222,7 +206,7 @@ class ParticleTracer(ABC):
             new_vec3d: tuple3d = np.array((0.0, 0.0, 0.0), dtype=float)
             new_index = index
 
-            mu, phi = self.particle.sampleScatteringAngles(new_energy, self.simDomain.getMaterial(index))
+            mu, phi = self.particle.sampleScatteringAngles(new_energy, material)
             new_vec3d = self.scatterParticle(mu, phi, vec3d)
             return new_pos3d, new_vec3d, new_energy, new_index, step, kin_stepped
 
@@ -343,15 +327,16 @@ class KDParticleTracer(ParticleTracer, ABC):
         assert self.particle is not None
         assert self.dS is not None
 
+        material = self.simDomain.getMaterial(kin_index)
         step_diff = self.dS - (step_kin % self.dS)
-        deltaE = self.energyLoss(kin_energy, kin_pos3d, step_diff, kin_index)
+        deltaE = self.particle.energyLoss(kin_energy, kin_pos3d, step_diff, material)
         new_energy = kin_energy - deltaE
 
         if new_energy >= self.simOptions.minEnergy:  # stepsize did not exceed energy
             return step_diff, new_energy
         else:  # stepsize exceeded remaining energy: Approximate stepsize to reach minEnergy using trapezoidal rule
             Erange = np.linspace(kin_energy, self.simOptions.minEnergy, N)
-            sps = [self.particle.evalStoppingPower(e, kin_pos3d, self.simDomain.getMaterial(kin_index)) for e in Erange]
+            sps = [self.particle.evalStoppingPower(e, kin_pos3d, material) for e in Erange]
             dss = [2*(Erange[i] - Erange[i+1])/(sps[i] + sps[i+1]) for i in range(N-1)]
             return sum(dss), self.simOptions.minEnergy
 
@@ -493,8 +478,10 @@ class KDMC(KDParticleTracer):
     """
     def advectionDiffusionCoeff(self, pos3d: tuple3d, vec3d: tuple3d, energy: float, index: int, stepsize: float) -> Tuple[tuple3d, tuple3d]:
         assert self.particle is not None
+
+        material = self.simDomain.getMaterial(index)
         mu_omega, var_omega = self.particle.getOmegaMoments(pos3d)
-        Sigma_s = self.particle.getScatteringRate(energy, pos3d, self.simDomain.getMaterial(index))
+        Sigma_s = self.particle.getScatteringRate(pos3d, energy, material)
 
         # intermediate results
         stepsizeSigma2 = stepsize*(Sigma_s**2)
@@ -513,7 +500,7 @@ class KDMC(KDParticleTracer):
         het_correction = het1 - het2 - het3 + het4
 
         # Mean
-        dRdx = self.particle.getDScatteringRate(pos3d)
+        dRdx = self.particle.getDScatteringRate(pos3d, vec3d, energy, material)
         mean: tuple3d = mu_omega + (1 - exp1)*vec_mean_dev/sigmaStepsize + het_correction*dRdx
 
         # Variance
@@ -532,8 +519,10 @@ class KDSMC(KDParticleTracer):
     """
     def advectionDiffusionCoeff(self, pos3d: tuple3d, vec3d: tuple3d, energy: float, index: int, stepsize: float) -> Tuple[tuple3d, tuple3d]:
         assert self.particle is not None
+
+        material = self.simDomain.getMaterial(index)
         mu_omega, var_omega = self.particle.getOmegaMoments(pos3d)
-        Sigma_s = self.particle.getScatteringRate(energy, pos3d, self.simDomain.getMaterial(index))
+        Sigma_s = self.particle.getScatteringRate(pos3d, energy, material)
 
         # Intermediate results
         sigmaStepsize = Sigma_s*stepsize
@@ -544,7 +533,7 @@ class KDSMC(KDParticleTracer):
         var = var_omega*(sigmaStepsize - 1.0 + exp1)/sigma2Stepsize
 
         # Mean
-        dRdx = self.particle.getDScatteringRate(pos3d)
+        dRdx = self.particle.getDScatteringRate(pos3d, vec3d, energy, material)
         mean = mu_omega - dRdx*var_omega*(exp1 - 1.0 + sigmaStepsize*exp1)/sigma2Stepsize
 
         return mean, var
@@ -555,11 +544,13 @@ class KDLMC(KDParticleTracer):
     """
     def advectionDiffusionCoeff(self, pos3d: tuple3d, vec3d: tuple3d, energy: float, index: int, stepsize: float) -> Tuple[tuple3d, tuple3d]:
         assert self.particle is not None
+
+        material = self.simDomain.getMaterial(index)
         mu_omega, var_omega = self.particle.getOmegaMoments(pos3d)
         assert np.all(mu_omega == 0), 'Diffusion limit is only valid in case mu_omega is zero.'
 
-        Sigma_s = self.particle.getScatteringRate(energy, pos3d, self.simDomain.getMaterial(index))
-        dRdx = self.particle.getDScatteringRate(pos3d)
+        Sigma_s = self.particle.getScatteringRate(pos3d, energy, material)
+        dRdx = self.particle.getDScatteringRate(pos3d, vec3d, energy, material)
 
         mean = - var_omega*dRdx/(stepsize*(Sigma_s**2))
         var = var_omega/(Sigma_s*2*stepsize)
