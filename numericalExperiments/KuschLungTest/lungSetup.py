@@ -1,12 +1,13 @@
 from typing import Final
 from PIL import Image
+import math
 import numpy as np
 import matplotlib.pyplot as plt
 from electronTransportCode.Material import Material
+from electronTransportCode.ProjectUtils import E_THRESHOLD, ERE, tuple3d
 from electronTransportCode.SimulationDomain import SimulationDomain
 from electronTransportCode.SimOptions import SimOptions
 
-# TODO: program initial conditions
 
 # Constants
 A_BONE: Final[float] = 1004.62  # Molecular weight of hydroxyapatite (main component of bone)
@@ -17,13 +18,11 @@ SC_DENSITY_BONE: Final[float] = E_DENSITY_BONE/Z_BONE
 I_BONE: Final[float] = 106.41400 # Mean excitation energy [eV]
 # obtained from from https://github.com/nrc-cnrc/EGSnrc/blob/master/HEN_HOUSE/pegs4/density_corrections/compounds/bone_cortical_icrp.density
 
-# Bone material object
-BONE_MATERIAL = Material(Z_BONE, A_BONE, I_BONE, SC_DENSITY_BONE, RHO_BONE)
 
 # Simulation domain
 class LungSimulationDomain(SimulationDomain):
-    def __init__(self, bins: int = 200, file: str = 'Lung.png') -> None:
-        self.width = self.height = 14.5
+    def __init__(self, bins: int = 200, file: str = 'Lung.png', width: float = 14.5) -> None:
+        self.width = self.height = width
         self.file = file
         self.bins = bins
         self.rhoMin = 0.05  # Density of black pixels (0)
@@ -38,10 +37,12 @@ class LungSimulationDomain(SimulationDomain):
         # Store MaterialArray
         self.materialArray = np.empty(shape=(self.grayScaleImage.size, ), dtype=Material)
         for index, pixelVal in enumerate(np.nditer(self.grayScaleImage)):
-            rho = self.rhoMin + (self.rhoMax - self.rhoMin)*pixelVal/255  # type: ignore
+            rho = max(self.rhoMin, self.rhoMax*pixelVal/255)  # type: ignore
             self.materialArray[index] = Material(Z_BONE, A_BONE, I_BONE, SC_DENSITY_BONE, rho)
 
     def showImage(self) -> None:
+        """Plot lung image
+        """
         fig, ax1 = plt.subplots(figsize=(10, 4.5))
         pos = ax1.imshow(Image.fromarray(self.grayScaleImage), cmap='gray')  # type: ignore
         ax1.set_title('Lung CT Scan')
@@ -58,5 +59,44 @@ class LungSimulationDomain(SimulationDomain):
     def getMaterial(self, index: int) -> Material:
         return self.materialArray[index]
 
-LSD = LungSimulationDomain()
-LSD.showImage()
+# LSD = LungSimulationDomain()
+# LSD.showImage()
+
+
+class LungInitialConditions(SimOptions):
+    def __init__(self, rngSeed: int = 12, width: float = 14.5, kappa: float = 80, sigmaE: float = 1/100, eSource: float = 21/ERE, sigmaPos: float = 1/20) -> None:
+        """
+        Args:
+            rngSeed (int, optional): Seed for random number generator. Defaults to 12.
+            width (float, optional): Width of simulation domain. Defaults to 14.5.
+            kappa (float, optional): Disperion of von mises distribution for initial angle. Defaults to 80.
+            sigmaE (float, optional): Standard deviation of normally distributed energy source. Defaults to 1/100.
+            eSource (float, optional): Mean of normally distributed energy source. Defaults to 21 MeV.
+        """
+        super().__init__(E_THRESHOLD, rngSeed)
+        self.width = width
+        self.kappa = kappa
+        self.sigmaE = sigmaE
+        self.eSource = eSource
+        self.sigmaPos = sigmaPos
+
+    def initialDirection(self) -> tuple3d:
+        """Angle with negative y-axis is von Mises distributed with disperion equal to kappa
+        """
+        theta = np.random.vonmises(-math.pi/2, kappa=self.kappa)
+        cost = math.cos(theta)
+        sint = math.sin(theta)
+        phi = math.pi/2
+        cosphi = np.cos(phi)
+        sinphi = np.sin(phi)
+        return np.array((sint*cosphi, sint*sinphi, cost), dtype=float)
+
+    def initialEnergy(self) -> float:
+        """Normally distributed energy distribution.
+        """
+        return self.rng.normal(loc=self.eSource, scale=self.sigmaE)
+
+    def initialPosition(self) -> tuple3d:
+        """z-coordinate normally distributed around width/2. y coordinate fixed at width and x coordinate fixed at 0.0.
+        """
+        return np.array((0.0, self.width/2, self.rng.normal(loc=self.width/2, scale=self.sigmaE)), dtype=float)
