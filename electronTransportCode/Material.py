@@ -1,6 +1,5 @@
-import numpy as np
 import math
-from electronTransportCode.ProjectUtils import A_WATER, I_WATER, SC_DENSITY_WATER, RHO_WATER, Z_WATER, FSC, CTF
+from electronTransportCode.ProjectUtils import A_WATER, I_WATER, SC_DENSITY_WATER, RHO_WATER, Z_WATER, FSC, CTF, Re
 
 
 class Material:
@@ -27,8 +26,8 @@ class Material:
         ZE: float = Z*(Z + 1)*math.log(math.pow(Z, -2/3))
         ZX: float = Z*(Z + 1)*math.log(1 + 3.34*math.pow(FSC*Z, 2))
         self.bc: float = 7821.6 * rho * ZS * math.exp(ZE/ZS)/(A * math.exp(ZX/ZS))
-
         self.eta0CONST: float = math.pow(FSC, 2)*math.pow(Z, 2/3)/(4*math.pow(CTF, 2))
+        self.LcollConst = 2*math.pi*(Re**2)*self.SC_DENSITY*self.Z
 
 WaterMaterial = Material()
 unitDensityMaterial = Material(rho=1)

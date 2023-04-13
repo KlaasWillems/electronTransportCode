@@ -2,8 +2,6 @@ from typing import Tuple, Optional
 import numpy as np
 from electronTransportCode.ProjectUtils import tuple3d
 from electronTransportCode.Material import Material
-from numba.experimental import jitclass
-import numba as nb
 
 # TODO: rename to yz terminology
 

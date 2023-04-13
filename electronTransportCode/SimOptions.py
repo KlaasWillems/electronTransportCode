@@ -7,7 +7,7 @@ class SimOptions(ABC):
     """Object which encapsulates initial condition and random number generator for Monte Carlo Simulation
     """
     def __init__(self, minEnergy: float, rngSeed: int = 12) -> None:
-        self.minEnergy: float = minEnergy
+        self.minEnergy: float = minEnergy  # Energy in units of ERE
         self.rng: np.random.Generator = np.random.default_rng(rngSeed)
 
         # Once self.minEnergy is reached, deposit the energy at position of 'death'

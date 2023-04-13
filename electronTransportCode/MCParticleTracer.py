@@ -9,7 +9,7 @@ import pickle
 from electronTransportCode.MCEstimator import MCEstimator
 from electronTransportCode.ParticleModel import ParticleModel
 from electronTransportCode.SimOptions import SimOptions
-from electronTransportCode.ProjectUtils import tuple3d, tuple3d
+from electronTransportCode.ProjectUtils import ERE, tuple3d, tuple3d
 from electronTransportCode.SimulationDomain import SimulationDomain
 
 
@@ -79,7 +79,7 @@ class ParticleTracer(ABC):
         if myrank == root and file is not None:
             pickle.dump(estimatorList, open(file, 'wb'))
 
-    def __call__(self, nbParticles: int, estimators: Union[MCEstimator, tuple[MCEstimator, ...]], logAmount: int = 1000, particle: Optional[ParticleModel] = None ) -> Union[MCEstimator, tuple[MCEstimator, ...]]:
+    def __call__(self, nbParticles: int, estimators: Union[MCEstimator, tuple[MCEstimator, ...]], logAmount: int = np.iinfo(int).max, particle: Optional[ParticleModel] = None ) -> Union[MCEstimator, tuple[MCEstimator, ...]]:
         """Execute Monte Carlo particle simulation of self.particle using self.simOptions in the simulation domain defined by self.simDomain.
         Quantities of interest are estimated on-the-fly using estimator.
 
@@ -108,14 +108,13 @@ class ParticleTracer(ABC):
 
         return estimators
 
-    def scatterParticle(self, cost: float, phi: float, vec3d: tuple3d, NEW_ABS_DIR: bool = False) -> tuple3d:
+    def scatterParticle(self, cost: float, phi: float, vec3d: tuple3d) -> tuple3d:
         """Scatter a particle across polar angle (theta) and azimuthatl scattering angle phi
 
         Args:
             cost (float): Cosine of polar scattering angle
             phi (float): Azimuthal scattering angle in radians
             vec3d (tuple3d): Direction of travel
-            NEW_ABS_DIR (bool, optional): If True, cost and phi are interpreted in speherical coordinates. Defaults to False.
 
         Returns:
             tuple3d: Direction of travel after scattering cost and phi with respect to vec3d
@@ -124,24 +123,21 @@ class ParticleTracer(ABC):
         cosphi = math.cos(phi)
         sinphi = math.sin(phi)
 
-        new_vec3d = np.array((0.0, 0.0, 0.0), dtype=float)
-
         # Rotation matrices (See penelope documentation eq. 1.131)
-        if np.isclose(abs(vec3d[2]), 1.0, rtol=1e-14) or NEW_ABS_DIR:  # indeterminate case
+        if math.isclose(abs(vec3d[2]), 1.0, rel_tol=1e-14):  # indeterminate case
             sign = math.copysign(1.0, vec3d[2])
-            new_vec3d[0] = sign*sint*cosphi
-            new_vec3d[1] = sign*sint*sinphi
-            new_vec3d[2] = sign*cost
+            x = sign*sint*cosphi
+            y = sign*sint*sinphi
+            z = sign*cost
         else:
             tempVar = math.sqrt(1-vec3d[2]**2)
-            new_vec3d[0] = vec3d[0]*cost + sint*(vec3d[0]*vec3d[2]*cosphi - vec3d[1]*sinphi)/tempVar
-            new_vec3d[1] = vec3d[1]*cost + sint*(vec3d[1]*vec3d[2]*cosphi + vec3d[0]*sinphi)/tempVar
-            new_vec3d[2] = vec3d[2]*cost - tempVar*sint*cosphi
+            x = vec3d[0]*cost + sint*(vec3d[0]*vec3d[2]*cosphi - vec3d[1]*sinphi)/tempVar
+            y = vec3d[1]*cost + sint*(vec3d[1]*vec3d[2]*cosphi + vec3d[0]*sinphi)/tempVar
+            z = vec3d[2]*cost - tempVar*sint*cosphi
 
         # normalized for security
-        norm = math.sqrt(new_vec3d[0]**2 + new_vec3d[1]**2 + new_vec3d[2]**2)
-        new_vec3d = new_vec3d/norm
-        return new_vec3d
+        norm = math.sqrt(x**2 + y**2 + z**2)
+        return np.array((x/norm, y/norm, z/norm), dtype=float)
 
     def stepParticleAnalog(self, pos3d: tuple3d, vec3d: tuple3d, energy: float, index: int) -> tuple[tuple3d, tuple3d, float, int, float, bool]:
         """Transport particle and apply event.

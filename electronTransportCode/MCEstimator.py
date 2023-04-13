@@ -34,6 +34,7 @@ class MCEstimator(ABC):
             np.ndarray: quantity of interest
         """
 
+    @abstractmethod
     def combineEstimators(self, particles_per_proc: int, root: int = 0) -> None:
         """Combine estimators from multiple processors into one.
         """

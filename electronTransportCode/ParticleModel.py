@@ -81,10 +81,10 @@ class ParticleModel(ABC):
         Returns:
             float: Energy loss DeltaE
         """
-        assert Ekin > 0, f'{Ekin=}'
+        assert Ekin*ERE*1e6 >= material.I, f'{Ekin=}'
         assert stepsize > 0, f'{stepsize=}'
         Emid = Ekin + self.evalStoppingPower(Ekin, pos3d, material)*stepsize/2
-        assert Emid > 0, f'{Emid=}'
+        assert Emid*ERE*1e6 >= material.I, f'{Emid=}'
         return self.evalStoppingPower(Emid, pos3d, material)*stepsize
 
     def getOmegaMoments(self, pos3d: tuple3d) -> Tuple[tuple3d, tuple3d]:
@@ -178,21 +178,21 @@ class DiffusionTestParticle(ParticleModel):
             return self.rng.exponential(scale=1.0/self.Es)
         else:
             if self.Es == '(1 + 0.5*sin(x))':
-                l = 1.0 + 0.5*np.sin(pos3d[0])
+                l = 1.0 + 0.5*math.sin(pos3d[0])
             elif self.Es == '0.1*(1 + 0.5*sin(x))':
-                l = 0.1*(1.0 + 0.5*np.sin(pos3d[0]))
+                l = 0.1*(1.0 + 0.5*math.sin(pos3d[0]))
             elif self.Es == '10*(1 + 0.5*sin(x))':
-                l = 10*(1.0 + 0.5*np.sin(pos3d[0]))
+                l = 10*(1.0 + 0.5*math.sin(pos3d[0]))
             elif self.Es == '(100 + 10*sin(x))':
-                l = 100.0 + 10.0*np.sin(pos3d[0])
+                l = 100.0 + 10.0*math.sin(pos3d[0])
             elif self.Es == '(10 + 5*sin(x))':
-                l = 10 + 5*np.sin(pos3d[0])
+                l = 10 + 5*math.sin(pos3d[0])
             elif self.Es == '(1 + 0.5*sin(y))':
-                l = 1.0 + 0.5*np.sin(pos3d[1])
+                l = 1.0 + 0.5*math.sin(pos3d[1])
             elif self.Es == '0.1*(1 + 0.5*sin(y))':
-                l = 0.1*(1.0 + 0.5*np.sin(pos3d[1]))
+                l = 0.1*(1.0 + 0.5*math.sin(pos3d[1]))
             elif self.Es == '10*(1 + 0.5*sin(y))':
-                l = 10*(1.0 + 0.5*np.sin(pos3d[1]))
+                l = 10*(1.0 + 0.5*math.sin(pos3d[1]))
             else:
                 raise NotImplementedError('Invalid scattering rate.')
             return self.rng.exponential(scale=1.0/l)
@@ -312,42 +312,30 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         """
         assert self.rng is not None
         assert Ekin > 0, f'{Ekin=}'
-        Z = material.Z
-        betaSquared: float = Ekin*(Ekin+2)/np.power(Ekin+1,2)
-        beta: float = np.sqrt(betaSquared)
-        alfaPrime: float = FSC*Z/beta
-        eta0: float = material.eta0CONST/(Ekin*(Ekin+2))
+        temp = Ekin*(Ekin+2)
+        betaSquared: float = temp/math.pow(Ekin+1,2)
+        eta0: float = material.eta0CONST/temp
         r: float = self.rng.uniform()
-        eta: float = eta0*(1.13 + 3.76*np.power(alfaPrime, 2))
+        eta: float = eta0*(1.13 + 3.76*math.pow(FSC*material.Z, 2)/betaSquared)
 
         mu = 1 - 2*eta*r/(1-r+eta)
-        phi = self.rng.uniform(low=0.0, high=2*np.pi)
+        phi = self.rng.uniform(low=0.0, high=2*math.pi)
         return mu, phi
 
     def evalStoppingPower(self, Ekin: float, pos: tuple3d, material: Material) -> float:
         """ Stopping power from PENELOPE for close and distant interactions. Equation 3.120 in PENELOPE 2018 Conference precedings.
-
-            See abstract base class method for arguments and return value.
-        Note on EGSnrc stopping power.
-            - A previous version implemented the stopping power from EGSnrc. In that formula I assumed the scattering center density n was equal to the number density of water. This was probably wrong. Comparing with PENELOPEs stopping power, n = NB_DENSITY*Z. CHANGE THIS!
-            - I don't understand the Tc parameter in the formula from EGSnrc.
             - This previous implementation did not include density effect correction that takes into account the polarization of the medium due to the electron field.
         """
         # Ekin = tau in papers
-        I = material.I
-        NB_DENSITY = material.SC_DENSITY
-        Z = material.Z
-
         Ekin_eV: float = Ekin*ERE*1e6  # Electron kinetic energy in eV (E or T in literature)
-        if Ekin_eV < I:
-            raise ValueError('Input energy is lower than I')
+        assert Ekin_eV >= material.I, f'Input energy: {Ekin_eV} is lower than I'
 
         betaSquared: float = Ekin*(Ekin+2)/((Ekin+1)**2)
 
         gamma = Ekin+1
-        term1 = math.log(((Ekin_eV/I)**2)*((gamma+1)/2))
-        term2 = 1 - betaSquared - ((2*gamma - 1)/gamma**2)*math.log(2) + (((gamma-1)/gamma)**2)/8
-        Lcoll: float = 2*math.pi*(Re**2)*NB_DENSITY*Z*(term1 + term2)/betaSquared
+        term1 = math.log(((Ekin_eV/material.I)**2)*((gamma+1)/2))
+        term2 = 1 - betaSquared - ((2*gamma - 1)/(gamma**2))*math.log(2) + (((gamma-1)/gamma)**2)/8
+        Lcoll = material.LcollConst*(term1 + term2)/betaSquared
 
         return Lcoll
 
@@ -379,20 +367,16 @@ class SimplifiedPenelopeElectron(ParticleModel):
         """ Stopping power from PENELOPE for close and distant interactions. Equation 3.120 in PENELOPE 2018 Conference precedings.
         """
         # Ekin = tau in papers
-        I = material.I
-        NB_DENSITY = material.SC_DENSITY
-        Z = material.Z
 
-        Ekin_eV: float = Ekin*ERE*1e6  # Electron kinetic energy in eV (E or T in literature)
-        if Ekin_eV < I:
-            raise ValueError('Input energy is lower than I')
+        Ekin_eV = Ekin*ERE*1e6  # Electron kinetic energy in eV (E or T in literature)
+        assert Ekin_eV < material.I, f'Input energy: {Ekin_eV} is lower than I'
 
         betaSquared: float = Ekin*(Ekin+2)/((Ekin+1)**2)
 
         gamma = Ekin+1
-        term1 = math.log(((Ekin_eV/I)**2)*((gamma+1)/2))
-        term2 = 1 - betaSquared - ((2*gamma - 1)/gamma**2)*math.log(2) + (((gamma-1)/gamma)**2)/8
-        Lcoll: float = 2*math.pi*(Re**2)*NB_DENSITY*Z*(term1 + term2)/betaSquared
+        term1 = math.log(((Ekin_eV/material.I)**2)*((gamma+1)/2))
+        term2 = 1 - betaSquared - ((2*gamma - 1)/(gamma**2))*math.log(2) + (((gamma-1)/gamma)**2)/8
+        Lcoll = material.LcollConst*(term1 + term2)/betaSquared
 
         return Lcoll
 
