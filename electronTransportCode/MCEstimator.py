@@ -160,6 +160,25 @@ class DoseEstimator(MCEstimator):
             self.index = nb_particles
 
 
+class TrackPosition(MCEstimator):
+    """Quick estimator which will store the position of a particle at each event. Great for tracking particle paths.
+    """
+    def __init__(self, simDomain: SimulationDomain, size: int = 100000) -> None:
+        super().__init__(simDomain)
+        self.scoreMatrix = np.empty((size, 3), dtype=float)
+        self.index: int = 0
+
+    def getEstimator(self) -> np.ndarray:
+        return self.scoreMatrix
+
+    def updateEstimator(self, posTuple: tuple[tuple3d, tuple3d], vecTuple: tuple[tuple3d, tuple3d], energyTuple: tuple[float, float], index: int, stepsize: float) -> None:
+        self.scoreMatrix[self.index, :] = posTuple[0]
+        self.index += 1
+
+    def combineEstimators(self, particles_per_proc: int, root: int = 0) -> None:
+        raise NotImplementedError
+
+
 class FluenceEstimator(MCEstimator):
     """Score particle density at each collision and grid cell crossing. Energy variable is discretized in bins.
     """
