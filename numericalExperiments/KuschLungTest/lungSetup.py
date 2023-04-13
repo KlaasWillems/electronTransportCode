@@ -4,7 +4,7 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 from electronTransportCode.Material import Material
-from electronTransportCode.ProjectUtils import E_THRESHOLD, ERE, tuple3d
+from electronTransportCode.ProjectUtils import A_WATER, E_THRESHOLD, ERE, I_WATER, SC_DENSITY_WATER, Z_WATER, tuple3d
 from electronTransportCode.SimulationDomain import SimulationDomain
 from electronTransportCode.SimOptions import SimOptions
 
@@ -38,7 +38,8 @@ class LungSimulationDomain(SimulationDomain):
         self.materialArray = np.empty(shape=(self.grayScaleImage.size, ), dtype=Material)
         for index, pixelVal in enumerate(np.nditer(self.grayScaleImage)):
             rho = max(self.rhoMin, self.rhoMax*pixelVal/255)  # type: ignore
-            self.materialArray[index] = Material(Z_BONE, A_BONE, I_BONE, SC_DENSITY_BONE, rho)
+            # self.materialArray[index] = Material(Z_BONE, A_BONE, I_BONE, SC_DENSITY_BONE, rho)
+            self.materialArray[index] = Material(Z_WATER, A_WATER, I_WATER, SC_DENSITY_WATER, rho)
 
     def showImage(self) -> None:
         """Plot lung image
@@ -73,7 +74,9 @@ class LungInitialConditions(SimOptions):
             sigmaE (float, optional): Standard deviation of normally distributed energy source. Defaults to 1/100.
             eSource (float, optional): Mean of normally distributed energy source. Defaults to 21 MeV.
         """
-        super().__init__(E_THRESHOLD, rngSeed)
+        # E_THRESHOLD_BONE = max(E_THRESHOLD, I_BONE/(ERE*1e6))
+        E_THRESHOLD_BONE = E_THRESHOLD
+        super().__init__(E_THRESHOLD_BONE, rngSeed)
         self.width = width
         self.kappa = kappa
         self.sigmaE = sigmaE
@@ -99,4 +102,4 @@ class LungInitialConditions(SimOptions):
     def initialPosition(self) -> tuple3d:
         """z-coordinate normally distributed around width/2. y coordinate fixed at width and x coordinate fixed at 0.0.
         """
-        return np.array((0.0, self.width/2, self.rng.normal(loc=self.width/2, scale=self.sigmaE)), dtype=float)
+        return np.array((0.0, self.width, self.rng.normal(loc=-self.width/2, scale=self.sigmaE)), dtype=float)
