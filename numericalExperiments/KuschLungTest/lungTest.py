@@ -11,8 +11,8 @@ from lungSetup import LungInitialConditions, LungSimulationDomain
 if __name__ == '__main__':
 
     # Sim settings
-    particle = SimplifiedEGSnrcElectron()
-    lungInit = LungInitialConditions(sigmaPos=1/5)
+    particle = SimplifiedEGSnrcElectron(scatterer='2d')  # constrain scattering to yz plance
+    lungInit = LungInitialConditions(sigmaPos=1/2)
     lungSimDomain = LungSimulationDomain()
 
     # Load particle tracers
