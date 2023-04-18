@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 import math
+from multiprocessing import Value
 from typing import Optional, Union, Tuple
 import numpy as np
 from electronTransportCode.Material import Material
@@ -290,6 +291,16 @@ class SimplifiedEGSnrcElectron(ParticleModel):
     """A simplified electron model. Soft elastic collisions are taken into account using the screened Rutherford elastic cross section.
     Energy loss is deposited continuously using the Bethe-Bloch inelastic restricted collisional stopping power. Hard-inelastic collisions and bremstrahlung are not taken into account.
     """
+    def __init__(self, generator: Union[np.random.Generator, None, int] = None, scatterer: str = '3d') -> None:
+        """
+            scatterer (str, optional): 3d means azimuthal scattering angle is sampled phi~U(0, 2*pi). '2d' means scattering in the yz-plane. In this case, phi is chosen from {pi/2 3*pi/2}. Defaults to '3d'.
+        """
+        if scatterer == '2d' or scatterer == '3d':
+            self.scatterer: str = scatterer
+        else:
+            raise ValueError('scatterer argument is invalid.')
+        super().__init__(generator)
+
     def getScatteringRate(self, pos3d: tuple3d, Ekin: float, material: Material) -> float:
         betaSquared: float = Ekin*(Ekin+2)/((Ekin+1)**2)
         return material.bc/betaSquared  # total macroscopic screened Rutherford cross section
@@ -319,7 +330,10 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         eta: float = eta0*(1.13 + 3.76*math.pow(FSC*material.Z, 2)/betaSquared)
 
         mu = 1 - 2*eta*r/(1-r+eta)
-        phi = self.rng.uniform(low=0.0, high=2*math.pi)
+        if self.scatterer == '3d':
+            phi = self.rng.uniform(low=0.0, high=2*math.pi)
+        else:  # '2d'
+            phi = self.rng.choice([np.pi/2, 3*np.pi/2])
         return mu, phi
 
     def evalStoppingPower(self, Ekin: float, pos: tuple3d, material: Material) -> float:
@@ -357,7 +371,10 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         """Assume particle undergoes a very large amount of collisions during the diffusive step. As a result, the stationary post-collision angular distribution is the isotropic distribution. When fstat is isotropically distributed, it remains isotropic after scattering with f_postcol.
         """
         # 3D isotropic scattering: Mean is zero, variance is 1/3
-        return (np.array((0.0, 0.0, 0.0), dtype=float), np.array((1/3, 1/3, 1/3), dtype=float))
+        if self.scatterer == "3d":
+            return (np.array((0.0, 0.0, 0.0), dtype=float), np.array((1/3, 1/3, 1/3), dtype=float))
+        else:  # scatterer
+            return (np.array((0.0, 0.0, 0.0), dtype=float), np.array((1/3, 1/3, 0.0), dtype=float))
 
 
 class SimplifiedPenelopeElectron(ParticleModel):
