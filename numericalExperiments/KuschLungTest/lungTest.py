@@ -12,7 +12,7 @@ if __name__ == '__main__':
 
     # Sim settings
     particle = SimplifiedEGSnrcElectron()
-    lungInit = LungInitialConditions(sigmaPos=1/5)
+    lungInit = LungInitialConditions(sigmaPos=1, kappa=10)
     lungSimDomain = LungSimulationDomain()
 
     # Load particle tracers
