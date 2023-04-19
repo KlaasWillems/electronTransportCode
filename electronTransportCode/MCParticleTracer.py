@@ -108,7 +108,7 @@ class ParticleTracer(ABC):
 
         return estimators
 
-    def scatterParticle(self, cost: float, phi: float, vec3d: tuple3d) -> tuple3d:
+    def scatterParticle(self, cost: float, phi: float, vec3d: tuple3d, new_direction: bool) -> tuple3d:
         """Scatter a particle across polar angle (theta) and azimuthatl scattering angle phi
 
         Args:
@@ -123,17 +123,23 @@ class ParticleTracer(ABC):
         cosphi = math.cos(phi)
         sinphi = math.sin(phi)
 
-        # Rotation matrices (See penelope documentation eq. 1.131)
-        if math.isclose(abs(vec3d[2]), 1.0, rel_tol=1e-14):  # indeterminate case
-            sign = math.copysign(1.0, vec3d[2])
-            x = sign*sint*cosphi
-            y = sign*sint*sinphi
-            z = sign*cost
+        if new_direction:
+            x = sint*cosphi
+            y = sint*sinphi
+            z = cost
         else:
-            tempVar = math.sqrt(1-vec3d[2]**2)
-            x = vec3d[0]*cost + sint*(vec3d[0]*vec3d[2]*cosphi - vec3d[1]*sinphi)/tempVar
-            y = vec3d[1]*cost + sint*(vec3d[1]*vec3d[2]*cosphi + vec3d[0]*sinphi)/tempVar
-            z = vec3d[2]*cost - tempVar*sint*cosphi
+            # Rotation matrices (See penelope documentation eq. 1.131)
+            if math.isclose(abs(vec3d[2]), 1.0, rel_tol=1e-14):  # indeterminate case
+                sign = math.copysign(1.0, vec3d[2])
+                x = sign*sint*cosphi
+                y = sign*sint*sinphi
+                z = sign*cost
+            else:
+                tempVar = math.sqrt(1-vec3d[2]**2)
+                tempVar2 = vec3d[2]*cosphi
+                x = vec3d[0]*cost + sint*(vec3d[0]*tempVar2 - vec3d[1]*sinphi)/tempVar
+                y = vec3d[1]*cost + sint*(vec3d[1]*tempVar2 + vec3d[0]*sinphi)/tempVar
+                z = vec3d[2]*cost - tempVar*sint*cosphi
 
         # normalized for security
         norm = math.sqrt(x**2 + y**2 + z**2)
@@ -203,8 +209,8 @@ class ParticleTracer(ABC):
             new_vec3d: tuple3d = np.array((0.0, 0.0, 0.0), dtype=float)
             new_index = index
 
-            mu, phi = self.particle.sampleScatteringAngles(new_energy, material)
-            new_vec3d = self.scatterParticle(mu, phi, vec3d)
+            mu, phi, new_direction = self.particle.sampleScatteringAngles(new_energy, material)
+            new_vec3d = self.scatterParticle(mu, phi, vec3d, new_direction)
             return new_pos3d, new_vec3d, new_energy, new_index, step, kin_stepped
 
         else:  # Next event is grid cell crossing

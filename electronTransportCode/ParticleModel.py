@@ -1,11 +1,9 @@
 from abc import ABC, abstractmethod
 import math
-from multiprocessing import Value
-from typing import Optional, Union, Tuple
+from typing import Optional, Union, Tuple, Final
 import numpy as np
 from electronTransportCode.Material import Material
-from electronTransportCode.ProjectUtils import ERE, FSC, Re
-from electronTransportCode.ProjectUtils import tuple3d
+from electronTransportCode.ProjectUtils import ERE, FSC, Re, tuple3d, mathlog2
 
 
 class ParticleModel(ABC):
@@ -44,7 +42,7 @@ class ParticleModel(ABC):
         """
 
     @abstractmethod
-    def sampleScatteringAngles(self, Ekin: float, material: Material) -> Tuple[float, float]:
+    def sampleScatteringAngles(self, Ekin: float, material: Material) -> Tuple[float, float, bool]:
         """Sample new direction of travel.
 
         Args:
@@ -82,10 +80,7 @@ class ParticleModel(ABC):
         Returns:
             float: Energy loss DeltaE
         """
-        assert Ekin*ERE*1e6 >= material.I, f'{Ekin=}'
-        assert stepsize > 0, f'{stepsize=}'
         Emid = Ekin + self.evalStoppingPower(Ekin, pos3d, material)*stepsize/2
-        assert Emid*ERE*1e6 >= material.I, f'{Emid=}'
         return self.evalStoppingPower(Emid, pos3d, material)*stepsize
 
     def getOmegaMoments(self, pos3d: tuple3d) -> Tuple[tuple3d, tuple3d]:
@@ -138,12 +133,12 @@ class PointSourceParticle(ParticleModel):
         assert self.rng is not None
         return self.rng.exponential(scale=1/self.sigma)
 
-    def sampleScatteringAngles(self, Ekin: float, material: Material) -> Tuple[float, float]:
+    def sampleScatteringAngles(self, Ekin: float, material: Material) -> Tuple[float, float, bool]:
         # isotropic scattering
         assert self.rng is not None
         mu = self.rng.uniform(low=-1, high=1)
         phi = self.rng.uniform(low=0.0, high=2*math.pi)
-        return mu, phi
+        return mu, phi, True
 
     def evalStoppingPower(self, Ekin: float, pos: tuple3d, material: Material) -> float:
         return 1
@@ -198,12 +193,12 @@ class DiffusionTestParticle(ParticleModel):
                 raise NotImplementedError('Invalid scattering rate.')
             return self.rng.exponential(scale=1.0/l)
 
-    def sampleScatteringAngles(self, Ekin: float, material: Material) -> Tuple[float, float]:
+    def sampleScatteringAngles(self, Ekin: float, material: Material) -> Tuple[float, float, bool]:
         # isotropic scattering
         assert self.rng is not None
         mu = self.rng.uniform(low=-1, high=1)
         phi = self.rng.uniform(low=0.0, high=2*math.pi)
-        return mu, phi
+        return mu, phi, True
 
     def evalStoppingPower(self, Ekin: float, pos3d: tuple3d, material: Material) -> float:
         if isinstance(self.sp, float) or isinstance(self.sp, int):
@@ -276,12 +271,12 @@ class DiffusionTestParticlev2(DiffusionTestParticle):
     def __init__(self, generator: Union[np.random.Generator, None, int] = None, Es: Union[float, str] = 1, sp: Union[float, str] = 1) -> None:
         super().__init__(generator, Es, sp)
 
-    def sampleScatteringAngles(self, Ekin: float, material: Material) -> Tuple[float, float]:
+    def sampleScatteringAngles(self, Ekin: float, material: Material) -> Tuple[float, float, bool]:
         # polar scattering angle
         cost = np.random.uniform(low=-1, high=1)
         # azimuthal scattering angle
         phiAngle = np.random.uniform(low=0, high=math.pi)
-        return cost, phiAngle
+        return cost, phiAngle, True
 
     def getOmegaMoments(self, pos3d: tuple3d) -> Tuple[tuple3d, tuple3d]:
         return (np.array((0.0, 0.5, 0.0), dtype=float), np.array((1/3, 1/12, 1/3), dtype=float))
@@ -295,8 +290,8 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         """
             scatterer (str, optional): 3d means azimuthal scattering angle is sampled phi~U(0, 2*pi). '2d' means scattering in the yz-plane. In this case, phi is chosen from {pi/2 3*pi/2}. Defaults to '3d'.
         """
-        if scatterer == '2d' or scatterer == '3d':
-            self.scatterer: str = scatterer
+        if scatterer == '2d' or scatterer == '3d' or scatterer == '2d-simple':
+            self.scatterer: Final[str] = scatterer
         else:
             raise ValueError('scatterer argument is invalid.')
         super().__init__(generator)
@@ -316,25 +311,38 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         SigmaSR: float = material.bc/betaSquared  # total macroscopic screened Rutherford cross section
         return self.rng.exponential(1/SigmaSR)  # path-length
 
-    def sampleScatteringAngles(self, Ekin: float, material: Material) -> Tuple[float, float]:
+    def sampleScatteringAngles(self, Ekin: float, material: Material) -> Tuple[float, float, bool]:
         """ Sample polar scattering angle from screened Rutherford elastic scattering cross section. See EGSnrc manual by Kawrakow et al for full details.
 
             See abstract base class method for arguments and return value.
         """
         assert self.rng is not None
         assert Ekin > 0, f'{Ekin=}'
-        temp = Ekin*(Ekin+2)
-        betaSquared: float = temp/math.pow(Ekin+1,2)
-        eta0: float = material.eta0CONST/temp
-        r: float = self.rng.uniform()
-        eta: float = eta0*(1.13 + 3.76*math.pow(FSC*material.Z, 2)/betaSquared)
+        # mu
+        if self.scatterer == '3d' or self.scatterer == '2d':
+            temp = Ekin*(Ekin+2)
+            betaSquared: float = temp/((Ekin+1)**2)
+            eta0: float = material.eta0CONST/temp
+            r: float = self.rng.uniform()
+            eta: float = eta0*(1.13 + 3.76*((FSC*material.Z)**2)/betaSquared)
+            mu = 1 - 2*eta*r/(1-r+eta)
+            new_direction = False
+        else:  # '2d-simple'
+            mu = self.rng.uniform(low=-1, high=1)
+            new_direction = True
 
-        mu = 1 - 2*eta*r/(1-r+eta)
+        # phi
         if self.scatterer == '3d':
             phi = self.rng.uniform(low=0.0, high=2*math.pi)
-        else:  # '2d'
-            phi = self.rng.choice([np.pi/2, 3*np.pi/2])
-        return mu, phi
+        elif self.scatterer == '2d':
+            temp = self.rng.uniform()
+            if temp < 0.5:
+                phi = math.pi/2
+            else:
+                phi = 3*math.pi/2
+        else:  # '2d-simple'
+            phi = 3*math.pi/2
+        return mu, phi, new_direction
 
     def evalStoppingPower(self, Ekin: float, pos: tuple3d, material: Material) -> float:
         """ Stopping power from PENELOPE for close and distant interactions. Equation 3.120 in PENELOPE 2018 Conference precedings.
@@ -348,7 +356,7 @@ class SimplifiedEGSnrcElectron(ParticleModel):
 
         gamma = Ekin+1
         term1 = math.log(((Ekin_eV/material.I)**2)*((gamma+1)/2))
-        term2 = 1 - betaSquared - ((2*gamma - 1)/(gamma**2))*math.log(2) + (((gamma-1)/gamma)**2)/8
+        term2 = 1 - betaSquared - ((2*gamma - 1)/(gamma**2))*mathlog2 + (((gamma-1)/gamma)**2)/8
         Lcoll = material.LcollConst*(term1 + term2)/betaSquared
 
         return Lcoll
@@ -373,8 +381,29 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         # 3D isotropic scattering: Mean is zero, variance is 1/3
         if self.scatterer == "3d":
             return (np.array((0.0, 0.0, 0.0), dtype=float), np.array((1/3, 1/3, 1/3), dtype=float))
-        else:  # scatterer
-            return (np.array((0.0, 0.0, 0.0), dtype=float), np.array((1/3, 1/3, 0.0), dtype=float))
+        elif self.scatterer == '2d':
+            return (np.array((0.0, 0.0, 0.0), dtype=float), np.array((0.0, 1/3, 1/3), dtype=float))
+        else:  # '2d-simple'
+            return (np.array((0.0, -math.pi/4, 0.0), dtype=float), np.array((0.0, 2/3 - (math.pi**2)/16, 1/3), dtype=float))
+
+    def energyLoss(self, Ekin: float, pos3d: tuple3d, stepsize: float, material: Material) -> float:
+        """Compute energy along step using continuous slowing down approximation. Eq. 4.11.3 from EGSnrc manual, also used in GPUMCD.
+        Approximation is second order accurate: O(DeltaE^2)
+
+        Args:
+            Ekin (float): Energy at the beginning of the step. Energy unit relative to electron rest energy.
+            pos3d (tuple3d): position of particle
+            stepsize (float): [cm] path-length
+            material (Material): Material of current grid cell
+
+        Returns:
+            float: Energy loss DeltaE
+        """
+        assert Ekin*ERE*1e6 >= material.I, f'{Ekin=}'
+        assert stepsize > 0, f'{stepsize=}'
+        Emid = Ekin + self.evalStoppingPower(Ekin, pos3d, material)*stepsize/2
+        assert Emid*ERE*1e6 >= material.I, f'{Emid=}'
+        return self.evalStoppingPower(Emid, pos3d, material)*stepsize
 
 
 class SimplifiedPenelopeElectron(ParticleModel):
@@ -400,5 +429,5 @@ class SimplifiedPenelopeElectron(ParticleModel):
     def samplePathlength(self, Ekin: float, pos: tuple3d, material: Material) -> float:
         raise NotImplementedError
 
-    def sampleScatteringAngles(self, Ekin: float, material: Material) -> Tuple[float, float]:
+    def sampleScatteringAngles(self, Ekin: float, material: Material) -> Tuple[float, float, bool]:
         raise NotImplementedError
