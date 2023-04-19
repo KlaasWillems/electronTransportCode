@@ -89,10 +89,7 @@ class LungInitialConditions(SimOptions):
         theta = np.random.vonmises(-math.pi/2, kappa=self.kappa)
         cost = math.cos(theta)
         sint = math.sin(theta)
-        phi = math.pi/2
-        cosphi = np.cos(phi)
-        sinphi = np.sin(phi)
-        return np.array((sint*cosphi, sint*sinphi, cost), dtype=float)
+        return np.array((0.0, sint, cost), dtype=float)
 
     def initialEnergy(self) -> float:
         """Normally distributed energy distribution.

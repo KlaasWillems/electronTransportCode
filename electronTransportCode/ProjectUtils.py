@@ -1,10 +1,11 @@
+import math
 from typing import Literal, TypeAlias, Final, Annotated
 import numpy.typing as npt
 import numpy as np
 from scipy import constants
 
 # predefined types
-tuple3d = Annotated[npt.NDArray[np.float64], Literal[3]]
+tuple3d: TypeAlias = Annotated[npt.NDArray[np.float64], Literal[3]]
 
 # Constants
 CTF: Final[float] = np.power(9*(np.pi**2)/128, 1/3)  # Thomas-Fermi constant. Dimensionless
@@ -18,3 +19,4 @@ Re: Final[float] = constants.value('classical electron radius')*100  # [cm] clas
 SC_DENSITY_WATER: Final[float] = 3.3428847*1e22  # [cm^-3] scattering center density for water. Electron density of water divided by Z_WATER. See Olbrant et al.
 E_THRESHOLD: Final[float] = 1e-3  # Stopping power becomes negative if energy is lower than this value
 RHO_WATER: Final[float] = 1.0  # [g/cm^3] density of water
+mathlog2: float = math.log(2)
