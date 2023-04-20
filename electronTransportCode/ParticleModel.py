@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 import math
+from multiprocessing import Value
 from typing import Optional, Union, Tuple, Final
 import numpy as np
 from electronTransportCode.Material import Material
@@ -355,7 +356,11 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         betaSquared: float = Ekin*(Ekin+2)/((Ekin+1)**2)
 
         gamma = Ekin+1
-        term1 = math.log(((Ekin_eV/material.I)**2)*((gamma+1)/2))
+        argument = ((Ekin_eV/material.I)**2)*((gamma+1)/2)
+        if argument > 1e-320:  # Roundings errors in argument can cause ValueError in math.log
+            term1 = math.log(argument)
+        else:
+            term1 = math.log(1e-320)
         term2 = 1 - betaSquared - ((2*gamma - 1)/(gamma**2))*mathlog2 + (((gamma-1)/gamma)**2)/8
         Lcoll = material.LcollConst*(term1 + term2)/betaSquared
 
