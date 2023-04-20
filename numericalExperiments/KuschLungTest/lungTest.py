@@ -34,7 +34,7 @@ if __name__ == '__main__':
         # Estimator
         doseEstimatorK = DoseEstimator(lungSimDomain)
         t1 = time.process_time()
-        analogTracer.runMultiProc(NB_PARTICLES, (doseEstimatorK, ), file=f'data/doseEstimatorK{scatterer}.pkl')
+        analogTracer.runMultiProc(NB_PARTICLES, (doseEstimatorK, ), file=f'data/doseEstimatorK{scatterer}.pkl', logAmount=500)
         t2 = time.process_time()
         pickle.dump(analogTracer, open(f'data/analogTracer{scatterer}.pkl', mode='wb'))
     elif algorithm == 'kd':
@@ -45,7 +45,7 @@ if __name__ == '__main__':
         # Estimator
         doseEstimatorKD = DoseEstimator(lungSimDomain)
         t1 = time.process_time()
-        kdmc.runMultiProc(NB_PARTICLES, (doseEstimatorKD, ), file=f'data/doseEstimatorKD{scatterer}.pkl')
+        kdmc.runMultiProc(NB_PARTICLES, (doseEstimatorKD, ), file=f'data/doseEstimatorKD{scatterer}.pkl', logAmount=500)
         t2 = time.process_time()
         pickle.dump(kdmc, open(f'data/kdmc{scatterer}.pkl', mode='wb'))
     else:
