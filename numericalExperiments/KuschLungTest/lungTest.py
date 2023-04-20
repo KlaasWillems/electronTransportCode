@@ -20,6 +20,10 @@ if __name__ == '__main__':
     lungInit = LungInitialConditions(sigmaPos=1, kappa=10)
     lungSimDomain = LungSimulationDomain()
 
+    if scatterer == '2d-simple':  # decrease scattering rate for easy testing
+        for material in lungSimDomain.materialArray:
+            material.bc = material.bc/100
+
     # MPI Code
     procs = MPI.COMM_WORLD.Get_size()
     rank = MPI.COMM_WORLD.Get_rank()
@@ -40,7 +44,7 @@ if __name__ == '__main__':
     elif algorithm == 'kd':
         # Load particle tracers
         _, step = np.linspace(0, lungSimDomain.width, lungSimDomain.bins+1, retstep=True)
-        kdmc = KDMC(lungInit, lungSimDomain, particle, dS=step/2)  # type: ignore
+        kdmc = KDMC(lungInit, lungSimDomain, particle, dS=step)  # type: ignore
 
         # Estimator
         doseEstimatorKD = DoseEstimator(lungSimDomain)
