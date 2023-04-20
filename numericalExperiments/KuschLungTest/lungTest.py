@@ -51,4 +51,4 @@ if __name__ == '__main__':
     else:
         raise ValueError('Wrong algorithm input.')
 
-    if rank == 0: print(f'Simulation took: {(t2-t1)/60:.3e} hours')
+    print(f'Process {rank}: Simulation took: {(t2-t1)/60:.3e} minutes')
