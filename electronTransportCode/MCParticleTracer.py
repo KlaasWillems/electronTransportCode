@@ -308,10 +308,12 @@ class KDParticleTracer(ParticleTracer, ABC):
         self.particleIndex: int = 0
         self.AvgNbAnalogCollisions: float = 0.0
         self.AvgNbDiffCollisions: float = 0.0
+        self.AvgNbFalseDiffCollisions: float = 0.0
 
-    def updateAnalytics(self, NbAnalogCollisions: int, NbDiffCollisions: int) -> None:
+    def updateAnalytics(self, NbAnalogCollisions: int, NbDiffCollisions: int, NbFalseDiffCollisions) -> None:
         self.AvgNbAnalogCollisions = (self.particleIndex*self.AvgNbAnalogCollisions + NbAnalogCollisions)/(self.particleIndex+1)
         self.AvgNbDiffCollisions = (self.particleIndex*self.AvgNbDiffCollisions + NbDiffCollisions)/(self.particleIndex+1)
+        self.AvgNbFalseDiffCollisions = (self.particleIndex*self.AvgNbFalseDiffCollisions + NbFalseDiffCollisions)/(self.particleIndex+1)
         self.particleIndex += 1
 
     def pickStepSize(self, kin_pos3d: tuple3d, kin_energy: float, kin_index: int, step_kin: float, N: int = 4) -> Tuple[float, float]:
@@ -368,6 +370,7 @@ class KDParticleTracer(ParticleTracer, ABC):
         # Couter kinetic and diffusive steps
         kin_counter: int = 0
         diff_counter: int = 0
+        false_diff_counter: int = 0
 
         # Step until energy is smaller than threshold
         while loopbool:
@@ -397,6 +400,7 @@ class KDParticleTracer(ParticleTracer, ABC):
                     step_diff = step_diff1
                     diff_energy = diff_energy1
                 else:
+                    false_diff_counter += 1
                     diff_energy = kin_energy
                     step_diff = 0.0
 
@@ -416,7 +420,7 @@ class KDParticleTracer(ParticleTracer, ABC):
                 energy = diff_energy
                 index = kin_index
 
-        self.updateAnalytics(kin_counter, diff_counter)
+        self.updateAnalytics(kin_counter, diff_counter, false_diff_counter)
 
     def stepParticleDiffusive(self, pos3d: tuple3d, vec3d: tuple3d, energy: float, index: int, stepsize: float) -> tuple[tuple3d, bool]:
         """Apply diffusive motion to particle
