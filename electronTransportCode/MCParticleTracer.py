@@ -390,7 +390,7 @@ class KDParticleTracer(ParticleTracer, ABC):
             for estimator in estimatorList:
                 estimator.updateEstimator((pos3d, kin_pos3d), (vec3d, kin_vec3d), (energy, kin_energy), kin_index, step_kin)
 
-            if kin_energy > self.simOptions.minEnergy:  # Do diffusive step if energy left
+            if kin_energy > self.simOptions.minEnergy and kin_stepped:  # Do diffusive step if energy left and a kinetic step with collision took place
 
                 step_diff1, diff_energy1 = self.pickStepSize(kin_pos3d, kin_energy, kin_index, step_kin)
 
