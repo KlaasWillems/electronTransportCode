@@ -1,20 +1,28 @@
 import sys
 import math
+from typing import Optional
 import time
-from uu import Error
 import numpy as np
+from mpi4py import MPI
 from electronTransportCode.ProjectUtils import ERE
 from electronTransportCode.Material import Material
 from egsMS import mscat
 
 if __name__ == '__main__':
     nbsamples = int(float(sys.argv[1]))
+    nproc = MPI.COMM_WORLD.Get_size()
+    rank = MPI.COMM_WORLD.Get_rank()
+    nbEnergy = int(float(sys.argv[2]))
+
+    if nbEnergy < nproc:
+        raise ValueError('More processors than energy values.')
 
     # energy array
     minEnergy = 1e-3
     maxEnergy = 21/ERE
-    nbEnergy = int(float(sys.argv[2]))
-    energyArray = np.linspace(minEnergy, maxEnergy, nbEnergy)
+    energies = np.linspace(minEnergy, maxEnergy, nbEnergy)
+    energiesSplit = np.array_split(energies, nproc)
+    energyArray = energiesSplit[rank]
 
     # stepsize array
     minds = 0.0
@@ -23,23 +31,19 @@ if __name__ == '__main__':
     stepsizeArray = np.linspace(minds, maxds, nbds)
 
     # material array. Specific for lung test case.
-    # minDensity = 0.05
-    # maxDensity = 1.85
-    # temp = maxDensity*np.arange(0, 256)/255
-    # indices = temp < minDensity
-    # temp[indices] = minDensity
-    # uniqueDensities = np.unique(temp)
-    uniqueDensities = np.linspace(1.0, 1.85, 2)
+    minDensity = 0.05
+    maxDensity = 1.85
+    nbDensity = int(float(sys.argv[4]))
+    densityArray = np.linspace(minDensity, maxDensity, nbDensity)
 
-    lutMean = np.empty(shape=(nbEnergy, nbds, uniqueDensities.size, 2), dtype=float)
-    lutVar = np.empty(shape=(nbEnergy, nbds, uniqueDensities.size, 2), dtype=float)
+    lut = np.empty(shape=(energyArray.size, nbds, nbDensity, 4), dtype=float)
 
     t1 = time.process_time()
 
     for i, energy in enumerate(energyArray):
         t3 = time.process_time()
         for j, stepsize in enumerate(stepsizeArray):
-            for k, density in enumerate(uniqueDensities):
+            for k, density in enumerate(densityArray):
                 material = Material(rho=density)
 
                 # sum of squares and mean for mu and sint
@@ -61,16 +65,32 @@ if __name__ == '__main__':
                     sosMu = sosMu + dmu*(mu - meanMu)
                     sosSint = sosSint + dsint*(sint - meanSint)
 
-                lutMean[i, j, k, :] = (meanMu, meanSint)
-                lutVar[i, j, k, :] = (sosMu/(nbsamples-1), sosSint/(nbsamples-1))
+                lut[i, j, k, :] = (meanMu, meanSint, sosMu/(nbsamples-1), sosSint/(nbsamples-1))
         t4 = time.process_time()
-        print(f'{round(100*(i+1)/nbEnergy, 3)}% completed. Last section took {(t4-t3)/60:2e} minutes.')
+        print(f'{round(100*(i+1)/energyArray.size, 3)}% completed. Last section took {(t4-t3)/60:2e} minutes.')
 
     t2 = time.process_time()
+    bigLut: Optional[np.ndarray]
+    if nproc > 1:
+        if rank == 0:
+            bigLut = np.empty(shape=(nbEnergy, nbds, nbDensity, 4), dtype=float)
+            beginIndex = 0
+            for index, energyGroup in enumerate(energiesSplit):
+                if index != 0:
+                    MPI.COMM_WORLD.Recv(bigLut[beginIndex:, :, :, :], source=index, tag=index)
+                else:
+                    bigLut[beginIndex:beginIndex+energyArray.size, :, :, :] = lut
+                beginIndex += energyArray.size
 
-    with open('lutMean.npy', 'wb') as f:
-        np.save(f, lutMean)
-    with open('lutVar.npy', 'wb') as f:
-        np.save(f, lutVar)
+        else:
+            MPI.COMM_WORLD.Send(lut, dest=0, tag=rank)
+            bigLut = None
+    else:
+        bigLut = lut
 
-    print(f'Total time: {(t2-t1)/60:2e} minutes.')
+    if rank == 0:
+        assert bigLut is not None
+        with open('lut.npy', 'wb') as f:
+            np.save(f, bigLut)
+
+        print(f'Total time: {(t2-t1)/60:2e} minutes.')
