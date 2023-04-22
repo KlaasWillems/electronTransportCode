@@ -103,7 +103,7 @@ class TrackEndEstimator(MCEstimator):
         else:
             recvbuf = None  # type: ignore
 
-        MPI.COMM_WORLD.Gather(self.scoreMatrix, recvbuf, root=0)
+        MPI.COMM_WORLD.Gather(self.scoreMatrix, recvbuf, root=root)
 
         if myrank == root:
             assert recvbuf is not None
@@ -150,7 +150,7 @@ class DoseEstimator(MCEstimator):
         else:
             recvbuf = None  # type: ignore
 
-        MPI.COMM_WORLD.Gather(self.scoreMatrix, recvbuf, root=0)
+        MPI.COMM_WORLD.Gather(self.scoreMatrix, recvbuf, root=root)
 
         if myrank == root:
             assert recvbuf is not None
@@ -258,7 +258,7 @@ class FluenceEstimator(MCEstimator):
         else:
             recvbuf = None  # type: ignore
 
-        MPI.COMM_WORLD.Gather(self.scoreMatrix, recvbuf, root=0)
+        MPI.COMM_WORLD.Gather(self.scoreMatrix, recvbuf, root=root)
 
         if myrank == root:
             assert recvbuf is not None
