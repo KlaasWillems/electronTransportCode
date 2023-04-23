@@ -2,7 +2,6 @@ import sys
 import math
 from typing import Optional
 import time
-import pickle
 import numpy as np
 from mpi4py import MPI
 from electronTransportCode.ProjectUtils import ERE
