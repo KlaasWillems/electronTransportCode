@@ -67,7 +67,7 @@ if __name__ == '__main__':
 
                 lut[i, j, k, :] = (meanMu, meanSint, sosMu/(nbsamples-1), sosSint/(nbsamples-1))
         t4 = time.process_time()
-        print(f'{round(100*(i+1)/energyArray.size, 3)}% completed. Last section took {(t4-t3)/60:2e} minutes.')
+        print(f'Proc: {rank}. {round(100*(i+1)/energyArray.size, 3)}% completed. Last section took {(t4-t3)/60:2e} minutes.')
 
     t2 = time.process_time()
     bigLut: Optional[np.ndarray]
