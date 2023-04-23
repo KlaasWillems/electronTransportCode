@@ -1,4 +1,5 @@
 from abc import abstractmethod, ABC
+from errno import ERESTART
 import time
 import math
 from mpi4py import MPI
@@ -563,3 +564,35 @@ class KDLMC(KDParticleTracer):
         var = var_omega/(Sigma_s*2*stepsize)
 
         return mean, var
+
+
+class KDR(KDParticleTracer):
+    """
+    Version of kinetic diffusion Monte Carlo where the mean is conditioned on the velocity of the kinetic step. This is preferred for velocities that are rotations of the previous velocity. The variance is of the diffusion step is taken from the particle object. The particle object has the variance stored in a look-up table since no analytic formula for the variance of many kinetic steps exists.
+    """
+    def advectionDiffusionCoeff(self, pos3d: tuple3d, vec3d: tuple3d, energy: float, index: int, stepsize: float) -> Tuple[tuple3d, tuple3d]:
+        assert self.particle is not None
+
+        u, v, w = vec3d
+        material = self.simDomain.getMaterial(index)
+
+        # Load variance from LUT
+        varmu, varsint = self.particle.getScatteringVariance(energy, stepsize, material)
+
+        # Variance of isotropic scattering angle phi
+        varcosphi = varsinphi = 0.5
+
+        # Rotate variance to pre-diffusive direction
+        varRotated = np.empty(shape=(3, ), dtype=float)
+        if math.isclose(abs(vec3d[2]), 1.0, rel_tol=1e-14):  # indeterminate case
+            sign = math.copysign(1.0, w)
+            varRotated[0] = sign*varsint*varcosphi
+            varRotated[1] = sign*varsint*varsinphi
+            varRotated[2] = sign*varmu
+        else:
+            temp = math.sqrt(1 - w**2)
+            varRotated[0] = u*varmu + varsint*(u*w*varcosphi - v*varsinphi)/temp
+            varRotated[1] = v*varmu + varsint*(v*w*varcosphi + u*varsinphi)/temp
+            varRotated[2] = w*varmu - temp*varsint*varcosphi
+
+        return vec3d/stepsize, varRotated/(stepsize*2)

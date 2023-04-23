@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 import math
 from multiprocessing import Value
+from multiprocessing.util import abstract_sockets_supported
 from typing import Optional, Union, Tuple, Final
 import numpy as np
 from electronTransportCode.Material import Material
@@ -84,8 +85,22 @@ class ParticleModel(ABC):
         Emid = Ekin + self.evalStoppingPower(Ekin, pos3d, material)*stepsize/2
         return self.evalStoppingPower(Emid, pos3d, material)*stepsize
 
+    def getScatteringVariance(self, energy: float, stepsize: float, material: Material) -> tuple[float, float]:
+        """Return Var[cos(theta)] and Var[sin(theta)]. In case of isotropic scattering Var[sin(theta)] = 0.5.
+
+        Args:
+            energy (float): Energy of particle
+            stepsize (float): Size of diffusive step
+            material (Material): Material of the current cell
+
+        Returns:
+            tuple[float, float]: _description_
+        """
+        raise NotImplementedError
+
+    @abstractmethod
     def getOmegaMoments(self, pos3d: tuple3d) -> Tuple[tuple3d, tuple3d]:
-        """Return the mean and the variance of the postcollisional velocity distribution.
+        """Return the mean and the variance of the absolute postcollisional velocity distribution (a la fusion, no rotational dependencies between velocities are considered)
 
         Args:
             pos3d (tuple3d): Mean and variance can be positional dependent
@@ -95,6 +110,7 @@ class ParticleModel(ABC):
         """
         raise NotImplementedError
 
+    @abstractmethod
     def getScatteringRate(self, pos3d: tuple3d, Ekin: float, material: Material) -> float:
         """Return the scattering rate (scale parameter of the path length distribution)
 
@@ -108,6 +124,7 @@ class ParticleModel(ABC):
         """
         raise NotImplementedError
 
+    @abstractmethod
     def getDScatteringRate(self, pos3d: tuple3d, vec3d: tuple3d, Ekin: float, material: Material) -> tuple3d:
         """Return gradient (with respect to position) of scattering rate
 
@@ -297,6 +314,14 @@ class SimplifiedEGSnrcElectron(ParticleModel):
             raise ValueError('scatterer argument is invalid.')
         super().__init__(generator)
 
+        # Load in look-up table
+        bigLUT = np.load('../ms/data/lut.npy')
+        d = np.load('../ms/data/lutAxes.npz')
+        self.LUTeAxis = d['arr_0']
+        self.LUTdsAxis = d['arr_1']
+        self.LUTrhoAxis = d['arr_2']
+        self.varLUT = bigLUT[:, :, :, 2:4]  # variance of cos(theta) and sin(theta)
+
     def getScatteringRate(self, pos3d: tuple3d, Ekin: float, material: Material) -> float:
         betaSquared: float = Ekin*(Ekin+2)/((Ekin+1)**2)
         return material.bc/betaSquared  # total macroscopic screened Rutherford cross section
@@ -379,6 +404,22 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         dSdE = (-2*Ekin - 2)/(Ekin**4 + 4*Ekin**3 + 4*Ekin**2)
 
         return dSdE*dEds*vec3d
+
+    def getScatteringVariance(self, energy: float, stepsize: float, material: Material) -> tuple[float, float]:
+        """Find the variance for the closest value for energy, stepsize and material.rho in the look-up table.
+
+        Args:
+            energy (float): Energy of particle
+            stepsize (float): Diffusion step length
+            material (Material): material of current cell
+
+        Returns:
+            tuple[float, float]: variance of cos(theta) = mu, variance of sin(theta)
+        """
+        idE = np.abs(self.LUTeAxis-energy).argmin()
+        idds = np.abs(self.LUTdsAxis-stepsize).argmin()
+        idrho = np.abs(self.LUTrhoAxis-material.rho).argmin()
+        return self.varLUT[idE, idds, idrho, :]
 
     def getOmegaMoments(self, pos3d: tuple3d) -> Tuple[tuple3d, tuple3d]:
         """Assume particle undergoes a very large amount of collisions during the diffusive step. As a result, the stationary post-collision angular distribution is the isotropic distribution. When fstat is isotropically distributed, it remains isotropic after scattering with f_postcol.
