@@ -91,10 +91,7 @@ if __name__ == '__main__':
 
     if rank == 0:
         assert bigLut is not None
-        with open('data/lut.npy', 'wb') as f:
-            np.save(f, bigLut)
-
-        with open('data/lutAxes.npy', 'wb') as f:
-            pickle.dump((energies, stepsizeArray, densityArray), f)
+        np.save('data/lut.npy', bigLut)
+        np.savez('data/lutAxes.npz', energies, stepsizeArray, densityArray)
 
         print(f'Total time: {(t2-t1)/60:2e} minutes.')
