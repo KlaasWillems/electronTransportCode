@@ -2,6 +2,7 @@ import sys
 import math
 from typing import Optional
 import time
+import pickle
 import numpy as np
 from mpi4py import MPI
 from electronTransportCode.ProjectUtils import ERE
@@ -90,7 +91,10 @@ if __name__ == '__main__':
 
     if rank == 0:
         assert bigLut is not None
-        with open('lut.npy', 'wb') as f:
+        with open('data/lut.npy', 'wb') as f:
             np.save(f, bigLut)
+
+        with open('data/lutAxes.npy', 'wb') as f:
+            pickle.dump((energies, stepsizeArray, densityArray), f)
 
         print(f'Total time: {(t2-t1)/60:2e} minutes.')

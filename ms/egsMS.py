@@ -18,7 +18,7 @@ def loadTable() -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, float, 
     fms_array = np.empty(shape=(MAXL_MS+1, MAXQ_MS+1, MAXU_MS+1), dtype=float)
     wms_array = np.empty(shape=(MAXL_MS+1, MAXQ_MS+1, MAXU_MS+1), dtype=float)
     ims_array = np.empty(shape=(MAXL_MS+1, MAXQ_MS+1, MAXU_MS+1), dtype=int)
-    with open('msnew.data', 'r') as reader:
+    with open('data/msnew.data', 'r') as reader:
         for i in range(MAXL_MS+1):
             for j in range(MAXQ_MS+1):
                 line_gen = list(islice(reader, 14))
