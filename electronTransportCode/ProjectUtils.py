@@ -1,8 +1,11 @@
+import os
 import math
 from typing import Literal, TypeAlias, Final, Annotated
 import numpy.typing as npt
 import numpy as np
 from scipy import constants
+
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.abspath('..'),os.pardir))
 
 # predefined types
 tuple3d: TypeAlias = Annotated[npt.NDArray[np.float64], Literal[3]]
