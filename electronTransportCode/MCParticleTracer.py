@@ -390,7 +390,7 @@ class KDParticleTracer(ParticleTracer, ABC):
             for estimator in estimatorList:
                 estimator.updateEstimator((pos3d, kin_pos3d), (vec3d, kin_vec3d), (energy, kin_energy), kin_index, step_kin)
 
-            if kin_energy > self.simOptions.minEnergy and kin_stepped:  # Do diffusive step if there is energy left
+            if kin_energy > self.simOptions.minEnergy and kin_stepped and loopbool:  # Do diffusive step if there is energy left
 
                 step_diff1, diff_energy1 = self.pickStepSize(kin_pos3d, kin_energy, kin_index, step_kin)
 
@@ -418,6 +418,7 @@ class KDParticleTracer(ParticleTracer, ABC):
 
                     if loopbool is False:  # Due to round-off, final value will not be exactly zero
                         eHistory[-1] = 0.0
+                        assert eHistory.size - np.count_nonzero(eHistory) == 1
 
                     # Score QOIs: score each track in each cell that was crossed seperatly
                     startpos_it = kin_pos3d
