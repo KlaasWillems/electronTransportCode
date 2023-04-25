@@ -1,11 +1,9 @@
 from abc import ABC, abstractmethod
 import math
-from multiprocessing import Value
-from multiprocessing.util import abstract_sockets_supported
 from typing import Optional, Union, Tuple, Final
 import numpy as np
 from electronTransportCode.Material import Material
-from electronTransportCode.ProjectUtils import ERE, FSC, Re, tuple3d, mathlog2
+from electronTransportCode.ProjectUtils import ERE, FSC, Re, tuple3d, mathlog2, PROJECT_ROOT
 
 
 class ParticleModel(ABC):
@@ -50,10 +48,9 @@ class ParticleModel(ABC):
         Args:
             Ekin (float): Incoming particle kinetic energy relative to electron rest energy (tau or epsilon in literature)
             material (Material): material of scattering medium in cell.
-            NEW_ABS_DIR (bool): If polar and scattering angels are with respect to the absolute coordinate system or compared to the previous direction of travel
 
         Returns:
-            float: polar and azimuthal scattering angle
+            float: polar and azimuthal scattering angle, NEW_ABS_DIR (bool): If polar and scattering angels are with respect to the absolute coordinate system (True) or compared to the previous direction of travel (False)
         """
 
     @abstractmethod
@@ -156,7 +153,7 @@ class PointSourceParticle(ParticleModel):
         assert self.rng is not None
         mu = self.rng.uniform(low=-1, high=1)
         phi = self.rng.uniform(low=0.0, high=2*math.pi)
-        return mu, phi, True
+        return mu, phi, True  # In case of isotropic scattering, doesn't matter if boolean is true of False
 
     def evalStoppingPower(self, Ekin: float, pos: tuple3d, material: Material) -> float:
         return 1
@@ -343,7 +340,7 @@ class SimplifiedEGSnrcElectron(ParticleModel):
             See abstract base class method for arguments and return value.
         """
         assert self.rng is not None
-        assert Ekin > 0, f'{Ekin=}'
+        assert Ekin >= 0, f'{Ekin=}'
         # mu
         if self.scatterer == '3d' or self.scatterer == '2d':
             temp = Ekin*(Ekin+2)
@@ -416,6 +413,7 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         Returns:
             tuple[float, float]: variance of cos(theta) = mu, variance of sin(theta)
         """
+        # TODO: Do fit using pychebfun
         idE = np.abs(self.LUTeAxis-energy).argmin()
         idds = np.abs(self.LUTdsAxis-stepsize).argmin()
         idrho = np.abs(self.LUTrhoAxis-material.rho).argmin()
@@ -452,6 +450,47 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         return self.evalStoppingPower(Emid, pos3d, material)*stepsize
 
 
+class KDRTestParticle(ParticleModel):
+    """Particle to test KDR. Constant scattering rate & constant stopping power. pdf(cos(theta)) is a line from (-1, 0) to (1, 1). The mean and variance of cos(theta) and sin(theta) are derived analytically.
+        E[cos(theta)] = 1/3
+        E[cos(theta)**2] = 1/3
+        Var[cos(theta)] = 2/9
+        E[sin(theta)] = math.pi/4
+        E[sin(theta)**2] = 2/3
+        Var[sin(theta)] = 2/3 - (math.pi/4)**2
+    """
+    def __init__(self, generator: Union[np.random.Generator, None, int] = None, Es: float = 100, sp: float = 1.0) -> None:
+        super().__init__(generator)
+        self.Es = Es
+        self.sp = 1.0
+
+    def evalStoppingPower(self, Ekin: float, pos: tuple3d, material: Material) -> float:
+        return self.sp
+
+    def getScatteringRate(self, pos3d: tuple3d, Ekin: float, material: Material) -> float:
+        return self.Es
+
+    def getDScatteringRate(self, pos3d: tuple3d, vec3d: tuple3d, Ekin: float, material: Material) -> tuple3d:
+        return np.array((0.0, 0.0, 0.0), dtype=float)
+
+    def samplePathlength(self, Ekin: float, pos: tuple3d, material: Material) -> float:
+        assert self.rng is not None
+        return self.rng.exponential(scale=1/self.Es)
+
+    def getOmegaMoments(self, pos3d: tuple3d) -> Tuple[tuple3d, tuple3d]:
+        raise NotImplementedError('There exsists not absolute velocity distribution.')
+
+    def sampleScatteringAngles(self, Ekin: float, material: Material) -> Tuple[float, float, bool]:
+        assert self.rng is not None
+        phi = self.rng.uniform(low=0.0, high=2*math.pi)
+        mu = np.sqrt(4*np.random.uniform(low=0.0, high=1.0))-1
+        return mu, phi, False
+
+    def getScatteringVariance(self, energy: float, stepsize: float, material: Material) -> tuple[float, float]:
+        return 2/9, 2/3 - (math.pi/4)**2
+
+
+# Only used for plotting the stopping power
 class SimplifiedPenelopeElectron(ParticleModel):
     """Electron model as found in PENELOPE manual
     """
