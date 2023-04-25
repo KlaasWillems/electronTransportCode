@@ -484,7 +484,7 @@ class KDParticleTracer(ParticleTracer, ABC):
         # Find equivalent kinetic step
         pos_delta = new_pos3d - pos3d
         equi_step = math.sqrt(pos_delta[0]**2 + pos_delta[1]**2 + pos_delta[2]**2)
-        if equi_step == 0.0:  # In case mean and variance was zero, don't move particle
+        if equi_step == 0.0 or not self.simDomain.checkInDomain(new_pos3d):  # type: ignore
             return pos3d, None, index, False, [(index, 0.0, pos3d)]
 
         equi_vec = pos_delta/equi_step

@@ -39,6 +39,10 @@ class SimulationDomain:
         self.dA: float = (self.xrange[1] - self.xrange[0])*(self.yrange[1] - self.yrange[0])
         self.material = material
 
+    def checkInDomain(self, pos3d: tuple)-> bool:
+        _, x0, y0 = pos3d
+        return self.xmin <= x0 and self.xmax >= x0 and self.ymin <= y0 and self.ymax >= y0
+
     def __eq__(self, other: object) -> bool:
         if isinstance(other, SimulationDomain):
             return self.xmin == other.xmin and self.xmax == other.xmax and self.ymin == other.ymin and self.ymax == other.ymax and self.xbins == other.xbins and self.ybins == other.ybins and self.material == other.material
