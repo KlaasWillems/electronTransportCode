@@ -450,6 +450,41 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         return self.evalStoppingPower(Emid, pos3d, material)*stepsize
 
 
+class KDRTestParticle(SimplifiedEGSnrcElectron):
+    """Particle with which to test KDR. Scattering rate is fixed.
+
+    Args:
+        SimplifiedEGSnrcElectron (_type_): _description_
+    """
+    def __init__(self, generator: Union[np.random.Generator, None, int] = None) -> None:
+        super().__init__(generator, scatterer = '3d')
+        self.EFixed: float = 10.437819010728344  # Fix such that it is exact in the table.
+
+    def getScatteringRate(self, pos3d: tuple3d, Ekin: float, material: Material) -> float:
+        return super().getScatteringRate(pos3d, Ekin=self.EFixed, material=material)
+
+    def samplePathlength(self, Ekin: float, pos: tuple3d, material: Material) -> float:
+        return super().samplePathlength(Ekin=self.EFixed, pos=pos, material=material)
+
+    def sampleScatteringAngles(self, Ekin: float, material: Material) -> Tuple[float, float, bool]:
+        return super().sampleScatteringAngles(Ekin=self.EFixed, material=material)
+
+    def evalStoppingPower(self, Ekin: float, pos: tuple3d, material: Material) -> float:
+        return super().evalStoppingPower(Ekin=self.EFixed, pos=pos, material=material)
+
+    def getDScatteringRate(self, pos3d: tuple3d, vec3d: tuple3d, Ekin: float, material: Material) -> tuple3d:
+        return np.array((0.0, 0.0, 0.0), dtype=float)
+
+    def getScatteringVariance(self, energy: float, stepsize: float, material: Material) -> tuple[float, float]:
+        return super().getScatteringVariance(energy=self.EFixed, stepsize=stepsize, material=material)
+
+    def energyLoss(self, Ekin: float, pos3d: tuple3d, stepsize: float, material: Material) -> float:
+        return super().energyLoss(Ekin=self.EFixed, pos3d=pos3d, stepsize=stepsize, material=material)
+
+    def getOmegaMoments(self, pos3d: tuple3d) -> Tuple[tuple3d, tuple3d]:
+        raise NotImplementedError('Particle only meant to be used with KDR.')
+
+'''
 class KDRTestParticle(ParticleModel):
     """Particle to test KDR. Constant scattering rate & constant stopping power. pdf(cos(theta)) is a line from (-1, 0) to (1, 1). The mean and variance of cos(theta) and sin(theta) are derived analytically.
         E[cos(theta)] = 1/3
@@ -488,7 +523,7 @@ class KDRTestParticle(ParticleModel):
 
     def getScatteringVariance(self, energy: float, stepsize: float, material: Material) -> tuple[float, float]:
         return 2/9, 2/3 - (math.pi/4)**2
-
+'''
 
 # Only used for plotting the stopping power
 class SimplifiedPenelopeElectron(ParticleModel):
