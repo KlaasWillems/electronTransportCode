@@ -660,4 +660,4 @@ class KDR(KDParticleTracer):
             varRotated[1] = abs(v*varmu + varsint*(v*w*varcosphi + u*varsinphi)/temp)
             varRotated[2] = abs(w*varmu - temp*varsint*varcosphi)
 
-        return vec3d, varRotated
+        return vec3d, varRotated/(stepsize*2)
