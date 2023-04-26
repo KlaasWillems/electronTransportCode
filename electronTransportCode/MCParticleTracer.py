@@ -475,7 +475,7 @@ class KDParticleTracer(ParticleTracer, ABC):
 
         # Get advection and diffusion coefficient
         A_coeff, D_coeff = self.advectionDiffusionCoeff(pos3d, vec3d, energy, index, stepsize)
-        assert D_coeff[0] >= 0 and D_coeff[2] >= 0 and D_coeff[2] >= 0
+        assert D_coeff[0] >= 0 and D_coeff[1] >= 0 and D_coeff[2] >= 0
 
         # Apply diffusive step
         xi = self.simOptions.rng.normal(size=(3, ))
