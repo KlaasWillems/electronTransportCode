@@ -407,9 +407,12 @@ class KDParticleTracer(ParticleTracer, ABC):
                             diff_energy = 0
                         loopbool = False  # make this the last iteration
 
-                    # sample new direction for future kinetic step
-                    mu, phi, new_direction_bool = self.particle.sampleScatteringAngles(diff_energy, self.simDomain.getMaterial(index))
-                    diff_vec3d = self.scatterParticle(mu, phi, equi_vec, new_direction_bool)
+                    if self.__class__.__name__ == 'KDR':
+                        # sample new direction for future kinetic step
+                        mu, phi, new_direction_bool = self.particle.sampleScatteringAngles(diff_energy, self.simDomain.getMaterial(index))
+                        diff_vec3d = self.scatterParticle(mu, phi, equi_vec, new_direction_bool)
+                    else:
+                        diff_vec3d = kin_vec3d  # For conditioning on final velocity in KDMC
 
                     # Divide energy loss evenly over all crossed cells based on stepsize
                     dE = kin_energy - diff_energy
