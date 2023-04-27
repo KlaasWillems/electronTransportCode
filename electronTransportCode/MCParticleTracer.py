@@ -407,12 +407,7 @@ class KDParticleTracer(ParticleTracer, ABC):
                             diff_energy = 0
                         loopbool = False  # make this the last iteration
 
-                    if self.__class__.__name__ == 'KDR':
-                        # sample new direction for future kinetic step
-                        mu, phi, new_direction_bool = self.particle.sampleScatteringAngles(diff_energy, self.simDomain.getMaterial(index))
-                        diff_vec3d = self.scatterParticle(mu, phi, equi_vec, new_direction_bool)
-                    else:
-                        diff_vec3d = kin_vec3d  # For conditioning on final velocity in KDMC
+                    diff_vec3d = kin_vec3d  # For conditioning on final velocity in KDMC
 
                     # Divide energy loss evenly over all crossed cells based on stepsize
                     dE = kin_energy - diff_energy
@@ -511,7 +506,6 @@ class KDParticleTracer(ParticleTracer, ABC):
             final_stepsize = math.sqrt((pos_it[0] - new_pos3d[0])**2 + (pos_it[1] - new_pos3d[1])**2 + (pos_it[2] - new_pos3d[2])**2)
             diff_step_track.append((index_it, final_stepsize, new_pos3d))
             return new_pos3d, equi_vec, new_index, True, diff_step_track
-
 
     @abstractmethod
     def advectionDiffusionCoeff(self, pos3d: tuple3d, vec3d: tuple3d, energy: float, index: int, stepsize: float) -> Tuple[tuple3d, tuple3d]:
@@ -661,3 +655,168 @@ class KDR(KDParticleTracer):
             varRotated[2] = abs(w*varmu - temp*varsint*varcosphi)
 
         return vec3d, varRotated/(stepsize*2)
+
+    def stepParticleDiffusive(self, pos3d: tuple3d, vec3d: tuple3d, energy: float, index: int, stepsize: float) -> tuple[tuple3d, Optional[tuple3d], int, bool, list[tuple[int, float, tuple3d]]]:
+        """Apply diffusive motion to particle
+
+        Args:
+            pos3d (tuple3d): Position of particle after kinetic step
+            vec3d (tuple3d): final velocity on which the diffusive moment is conditioned
+            energy (float): energy of particle after kinetic step
+            index (int): position of particle in estimator grid
+            stepsize (float): remaing part of step for diffusive motion
+
+        Returns:
+            tuple[tuple3d, Optional[tuple3d], int, bool, list[tuple[int, float, tuple3d]]]:
+                new_pos (tuple3d): New position after diffusive step
+                equi_vec (Optional[tuple3d]): if relevant return the direction vector between the start and end point of the diffusive motion
+                index (int): new index of particle after diffusive step
+                diff_stepped (bool): if particle actually moved from previous position (eg. don't move if it ends up outside of the domain)
+                diff_step_track (list[tuple[int, float, tuple3d]]): list containing tuples. Each tuple gives the index of a cell, the step the particle took in that cell and the endpoint of that step.
+        """
+        assert self.particle is not None
+
+        # Get advection and diffusion coefficient
+        A_coeff, D_coeff = self.advectionDiffusionCoeff(pos3d, vec3d, energy, index, stepsize)
+        assert D_coeff[0] >= 0 and D_coeff[1] >= 0 and D_coeff[2] >= 0
+
+        # Apply diffusive step
+        xi = self.simOptions.rng.normal(size=(3, ))
+        new_pos3d: tuple3d = pos3d + A_coeff*stepsize + np.sqrt(2*D_coeff*stepsize)*xi
+        new_index = self.simDomain.getIndexPath(new_pos3d, vec3d)  # vector doesn't really matter here since particle won't be on an edge
+
+        # Find equivalent kinetic step
+        pos_delta = new_pos3d - pos3d
+        equi_step = math.sqrt(pos_delta[0]**2 + pos_delta[1]**2 + pos_delta[2]**2)
+        if equi_step == 0.0 or not self.simDomain.checkInDomain(new_pos3d):  # type: ignore
+            return pos3d, None, index, False, [(index, 0.0, pos3d)]
+
+        equi_vec = pos_delta/equi_step
+
+        if index == new_index:
+            return new_pos3d, equi_vec, index, True, [(index, stepsize, new_pos3d)]
+        else:
+            # For estimator: need stepsizes and indices of cells that are crossed.
+            diff_step_track: list[tuple[int, float, tuple3d]] = []
+            pos_it = pos3d
+            index_it = index
+            # Loop through cells between begin point and end point and write down the stepsizes
+            while index_it != new_index:
+                stepGeom, domainEdge, new_pos_geom = self.simDomain.getCellEdgeInformation(pos_it, equi_vec, index_it)  # diffusive step did not exceed boundaries
+                if domainEdge == True:
+                    return pos3d, None, index, False, [(index, 0.0, pos3d)]  # Switch to kinetic simulation to compute domain edge scattering event
+                else:
+                    diff_step_track.append((index_it, stepGeom, new_pos_geom))
+                    pos_it = new_pos_geom
+                    index_it = self.simDomain.getIndexPath(new_pos_geom, equi_vec)
+
+            # record stepsize in final cell
+            final_stepsize = math.sqrt((pos_it[0] - new_pos3d[0])**2 + (pos_it[1] - new_pos3d[1])**2 + (pos_it[2] - new_pos3d[2])**2)
+            diff_step_track.append((index_it, final_stepsize, new_pos3d))
+            return new_pos3d, equi_vec, new_index, True, diff_step_track
+
+
+    def traceParticle(self, estimators: Union[MCEstimator, tuple[MCEstimator, ...]]) -> None:
+        """Step particle through simulation domain until its energy is below a threshold value. Estimator routine is called after each step for on-the-fly estimation.
+
+        Args:
+            estimator (MCEstimator): Estimator object which implements scoring of all quantities of interest
+
+        """
+        assert self.dS is not None
+        assert self.particle is not None
+        if isinstance(estimators, MCEstimator):  # estimator is now a list of estimators
+            estimatorList: Tuple[MCEstimator, ...] = (estimators, )
+        else:
+            estimatorList = estimators
+
+        # Sample initial condition in 2D
+        pos3d: tuple3d = self.simOptions.initialPosition()
+        vec3d: tuple3d = self.simOptions.initialDirection()
+        energy: float = self.simOptions.initialEnergy()
+        index: int = self.simDomain.getIndexPath(pos3d, vec3d)
+
+        loopbool: bool = True
+
+        # Couter kinetic and diffusive steps
+        kin_counter: int = 0
+        diff_counter: int = 0
+        false_diff_counter: int = 0
+
+        # Step until energy is smaller than threshold
+        while loopbool:
+            assert energy > self.simOptions.minEnergy, f'{energy=}'
+
+            # do analog step
+            kin_pos3d, kin_vec3d, kin_energy, kin_index, step_kin, kin_stepped = self.stepParticleAnalog(pos3d, vec3d, energy, index)
+            if kin_stepped: kin_counter += 1
+
+            # If no energy left
+            if kin_energy <= self.simOptions.minEnergy: # have estimator deposit all remaining energy
+                if self.simOptions.DEPOSIT_REMAINDING_E_LOCALLY:
+                    kin_energy = 0
+                loopbool = False  # make this the last iteration
+
+            # Score QOIs of kinetic step
+            for estimator in estimatorList:
+                estimator.updateEstimator((pos3d, kin_pos3d), (vec3d, kin_vec3d), (energy, kin_energy), kin_index, step_kin)
+
+            if loopbool:  # Do diffusive step if there is energy left
+
+                step_diff1, diff_energy1 = self.pickStepSize(kin_pos3d, kin_energy, kin_index, step_kin)
+
+                diff_pos3d, equi_vec, diff_index, diff_stepped, diff_step_track,  = self.stepParticleDiffusive(kin_pos3d, kin_vec3d, kin_energy, kin_index, step_diff1)
+                if diff_stepped:  # Step was taken: do estimation
+                    assert equi_vec is not None
+
+                    diff_counter += 1
+                    diff_energy = diff_energy1
+
+                    # If energy left
+                    if diff_energy <= self.simOptions.minEnergy: # have estimator deposit all remaining energy
+                        if self.simOptions.DEPOSIT_REMAINDING_E_LOCALLY:
+                            diff_energy = 0
+                        loopbool = False  # make this the last iteration
+
+                    # sample new direction for future kinetic step
+                    mu, phi, new_direction_bool = self.particle.sampleScatteringAngles(diff_energy, self.simDomain.getMaterial(index))
+                    diff_vec3d = self.scatterParticle(mu, phi, equi_vec, new_direction_bool)
+
+                    # Divide energy loss evenly over all crossed cells based on stepsize
+                    dE = kin_energy - diff_energy
+                    steps = np.array([x[1] for x in diff_step_track], dtype=float)
+                    eHistory = kin_energy - np.cumsum(steps*dE/steps.sum())  # type: ignore
+                    eHistory[-1] = diff_energy
+
+                    # Score QOIs: score each track in each cell that was crossed seperatly
+                    startpos_it = kin_pos3d
+                    startvec_it = kin_vec3d
+                    endvec_it = equi_vec
+                    startEnergy_it = kin_energy
+                    for it, tuples in enumerate(diff_step_track):
+                        if it == len(diff_step_track)-1:
+                            endvec_it = diff_vec3d
+                        index_it, stepsize_it, endpos_it = tuples
+                        for estimator in estimatorList:
+                            estimator.updateEstimator((startpos_it, endpos_it), (startvec_it, endvec_it), (startEnergy_it, eHistory[it]), index_it, stepsize_it)
+                        startpos_it = endpos_it
+                        startvec_it = equi_vec
+                        startEnergy_it = eHistory[it]
+
+                else:  # No step was taken: don't do estimation
+                    false_diff_counter += 1
+                    diff_energy = kin_energy
+                    diff_vec3d = kin_vec3d
+
+                # set final state
+                pos3d = diff_pos3d
+                vec3d = diff_vec3d
+                energy = diff_energy
+                index = diff_index
+            else:  # No energy was left
+                pos3d = kin_pos3d
+                vec3d = kin_vec3d
+                energy = kin_energy
+                index = kin_index
+
+        self.updateAnalytics(kin_counter, diff_counter, false_diff_counter)
