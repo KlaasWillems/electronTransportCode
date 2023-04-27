@@ -28,7 +28,7 @@ if __name__ == '__main__':
     minds = 1e-5
     maxds = 0.1
     nbds = int(float(sys.argv[3]))
-    stepsizeArray = np.logspace(np.log10(minds), np.log10(maxds), nbds)
+    stepsizeArray = np.linspace(minds, maxds, nbds)
 
     # material array. Specific for lung test case.
     minDensity = 0.05
