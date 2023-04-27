@@ -4,9 +4,9 @@ from typing import Optional
 import time
 import numpy as np
 from mpi4py import MPI
-from electronTransportCode.ProjectUtils import ERE
-from electronTransportCode.Material import Material
-from egsMS import mscat
+from electronTransportCode.ProjectUtils import ERE, I_WATER, SC_DENSITY_WATER, Z_WATER, Re
+from electronTransportCode.Material import Material, WaterMaterial
+from egsMS import mscat, energyLoss
 
 if __name__ == '__main__':
     nbsamples = int(float(sys.argv[1]))
@@ -25,16 +25,20 @@ if __name__ == '__main__':
     energyArray = energiesSplit[rank]
 
     # stepsize array
-    minds = 0.0
+    minds = 1e-5
     maxds = 0.1
     nbds = int(float(sys.argv[3]))
-    stepsizeArray = np.linspace(minds, maxds, nbds)
+    stepsizeArray = np.logspace(np.log10(minds), np.log10(maxds), nbds)
 
     # material array. Specific for lung test case.
     minDensity = 0.05
     maxDensity = 1.85
     nbDensity = int(float(sys.argv[4]))
     densityArray = np.linspace(minDensity, maxDensity, nbDensity)
+
+    # Other material parameters
+    LcollConst = 2*math.pi*(Re**2)*SC_DENSITY_WATER*Z_WATER
+    materialI = I_WATER
 
     lut = np.empty(shape=(energyArray.size, nbds, nbDensity, 4), dtype=float)
 
@@ -43,6 +47,7 @@ if __name__ == '__main__':
     for i, energy in enumerate(energyArray):
         t3 = time.process_time()
         for j, stepsize in enumerate(stepsizeArray):
+            energy_loss = energyLoss(energy, stepsize, materialI, LcollConst)
             for k, density in enumerate(densityArray):
                 material = Material(rho=density)
 
@@ -54,7 +59,7 @@ if __name__ == '__main__':
 
                 for sampleNb in range(1, nbsamples+1):
                     # sample cos(theta)
-                    mu = mscat(energy, stepsize, material.Z, material.eta0CONST, material.bc)
+                    mu = mscat(energy, energy_loss, stepsize, material.Z, material.eta0CONST, material.bc)
                     sint = math.sqrt(1.0 - mu**2)
 
                     # update mean and variance

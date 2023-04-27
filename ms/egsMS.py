@@ -2,7 +2,7 @@ import math
 from typing import Final, Tuple
 from itertools import islice
 import numpy as np
-from electronTransportCode.ProjectUtils import FSC
+from electronTransportCode.ProjectUtils import FSC, ERE, mathlog2
 import numba as nb
 
 MAXL_MS: Final[int] = 63
@@ -59,15 +59,60 @@ def loadTable() -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, float, 
 
 ums_array, fms_array, wms_array, ims_array, llammin, llammax, dllamb, dllambi, dqms, dqmsi = loadTable()
 
-@nb.jit(nb.float64(nb.float64, nb.float64, nb.float64, nb.float64, nb.float64), nopython=True, cache=True)
-def mscat(Ekin: float, stepsize: float, Z: float, eta0CONST: float, bc: float) -> float:
+@nb.jit(nb.float64(nb.float64, nb.float64, nb.float64), nopython=True, cache=True)
+def evalStoppingPower(Ekin: float, materialI: float, materialLcoll: float) -> float:
+    """ Stopping power from PENELOPE for close and distant interactions. Equation 3.120 in PENELOPE 2018 Conference precedings.
+        - This previous implementation did not include density effect correction that takes into account the polarization of the medium due to the electron field.
+    """
+    # Ekin = tau in papers
+    Ekin_eV: float = Ekin*ERE*1e6  # Electron kinetic energy in eV (E or T in literature)
+    # assert Ekin_eV >= materialI, f'Input energy: {Ekin_eV} is lower than I'
 
-    temp = Ekin*(Ekin+2)
-    betaSquared = temp/((Ekin+1)**2)
-    eta0 = eta0CONST/temp
+    betaSquared: float = Ekin*(Ekin+2)/((Ekin+1)**2)
+
+    gamma = Ekin+1
+    argument = ((Ekin_eV/materialI)**2)*((gamma+1)/2)
+    if argument > 1e-320:  # Roundings errors in argument can cause ValueError in math.log
+        term1 = math.log(argument)
+    else:
+        term1 = math.log(1e-320)
+    term2 = 1 - betaSquared - ((2*gamma - 1)/(gamma**2))*mathlog2 + (((gamma-1)/gamma)**2)/8
+    Lcoll = materialLcoll*(term1 + term2)/betaSquared
+
+    return Lcoll
+
+@nb.jit(nb.float64(nb.float64, nb.float64, nb.float64, nb.float64), nopython=True, cache=True)
+def energyLoss(Ekin: float, stepsize: float, materialI: float, materialLcoll: float) -> float:
+    """Compute energy along step using continuous slowing down approximation. Eq. 4.11.3 from EGSnrc manual, also used in GPUMCD.
+    Approximation is second order accurate: O(DeltaE^2)
+
+    Args:
+        Ekin (float): Energy at the beginning of the step. Energy unit relative to electron rest energy.
+        pos3d (tuple3d): position of particle
+        stepsize (float): [cm] path-length
+        material (Material): Material of current grid cell
+
+    Returns:
+        float: Energy loss DeltaE
+    """
+    # assert Ekin*ERE*1e6 >= materialI, f'{Ekin=}'
+    # assert stepsize > 0, f'{stepsize=}'
+    Emid = Ekin + evalStoppingPower(Ekin, materialI, materialLcoll)*stepsize/2
+    # assert Emid*ERE*1e6 >= materialI, f'{Emid=}'
+    return evalStoppingPower(Emid, materialI, materialLcoll)*stepsize
+
+@nb.jit(nb.float64(nb.float64, nb.float64, nb.float64, nb.float64, nb.float64, nb.float64), nopython=True, cache=True)
+def mscat(Ekin: float, stepsize: float, EkinLoss: float, Z: float, eta0CONST: float, bc: float) -> float:
+
+    temporary = Ekin*(Ekin+2)
+    betaSquared = temporary/((Ekin+1)**2)
+    eta0 = eta0CONST/temporary
     chia2 = eta0*(1.13 + 3.76*((FSC*Z)**2)/betaSquared)
 
     lambdavar  = stepsize*bc/betaSquared
+    epsilonp = EkinLoss/Ekin
+    temp2  = 0.166666*(4+Ekin*(6+Ekin*(7+Ekin*(4+Ekin))))*(epsilonp/((Ekin+1)*(Ekin+2)))**2;
+    lambdavar = lambdavar*(1 - temp2)/(1 + chia2)
 
     chilog = math.log(1 + 1/chia2)
     q1 = 2*chia2*(chilog*(1 + chia2) - 1)*lambdavar
