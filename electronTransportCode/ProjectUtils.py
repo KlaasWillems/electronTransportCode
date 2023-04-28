@@ -4,8 +4,9 @@ from typing import Literal, TypeAlias, Final, Annotated
 import numpy.typing as npt
 import numpy as np
 from scipy import constants
+from electronTransportCode import exactSolution
 
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.abspath('..'),os.pardir))
+PROJECT_ROOT = os.path.abspath(exactSolution.__file__ + '/../..')
 
 # predefined types
 tuple3d: TypeAlias = Annotated[npt.NDArray[np.float64], Literal[3]]
