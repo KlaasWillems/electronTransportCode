@@ -631,8 +631,6 @@ class KDR(KDParticleTracer):
     """
     def advectionDiffusionCoeff(self, pos3d: tuple3d, vec3d: tuple3d, energy: float, index: int, stepsize: float) -> Tuple[tuple3d, tuple3d]:
         assert self.particle is not None
-
-        u, v, w = vec3d
         material = self.simDomain.getMaterial(index)
 
         # Load variance from LUT
@@ -640,21 +638,7 @@ class KDR(KDParticleTracer):
 
         # Variance of isotropic scattering angle phi
         varcosphi = varsinphi = 0.5
-
-        # Rotate variance to pre-diffusive direction
-        varRotated = np.empty(shape=(3, ), dtype=float)
-        if math.isclose(abs(vec3d[2]), 1.0, rel_tol=1e-14):  # indeterminate case
-            sign = math.copysign(1.0, w)
-            varRotated[0] = abs(sign*varsint*varcosphi)
-            varRotated[1] = abs(sign*varsint*varsinphi)
-            varRotated[2] = abs(sign*varmu)
-        else:
-            temp = math.sqrt(1 - w**2)
-            varRotated[0] = abs(u*varmu + varsint*(u*w*varcosphi - v*varsinphi)/temp)
-            varRotated[1] = abs(v*varmu + varsint*(v*w*varcosphi + u*varsinphi)/temp)
-            varRotated[2] = abs(w*varmu - temp*varsint*varcosphi)
-
-        return vec3d, varRotated/(stepsize*2)
+        return vec3d, np.array((varsint*varcosphi, varsint*varsinphi, varmu), dtype=float)
 
     def stepParticleDiffusive(self, pos3d: tuple3d, vec3d: tuple3d, energy: float, index: int, stepsize: float) -> tuple[tuple3d, Optional[tuple3d], int, bool, list[tuple[int, float, tuple3d]]]:
         """Apply diffusive motion to particle
@@ -680,9 +664,19 @@ class KDR(KDParticleTracer):
         A_coeff, D_coeff = self.advectionDiffusionCoeff(pos3d, vec3d, energy, index, stepsize)
         assert D_coeff[0] >= 0 and D_coeff[1] >= 0 and D_coeff[2] >= 0
 
+        varx, vary, varz = D_coeff
+        u, v, w = vec3d
+        sint = math.sqrt(u**2 + v**2)
+        cost = w
+        cosphi = u/sint
+        sinphi = v/sint
+        R = np.array([[varx*cosphi*cost, -vary*sinphi, varz*sint*cosphi], [varx*sinphi*cost, vary*cosphi, varz*sinphi*sint], [-varx*sint, 0, varz*cost]])
+        n1 = np.linalg.norm(R, axis=0)
+        cov = R/n1 @ np.diag(n1) @ np.transpose(R/n1)
+
         # Apply diffusive step
-        xi = self.simOptions.rng.normal(size=(3, ))
-        new_pos3d: tuple3d = pos3d + A_coeff*stepsize + np.sqrt(2*D_coeff*stepsize)*xi
+        xi = self.simOptions.rng.multivariate_normal(mean=np.array((0.0, 0.0, 0.0)), cov=cov)
+        new_pos3d: tuple3d = pos3d + A_coeff*stepsize + xi*2*self.dS
         new_index = self.simDomain.getIndexPath(new_pos3d, vec3d)  # vector doesn't really matter here since particle won't be on an edge
 
         # Find equivalent kinetic step
