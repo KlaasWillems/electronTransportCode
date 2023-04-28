@@ -42,25 +42,29 @@ if __name__ == '__main__':
     NB_PARTICLES_PER_PROC = int(float(sys.argv[1])/nproc)
     NB_PARTICLES = int(NB_PARTICLES_PER_PROC*nproc)
 
+    simType = sys.argv[2]
+
     # - Set up estimator and particle
     trackEndEstimatorkx = TrackEndEstimator(simDomain, NB_PARTICLES_PER_PROC, setting='x')
     trackEndEstimatorkdrx = TrackEndEstimator(simDomain, NB_PARTICLES_PER_PROC, setting='x')
 
     logAmount = int(NB_PARTICLES_PER_PROC/10)
     # - Run simulation
-    t1 = time.process_time()
-    # kineticParticleTracer.__call__(nbParticles=NB_PARTICLES, estimators=(trackEndEstimatorkdrx, ), logAmount=logAmount)
-    kineticParticleTracer.runMultiProc(nbParticles=NB_PARTICLES, estimators=(trackEndEstimatorkx, ), file='data/trackEndEstimatork.pkl', logAmount=logAmount)
-    t2 = time.process_time()
-    kdr.runMultiProc(nbParticles=NB_PARTICLES, estimators=(trackEndEstimatorkdrx, ), file='data/trackEndEstimatorkdr.pkl', logAmount=logAmount)
-    # kdr.__call__(nbParticles=NB_PARTICLES, estimators=(trackEndEstimatorkdrx, ), logAmount=logAmount)
-    t3 = time.process_time()
-
-    print(f'Kinetic simulation time: {round(t2-t1, 4)}')
-    print(f'KDR simulation time: {round(t3-t2, 4)}')
+    if simType == 'k':
+        t1 = time.process_time()
+        kineticParticleTracer.runMultiProc(nbParticles=NB_PARTICLES, estimators=(trackEndEstimatorkx, ), file='data/trackEndEstimatork.pkl', logAmount=logAmount)
+        t2 = time.process_time()
+        print(f'Kinetic simulation time: {round(t2-t1, 4)}')
+        if MPI.COMM_WORLD.Get_rank() == 0:
+            pickle.dump(kineticParticleTracer, open('data/particleTracerK.pkl', 'wb'))
+    elif simType == 'kdr':
+        t2 = time.process_time()
+        kdr.runMultiProc(nbParticles=NB_PARTICLES, estimators=(trackEndEstimatorkdrx, ), file='data/trackEndEstimatorkdr.pkl', logAmount=logAmount)
+        t3 = time.process_time()
+        print(f'KDR simulation time: {round(t3-t2, 4)}')
+        if MPI.COMM_WORLD.Get_rank() == 0:
+            pickle.dump(kdr, open('data/kdr.pkl', 'wb'))
 
     # dump argv
     tup = (eSource, NB_PARTICLES)
     pickle.dump(tup, open('data/simargv.pkl', 'wb'))
-    pickle.dump(kineticParticleTracer, open('data/particleTracerK.pkl', 'wb'))
-    pickle.dump(kdr, open('data/kdr.pkl', 'wb'))
