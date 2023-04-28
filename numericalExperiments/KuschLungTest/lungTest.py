@@ -5,7 +5,7 @@ import numpy as np
 from mpi4py import MPI
 from electronTransportCode.MCEstimator import DoseEstimator
 from electronTransportCode.ParticleModel import SimplifiedEGSnrcElectron
-from electronTransportCode.MCParticleTracer import AnalogParticleTracer, KDMC
+from electronTransportCode.MCParticleTracer import AnalogParticleTracer, KDMC, KDR
 from lungSetup import LungInitialConditions, LungSimulationDomain
 
 # Load particle, initial conditions and simulation domain
@@ -52,6 +52,16 @@ if __name__ == '__main__':
         kdmc.runMultiProc(NB_PARTICLES, (doseEstimatorKD, ), file=f'data/doseEstimatorKD{scatterer}.pkl', logAmount=500)
         t2 = time.process_time()
         pickle.dump(kdmc, open(f'data/kdmc{scatterer}.pkl', mode='wb'))
+    elif algorithm == 'kdr':
+        _, step = np.linspace(0, lungSimDomain.width, lungSimDomain.bins+1, retstep=True)
+        kdr = KDR(simOptions=lungInit, simDomain=lungSimDomain, particle=particle, dS=step)  # type: ignore
+
+        # Estimator
+        doseEstimatorKD = DoseEstimator(lungSimDomain)
+        t1 = time.process_time()
+        kdr.runMultiProc(NB_PARTICLES, (doseEstimatorKD, ), file=f'data/doseEstimatorKDR{scatterer}.pkl', logAmount=500)
+        t2 = time.process_time()
+        pickle.dump(kdr, open(f'data/kdr{scatterer}.pkl', mode='wb'))
     else:
         raise ValueError('Wrong algorithm input.')
 
