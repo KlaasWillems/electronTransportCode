@@ -771,10 +771,11 @@ class KDR(KDParticleTracer):
                         if self.simOptions.DEPOSIT_REMAINDING_E_LOCALLY:
                             diff_energy = 0
                         loopbool = False  # make this the last iteration
-
-                    # sample new direction for future kinetic step
-                    mu, phi, new_direction_bool = self.particle.sampleScatteringAngles(diff_energy, self.simDomain.getMaterial(index))
-                    diff_vec3d = self.scatterParticle(mu, phi, equi_vec, new_direction_bool)
+                        diff_vec3d = kin_vec3d
+                    else:
+                        # sample new direction for future kinetic step
+                        mu, phi, new_direction_bool = self.particle.sampleScatteringAngles(diff_energy, self.simDomain.getMaterial(index))
+                        diff_vec3d = self.scatterParticle(mu, phi, equi_vec, new_direction_bool)
 
                     # Divide energy loss evenly over all crossed cells based on stepsize
                     dE = kin_energy - diff_energy
