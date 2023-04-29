@@ -758,7 +758,7 @@ class KDR(KDParticleTracer):
 
             # Score QOIs of kinetic step
             for estimator in estimatorList:
-                estimator.updateEstimator((pos3d, kin_pos3d), (vec3d, kin_vec3d), (energy, kin_energy), kin_index, step_kin)
+                estimator.updateEstimator((pos3d, kin_pos3d), (vec3d, kin_vec3d), (energy, kin_energy), index, step_kin)
 
             if loopbool:  # Do diffusive step if there is energy left
 
