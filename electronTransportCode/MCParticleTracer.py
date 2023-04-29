@@ -670,13 +670,18 @@ class KDR(KDParticleTracer):
         cost = w
         cosphi = u/sint
         sinphi = v/sint
-        R = np.array([[varx*cosphi*cost, -vary*sinphi, varz*sint*cosphi], [varx*sinphi*cost, vary*cosphi, varz*sinphi*sint], [-varx*sint, 0, varz*cost]])
-        n1 = np.linalg.norm(R, axis=0)
-        cov = R/n1 @ np.diag(n1) @ np.transpose(R/n1)
+        R = np.array([[cosphi*cost, -sinphi, sint*cosphi], [sinphi*cost, cosphi, sinphi*sint], [-sint, 0, cost]])
+        assert np.all(D_coeff != 0.0), f'{varx=}, {vary=}, {varz=}, {D_coeff=}, {energy=}, {stepsize=}'
 
         # Apply diffusive step
-        xi = self.simOptions.rng.multivariate_normal(mean=np.array((0.0, 0.0, 0.0)), cov=cov)
-        new_pos3d: tuple3d = pos3d + A_coeff*stepsize + xi*2*self.dS
+
+        # cov = R @ np.diag(D_coeff) @ R.T
+        # xi = self.simOptions.rng.multivariate_normal(mean=np.array((0.0, 0.0, 0.0)), cov=cov)
+        # new_pos3d: tuple3d = pos3d + A_coeff*stepsize + xi
+
+        xi = self.simOptions.rng.multivariate_normal(mean=np.array((0.0, 0.0, 0.0)), cov=np.diag(np.ones((3, ))))
+        new_pos3d: tuple3d = pos3d + A_coeff*stepsize + R.dot(np.diag(np.sqrt(D_coeff)).dot(xi))
+
         new_index = self.simDomain.getIndexPath(new_pos3d, vec3d)  # vector doesn't really matter here since particle won't be on an edge
 
         # Find equivalent kinetic step
