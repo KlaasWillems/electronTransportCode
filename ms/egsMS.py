@@ -115,6 +115,8 @@ def mscat(Ekin: float, stepsize: float, Z: float, eta0CONST: float, bc: float) -
                     loopBool = True
                 else:
                     loopBool = False
+                else:
+                    loopBool = True
             return cost
 
     # It was a multiple scattering event
