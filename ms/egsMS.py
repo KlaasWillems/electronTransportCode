@@ -112,8 +112,6 @@ def mscat(Ekin: float, stepsize: float, Z: float, eta0CONST: float, bc: float) -
                     cost = cost*cosz - sint*sinz*math.cos(phi)
                     sint = math.sqrt(max(0.0,(1-cost)*(1+cost)))
                 if wsum > sprob:
-                    loopBool = True
-                else:
                     loopBool = False
                 else:
                     loopBool = True
