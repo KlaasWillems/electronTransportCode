@@ -387,6 +387,7 @@ class KDParticleTracer(ParticleTracer, ABC):
                 loopbool = False  # make this the last iteration
 
             # Score QOIs of kinetic step
+            # TODO: change kin_index to index
             for estimator in estimatorList:
                 estimator.updateEstimator((pos3d, kin_pos3d), (vec3d, kin_vec3d), (energy, kin_energy), kin_index, step_kin)
 
