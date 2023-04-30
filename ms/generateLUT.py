@@ -9,7 +9,7 @@ from electronTransportCode.ProjectUtils import ERE
 from electronTransportCode.Material import Material
 from egsMS import mscat
 
-@nb.jit(nb.types.UniTuple(nb.float64, 4)(nb.int32, nb.float64, nb.float64, nb.float64, nb.float64, nb.float64), nopython=True, cache=True, parallel=True)
+@nb.jit(nb.types.UniTuple(nb.float64, 4)(nb.int32, nb.float64, nb.float64, nb.float64, nb.float64, nb.float64), nopython=True, cache=True)
 def sample(nbsamples: int, energy: float, stepsize: float, Z: float, eta0CONST: float, bc: float) -> tuple[float, float, float, float]:
     meanMu: float = 0.0
     meanSint: float = 0.0
