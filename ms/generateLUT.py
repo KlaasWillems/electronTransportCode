@@ -3,10 +3,32 @@ import math
 from typing import Optional
 import time
 import numpy as np
+import numba as nb
 from mpi4py import MPI
-from electronTransportCode.ProjectUtils import ERE, I_WATER, SC_DENSITY_WATER, Z_WATER, Re
+from electronTransportCode.ProjectUtils import ERE
 from electronTransportCode.Material import Material
 from egsMS import mscat
+
+@nb.jit(nb.types.UniTuple(nb.float64, 4)(nb.int32, nb.float64, nb.float64, nb.float64, nb.float64, nb.float64), nopython=True, cache=True, parallel=True)
+def sample(nbsamples: int, energy: float, stepsize: float, Z: float, eta0CONST: float, bc: float) -> tuple[float, float, float, float]:
+    meanMu: float = 0.0
+    meanSint: float = 0.0
+    sosMu: float = 0.0
+    sosSint: float = 0.0
+    for sampleNb in range(1, nbsamples+1):
+        # sample cos(theta)
+        mu = mscat(energy, stepsize, Z, eta0CONST, bc)
+        sint = math.sqrt(1.0 - mu**2)
+
+        # update mean and variance
+        dmu = mu - meanMu
+        dsint = sint - meanSint
+        meanMu = meanMu + dmu/sampleNb
+        meanSint = meanSint + dsint/sampleNb
+        sosMu = sosMu + dmu*(mu - meanMu)
+        sosSint = sosSint + dsint*(sint - meanSint)
+    return meanMu, meanSint, sosMu/(nbsamples-1), sosSint/(nbsamples-1)
+
 
 if __name__ == '__main__':
     nbsamples = int(float(sys.argv[1]))
@@ -45,27 +67,7 @@ if __name__ == '__main__':
         for j, stepsize in enumerate(stepsizeArray):
             for k, density in enumerate(densityArray):
                 material = Material(rho=density)
-
-                # sum of squares and mean for mu and sint
-                meanMu = 0.0
-                sosMu = 0.0
-                meanSint = 0.0
-                sosSint = 0.0
-
-                for sampleNb in range(1, nbsamples+1):
-                    # sample cos(theta)
-                    mu = mscat(energy, stepsize, material.Z, material.eta0CONST, material.bc)
-                    sint = math.sqrt(1.0 - mu**2)
-
-                    # update mean and variance
-                    dmu = mu - meanMu
-                    dsint = sint - meanSint
-                    meanMu = meanMu + dmu/sampleNb
-                    meanSint = meanSint + dsint/sampleNb
-                    sosMu = sosMu + dmu*(mu - meanMu)
-                    sosSint = sosSint + dsint*(sint - meanSint)
-
-                lut[i, j, k, :] = (meanMu, meanSint, sosMu/(nbsamples-1), sosSint/(nbsamples-1))
+                lut[i, j, k, :] = sample(nbsamples, energy, stepsize, material.Z, material.eta0CONST, material.bc)
         t4 = time.process_time()
         print(f'Proc: {rank}. {round(100*(i+1)/energyArray.size, 3)}% completed. Last section took {(t4-t3)/60:2e} minutes.')
 
