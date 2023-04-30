@@ -9,6 +9,10 @@ from electronTransportCode.ProjectUtils import ERE
 from electronTransportCode.Material import Material
 from egsMS import mscat
 
+@nb.njit
+def set_seed(value: int) -> None:
+    np.random.seed(value)
+
 @nb.jit(nb.types.UniTuple(nb.float64, 4)(nb.int32, nb.float64, nb.float64, nb.float64, nb.float64, nb.float64), nopython=True, cache=True)
 def sample(nbsamples: int, energy: float, stepsize: float, Z: float, eta0CONST: float, bc: float) -> tuple[float, float, float, float]:
     meanMu: float = 0.0
@@ -45,6 +49,8 @@ if __name__ == '__main__':
     energies = np.linspace(minEnergy, maxEnergy, nbEnergy)
     energiesSplit = np.array_split(energies, nproc)
     energyArray = energiesSplit[rank]
+
+    set_seed(MPI.COMM_WORLD.Get_rank())
 
     # stepsize array
     minds = 1e-5
