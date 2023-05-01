@@ -5,11 +5,10 @@ from mpi4py import MPI
 from typing import Union, Tuple, Optional
 import numpy as np
 import pickle
-
 from electronTransportCode.MCEstimator import MCEstimator
 from electronTransportCode.ParticleModel import ParticleModel
 from electronTransportCode.SimOptions import SimOptions
-from electronTransportCode.ProjectUtils import ERE, tuple3d, tuple3d
+from electronTransportCode.ProjectUtils import KDR_E_THRESHOLD, tuple3d, tuple3d
 from electronTransportCode.SimulationDomain import SimulationDomain
 
 
@@ -762,7 +761,7 @@ class KDR(KDParticleTracer):
             for estimator in estimatorList:
                 estimator.updateEstimator((pos3d, kin_pos3d), (vec3d, kin_vec3d), (energy, kin_energy), index, step_kin)
 
-            if loopbool and kin_energy > 5e-1:  # Do diffusive step if there is energy left
+            if loopbool and kin_energy > KDR_E_THRESHOLD:  # Do diffusive step if there is energy left
 
                 step_diff1, diff_energy1 = self.pickStepSize(kin_pos3d, kin_energy, kin_index, step_kin)
 
