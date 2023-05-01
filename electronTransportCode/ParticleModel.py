@@ -2,8 +2,9 @@ from abc import ABC, abstractmethod
 import math
 from typing import Optional, Union, Tuple, Final
 import numpy as np
+from scipy.interpolate import RegularGridInterpolator
 from electronTransportCode.Material import Material
-from electronTransportCode.ProjectUtils import ERE, FSC, Re, tuple3d, mathlog2, PROJECT_ROOT
+from electronTransportCode.ProjectUtils import ERE, FSC, tuple3d, mathlog2, PROJECT_ROOT
 
 
 class ParticleModel(ABC):
@@ -318,6 +319,7 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         self.LUTdsAxis = d['arr_1']
         self.LUTrhoAxis = d['arr_2']
         self.varLUT = bigLUT[:, :, :, 2:4]  # variance of cos(theta) and sin(theta)
+        self.interp = RegularGridInterpolator((self.LUTeAxis, self.LUTdsAxis, self.LUTrhoAxis), self.varLUT)
 
     def getScatteringRate(self, pos3d: tuple3d, Ekin: float, material: Material) -> float:
         betaSquared: float = Ekin*(Ekin+2)/((Ekin+1)**2)
@@ -413,11 +415,17 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         Returns:
             tuple[float, float]: variance of cos(theta) = mu, variance of sin(theta)
         """
-        # TODO: Do fit using pychebfun
-        idE = np.abs(self.LUTeAxis-energy).argmin()
-        idds = np.abs(self.LUTdsAxis-stepsize).argmin()
-        idrho = np.abs(self.LUTrhoAxis-material.rho).argmin()
-        return self.varLUT[idE, idds, idrho, :]
+        # TODO: Try polynomial fit using pychebfun
+
+        # Closest grid point interpolation
+        # idE = np.abs(self.LUTeAxis-energy).argmin()
+        # idds = np.abs(self.LUTdsAxis-stepsize).argmin()
+        # idrho = np.abs(self.LUTrhoAxis-material.rho).argmin()
+        # return self.varLUT[idE, idds, idrho, :]
+
+        # Linear interpolation
+        return self.interp(np.array((energy, stepsize, material.rho), dtype=float))[0]
+
 
     def getOmegaMoments(self, pos3d: tuple3d) -> Tuple[tuple3d, tuple3d]:
         """Assume particle undergoes a very large amount of collisions during the diffusive step. As a result, the stationary post-collision angular distribution is the isotropic distribution. When fstat is isotropically distributed, it remains isotropic after scattering with f_postcol.
