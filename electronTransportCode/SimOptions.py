@@ -134,3 +134,17 @@ class LineSource(PointSource):
         """Source along the z-axis
         """
         return np.array((0.0, 0.0, self.rng.uniform(low=self.xmin, high=self.xmax, size=1)), dtype=float)
+
+class KDRLUTSimulation(SimOptions):
+    def __init__(self, eSource: float, minEnergy: float, rngSeed: int = 12) -> None:
+        super().__init__(minEnergy, rngSeed)
+        self.eSource= eSource
+
+    def initialEnergy(self) -> float:
+        return self.eSource
+
+    def initialPosition(self) -> tuple3d:
+        return np.array((0.0, 0.0, 0.0), dtype=float)
+
+    def initialDirection(self) -> tuple3d:
+        return np.array((0.0, 0.0, 1.0), dtype=float)
