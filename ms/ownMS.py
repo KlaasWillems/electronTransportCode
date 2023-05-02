@@ -8,7 +8,7 @@ from electronTransportCode.SimOptions import KDRLUTSimulation
 from electronTransportCode.MCEstimator import TrackEndEstimator
 from electronTransportCode.MCParticleTracer import AnalogParticleTracer
 from electronTransportCode.SimulationDomain import SimulationDomain
-from electronTransportCode.ParticleModel import KDRTestParticle
+from electronTransportCode.ParticleModel import SimplifiedEGSnrcElectron
 from electronTransportCode.ProjectUtils import ERE
 from electronTransportCode.Material import Material
 
@@ -18,7 +18,7 @@ xbins = ybins = 1
 
 def sample(nbsamples: int, energy: float, stepsize: float, material: Material) -> tuple[Optional[float], Optional[float], Optional[float], Optional[float], Optional[float], Optional[float], Optional[float]]:
     simDomain = SimulationDomain(xmin, xmax, xmin, xmax, xbins, ybins, material)
-    particle = KDRTestParticle(None)
+    particle = SimplifiedEGSnrcElectron(None)
     deltaE = particle.energyLoss(energy, np.array((0, 0, 0), dtype=float), stepsize, material)
     if energy > deltaE:
         # assert energy > deltaE, f'{energy=}, {deltaE=}, {stepsize=}. Stepsize too large for available energy'
