@@ -316,8 +316,8 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         super().__init__(generator)
 
         # Load in look-up table
-        bigLUT = np.load(PROJECT_ROOT + '/ms/data/lut.npy')
-        d = np.load(PROJECT_ROOT + '/ms/data/lutAxes.npz')
+        bigLUT = np.load(PROJECT_ROOT + '/ms/data/egslut.npy')
+        d = np.load(PROJECT_ROOT + '/ms/data/egslutAxes.npz')
         self.LUTeAxis = d['arr_0']
         self.LUTdsAxis = d['arr_1']
         self.LUTrhoAxis = d['arr_2']
