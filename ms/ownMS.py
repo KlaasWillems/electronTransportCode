@@ -16,7 +16,7 @@ xmin = -100
 xmax = 100
 xbins = ybins = 1
 
-def sample(nbsamples: int, energy: float, stepsize: float, material: Material) -> tuple[Optional[float], Optional[float], Optional[float], Optional[float], Optional[float], Optional[float]]:
+def sample(nbsamples: int, energy: float, stepsize: float, material: Material) -> tuple[Optional[float], Optional[float], Optional[float], Optional[float], Optional[float], Optional[float], Optional[float]]:
     simDomain = SimulationDomain(xmin, xmax, xmin, xmax, xbins, ybins, material)
     particle = KDRTestParticle(None)
     deltaE = particle.energyLoss(energy, np.array((0, 0, 0), dtype=float), stepsize, material)
@@ -28,9 +28,18 @@ def sample(nbsamples: int, energy: float, stepsize: float, material: Material) -
         TEEz = TrackEndEstimator(simDomain, nbsamples, 'z')
         particleTracer = AnalogParticleTracer(simOptions, simDomain, particle)
         particleTracer.__call__(nbsamples, (TEEx, TEEy, TEEz))
-        return TEEx.scoreMatrix.mean(), TEEy.scoreMatrix.mean(), TEEz.scoreMatrix.mean(), TEEx.scoreMatrix.var(), TEEy.scoreMatrix.var(), TEEz.scoreMatrix.var()
+
+        temp = np.zeros_like(TEEx.scoreMatrix)  # cos(theta) array
+        for i in range(nbsamples):
+            x = TEEx.scoreMatrix[i]
+            y = TEEy.scoreMatrix[i]
+            z = TEEz.scoreMatrix[i]
+            temp[i] = z/math.sqrt(x**2 + y**2 + z**2)
+
+        return temp.mean(), TEEx.scoreMatrix.mean(), TEEy.scoreMatrix.mean(), TEEz.scoreMatrix.mean(), TEEx.scoreMatrix.var(), TEEy.scoreMatrix.var(), TEEz.scoreMatrix.var()
     else:
-        return None, None, None, None, None, None
+        print(f'{energy=}, {deltaE=}, {stepsize=}')
+        return None, None, None, None, None, None, None
 
 if __name__ == '__main__':
     nbsamples = int(float(sys.argv[1]))
@@ -42,14 +51,14 @@ if __name__ == '__main__':
         raise ValueError('More processors than energy values.')
 
     # energy array
-    minEnergy = 1e-3
+    minEnergy = 5e-1
     maxEnergy = 21/ERE
     energies = np.linspace(minEnergy, maxEnergy, nbEnergy)
     energiesSplit = np.array_split(energies, nproc)
     energyArray = energiesSplit[rank]
 
     # stepsize array
-    minds = 1e-5
+    minds = 1e-4
     maxds = 0.1
     nbds = int(float(sys.argv[3]))
     stepsizeArray = np.linspace(minds, maxds, nbds)
@@ -60,7 +69,7 @@ if __name__ == '__main__':
     nbDensity = int(float(sys.argv[4]))
     densityArray = np.linspace(minDensity, maxDensity, nbDensity)
 
-    lut = np.empty(shape=(energyArray.size, nbds, nbDensity, 6), dtype=float)
+    lut = np.empty(shape=(energyArray.size, nbds, nbDensity, 7), dtype=float)
 
     t1 = time.process_time()
 
@@ -77,7 +86,7 @@ if __name__ == '__main__':
     bigLut: Optional[np.ndarray]
     if nproc > 1:
         if rank == 0:
-            bigLut = np.empty(shape=(nbEnergy, nbds, nbDensity, 6), dtype=float)
+            bigLut = np.empty(shape=(nbEnergy, nbds, nbDensity, 7), dtype=float)
             beginIndex = 0
             for index, energyGroup in enumerate(energiesSplit):
                 if index != 0:
