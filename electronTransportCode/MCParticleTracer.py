@@ -638,9 +638,8 @@ class KDR(KDParticleTracer):
 
         # Scale advection coefficient
         stepsizeDs = stepsize*self.particle.getScatteringRate(pos3d, energy, material)
-        exp_stepsizeDs = math.exp(-stepsizeDs)
-        expSum = (1.0 - exp_stepsizeDs)/stepsizeDs - (math.exp(stepsizeDs*(Ecost - 1.0)) - exp_stepsizeDs)/Ecost
-        A_coef: tuple3d = vec3d*Ecost*expSum/(1 - Ecost)
+        expSum: float = 1.0 - math.exp(stepsizeDs*(Ecost - 1.0))
+        A_coef: tuple3d = vec3d*Ecost*expSum/((1 - Ecost)*stepsizeDs)
 
         # Load variance from LUT
         varmu, varsint = self.particle.getScatteringVariance(energy, stepsize, material)
