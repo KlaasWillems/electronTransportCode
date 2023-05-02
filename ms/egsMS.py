@@ -157,7 +157,7 @@ def mscat(Ekin: float, stepsize: float, Z: float, eta0CONST: float, bc: float) -
         else:
             u = u - du/a*(1-math.sqrt(1+xi*a*(2+a)))
 
-        a = omega2*chia2
+        # a = omega2*chia2
         xi = 2*a*u/(1 + a - u)
         if xi > 1.99999:
             xi = 1.99999
