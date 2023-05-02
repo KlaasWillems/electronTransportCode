@@ -26,4 +26,4 @@ mathlog2: float = math.log(2)
 
 # Sim constants
 E_THRESHOLD: Final[float] = 1e-3  # Stopping power becomes negative if energy is lower than this value
-KDR_E_THRESHOLD: Final[float] = 1.0  # No KDR steps when energy reaches this threshold
+KDR_E_THRESHOLD: Final[float] = -1.0  # No KDR steps when energy reaches this threshold
