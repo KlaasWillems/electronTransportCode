@@ -96,6 +96,9 @@ class ParticleModel(ABC):
         """
         raise NotImplementedError
 
+    def getMeanMu(self, energy: float, stepsize: float, material: Material) -> float:
+        raise NotImplementedError
+
     @abstractmethod
     def getOmegaMoments(self, pos3d: tuple3d) -> Tuple[tuple3d, tuple3d]:
         """Return the mean and the variance of the absolute postcollisional velocity distribution (a la fusion, no rotational dependencies between velocities are considered)
@@ -319,7 +322,9 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         self.LUTdsAxis = d['arr_1']
         self.LUTrhoAxis = d['arr_2']
         self.varLUT = bigLUT[:, :, :, 2:4]  # variance of cos(theta) and sin(theta)
-        self.interp = RegularGridInterpolator((self.LUTeAxis, self.LUTdsAxis, self.LUTrhoAxis), self.varLUT)
+        self.muLUT = bigLUT[:, :, :, 0]
+        self.interpVar = RegularGridInterpolator((self.LUTeAxis, self.LUTdsAxis, self.LUTrhoAxis), self.varLUT)
+        self.interpMu = RegularGridInterpolator((self.LUTeAxis, self.LUTdsAxis, self.LUTrhoAxis), self.muLUT)
 
     def getScatteringRate(self, pos3d: tuple3d, Ekin: float, material: Material) -> float:
         betaSquared: float = Ekin*(Ekin+2)/((Ekin+1)**2)
@@ -424,7 +429,10 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         # return self.varLUT[idE, idds, idrho, :]
 
         # Linear interpolation
-        return self.interp(np.array((energy, stepsize, material.rho), dtype=float))[0]
+        return self.interpVar(np.array((energy, stepsize, material.rho), dtype=float))[0]
+
+    def getMeanMu(self, energy: float, stepsize: float, material: Material) -> float:
+        return self.interpMu(np.array((energy, stepsize, material.rho), dtype=float))[0]
 
 
     def getOmegaMoments(self, pos3d: tuple3d) -> Tuple[tuple3d, tuple3d]:

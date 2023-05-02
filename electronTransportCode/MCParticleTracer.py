@@ -634,12 +634,20 @@ class KDR(KDParticleTracer):
         assert self.particle is not None
         material = self.simDomain.getMaterial(index)
 
+        Ecost = self.particle.getMeanMu(energy, stepsize, material)
+
+        # Scale advection coefficient
+        stepsizeDs = stepsize*self.particle.getScatteringRate(pos3d, energy, material)
+        exp_stepsizeDs = math.exp(-stepsizeDs)
+        expSum = (1.0 - exp_stepsizeDs)/stepsizeDs - (math.exp(stepsizeDs*(Ecost - 1.0)) - exp_stepsizeDs)/Ecost
+        A_coef: tuple3d = vec3d*Ecost*expSum/(1 - Ecost)
+
         # Load variance from LUT
         varmu, varsint = self.particle.getScatteringVariance(energy, stepsize, material)
 
         # Variance of isotropic scattering angle phi
         varcosphi = varsinphi = 0.5
-        return vec3d, np.array((varsint*varcosphi, varsint*varsinphi, varmu), dtype=float)
+        return A_coef, np.array((varsint*varcosphi, varsint*varsinphi, varmu), dtype=float)
 
     def stepParticleDiffusive(self, pos3d: tuple3d, vec3d: tuple3d, energy: float, index: int, stepsize: float) -> tuple[tuple3d, Optional[tuple3d], int, bool, list[tuple[int, float, tuple3d]]]:
         """Apply diffusive motion to particle
@@ -665,23 +673,23 @@ class KDR(KDParticleTracer):
         A_coeff, D_coeff = self.advectionDiffusionCoeff(pos3d, vec3d, energy, index, stepsize)
         assert D_coeff[0] >= 0 and D_coeff[1] >= 0 and D_coeff[2] >= 0
 
-        varx, vary, varz = D_coeff
+        # Rotate diffusion coefficient
         u, v, w = vec3d
         sint = math.sqrt(u**2 + v**2)
         cost = w
         cosphi = u/sint
         sinphi = v/sint
         R = np.array([[cosphi*cost, -sinphi, sint*cosphi], [sinphi*cost, cosphi, sinphi*sint], [-sint, 0, cost]])
-        assert np.all(D_coeff != 0.0), f'{varx=}, {vary=}, {varz=}, {D_coeff=}, {energy=}, {stepsize=}'
+        assert np.all(D_coeff != 0.0), f'{D_coeff[0]=}, {D_coeff[1]=}, {D_coeff[2]=}, {D_coeff=}, {energy=}, {stepsize=}'
 
         # Apply diffusive step
+        xi = self.simOptions.rng.multivariate_normal(mean=np.array((0.0, 0.0, 0.0)), cov=np.diag(np.ones((3, ))))
+        new_pos3d: tuple3d = pos3d + A_coeff*stepsize + R.dot(np.diag(np.sqrt(D_coeff)).dot(xi))
 
+        # Alternative: Apply diffusive step
         # cov = R @ np.diag(D_coeff) @ R.T
         # xi = self.simOptions.rng.multivariate_normal(mean=np.array((0.0, 0.0, 0.0)), cov=cov)
         # new_pos3d: tuple3d = pos3d + A_coeff*stepsize + xi
-
-        xi = self.simOptions.rng.multivariate_normal(mean=np.array((0.0, 0.0, 0.0)), cov=np.diag(np.ones((3, ))))
-        new_pos3d: tuple3d = pos3d + A_coeff*stepsize + R.dot(np.diag(np.sqrt(D_coeff)).dot(xi))
 
         new_index = self.simDomain.getIndexPath(new_pos3d, vec3d)  # vector doesn't really matter here since particle won't be on an edge
 
@@ -695,8 +703,7 @@ class KDR(KDParticleTracer):
 
         if index == new_index:
             return new_pos3d, equi_vec, index, True, [(index, stepsize, new_pos3d)]
-        else:
-            # For estimator: need stepsizes and indices of cells that are crossed.
+        else:  # Find alles cells the diffusive step whent through
             diff_step_track: list[tuple[int, float, tuple3d]] = []
             pos_it = pos3d
             index_it = index
