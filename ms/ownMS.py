@@ -16,22 +16,21 @@ xmin = -100
 xmax = 100
 xbins = ybins = 1
 
-
-
-def sample(nbsamples: int, energy: float, stepsize: float, material: Material) -> tuple[float, float, float, float, float, float]:
+def sample(nbsamples: int, energy: float, stepsize: float, material: Material) -> tuple[Optional[float], Optional[float], Optional[float], Optional[float], Optional[float], Optional[float]]:
     simDomain = SimulationDomain(xmin, xmax, xmin, xmax, xbins, ybins, material)
     particle = KDRTestParticle(None)
     deltaE = particle.energyLoss(energy, np.array((0, 0, 0), dtype=float), stepsize, material)
-    assert energy > deltaE, f'{energy=}, {deltaE=}. Stepsize too large for available energy'
-    simOptions = KDRLUTSimulation(eSource=energy, minEnergy=energy-deltaE, rngSeed=MPI.COMM_WORLD.Get_rank())
-    TEEx = TrackEndEstimator(simDomain, nbsamples, 'x')
-    TEEy = TrackEndEstimator(simDomain, nbsamples, 'y')
-    TEEz = TrackEndEstimator(simDomain, nbsamples, 'z')
-    particleTracer = AnalogParticleTracer(simOptions, simDomain, particle)
-    particleTracer.__call__(nbsamples, (TEEx, TEEy, TEEz))
-
-    return TEEx.scoreMatrix.mean(), TEEy.scoreMatrix.mean(), TEEz.scoreMatrix.mean(), TEEx.scoreMatrix.var(), TEEy.scoreMatrix.var(), TEEz.scoreMatrix.var()
-
+    if energy > deltaE:
+        # assert energy > deltaE, f'{energy=}, {deltaE=}, {stepsize=}. Stepsize too large for available energy'
+        simOptions = KDRLUTSimulation(eSource=energy, minEnergy=energy-deltaE, rngSeed=MPI.COMM_WORLD.Get_rank())
+        TEEx = TrackEndEstimator(simDomain, nbsamples, 'x')
+        TEEy = TrackEndEstimator(simDomain, nbsamples, 'y')
+        TEEz = TrackEndEstimator(simDomain, nbsamples, 'z')
+        particleTracer = AnalogParticleTracer(simOptions, simDomain, particle)
+        particleTracer.__call__(nbsamples, (TEEx, TEEy, TEEz))
+        return TEEx.scoreMatrix.mean(), TEEy.scoreMatrix.mean(), TEEz.scoreMatrix.mean(), TEEx.scoreMatrix.var(), TEEy.scoreMatrix.var(), TEEz.scoreMatrix.var()
+    else:
+        return None, None, None, None, None, None
 
 if __name__ == '__main__':
     nbsamples = int(float(sys.argv[1]))
