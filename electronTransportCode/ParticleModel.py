@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 import math
+from multiprocessing import Value
 from typing import Optional, Union, Tuple, Final
 import numpy as np
 from scipy.interpolate import RegularGridInterpolator
@@ -83,8 +84,8 @@ class ParticleModel(ABC):
         Emid = Ekin + self.evalStoppingPower(Ekin, pos3d, material)*stepsize/2
         return self.evalStoppingPower(Emid, pos3d, material)*stepsize
 
-    def getScatteringVariance(self, energy: float, stepsize: float, material: Material) -> tuple[float, float]:
-        """Return Var[cos(theta)] and Var[sin(theta)]. In case of isotropic scattering Var[sin(theta)] = 0.5.
+    def getScatteringVariance(self, energy: float, stepsize: float, material: Material) -> tuple3d:
+        """Return variance on x, y and z coordinate if the particle where oriented along the z-axis.
 
         Args:
             energy (float): Energy of particle
@@ -92,11 +93,13 @@ class ParticleModel(ABC):
             material (Material): Material of the current cell
 
         Returns:
-            tuple[float, float]: _description_
+            tuple[float, float, float]: Variance on x, y and z
         """
         raise NotImplementedError
 
     def getMeanMu(self, energy: float, stepsize: float, material: Material) -> float:
+        """Return average cosine of scattering angle. Only neede for Kinetic-Diffusion Rotation.
+        """
         raise NotImplementedError
 
     @abstractmethod
@@ -305,7 +308,7 @@ class SimplifiedEGSnrcElectron(ParticleModel):
     """A simplified electron model. Soft elastic collisions are taken into account using the screened Rutherford elastic cross section.
     Energy loss is deposited continuously using the Bethe-Bloch inelastic restricted collisional stopping power. Hard-inelastic collisions and bremstrahlung are not taken into account.
     """
-    def __init__(self, generator: Union[np.random.Generator, None, int] = None, scatterer: str = '3d') -> None:
+    def __init__(self, generator: Union[np.random.Generator, None, int] = None, scatterer: str = '3d', LUT: str = 'own') -> None:
         """
             scatterer (str, optional): 3d means azimuthal scattering angle is sampled phi~U(0, 2*pi). '2d' means scattering in the yz-plane. In this case, phi is chosen from {pi/2 3*pi/2}. Defaults to '3d'.
         """
@@ -314,17 +317,6 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         else:
             raise ValueError('scatterer argument is invalid.')
         super().__init__(generator)
-
-        # Load in look-up table
-        bigLUT = np.load(PROJECT_ROOT + '/ms/data/egslut.npy')
-        d = np.load(PROJECT_ROOT + '/ms/data/egslutAxes.npz')
-        self.LUTeAxis = d['arr_0']
-        self.LUTdsAxis = d['arr_1']
-        self.LUTrhoAxis = d['arr_2']
-        self.varLUT = bigLUT[:, :, :, 2:4]  # variance of cos(theta) and sin(theta)
-        self.muLUT = bigLUT[:, :, :, 0]
-        self.interpVar = RegularGridInterpolator((self.LUTeAxis, self.LUTdsAxis, self.LUTrhoAxis), self.varLUT)
-        self.interpMu = RegularGridInterpolator((self.LUTeAxis, self.LUTdsAxis, self.LUTrhoAxis), self.muLUT)
 
     def getScatteringRate(self, pos3d: tuple3d, Ekin: float, material: Material) -> float:
         betaSquared: float = Ekin*(Ekin+2)/((Ekin+1)**2)
@@ -409,32 +401,6 @@ class SimplifiedEGSnrcElectron(ParticleModel):
 
         return dSdE*dEds*vec3d
 
-    def getScatteringVariance(self, energy: float, stepsize: float, material: Material) -> tuple[float, float]:
-        """Find the variance for the closest value for energy, stepsize and material.rho in the look-up table.
-
-        Args:
-            energy (float): Energy of particle
-            stepsize (float): Diffusion step length
-            material (Material): material of current cell
-
-        Returns:
-            tuple[float, float]: variance of cos(theta) = mu, variance of sin(theta)
-        """
-        # TODO: Try polynomial fit using pychebfun
-
-        # Closest grid point interpolation
-        # idE = np.abs(self.LUTeAxis-energy).argmin()
-        # idds = np.abs(self.LUTdsAxis-stepsize).argmin()
-        # idrho = np.abs(self.LUTrhoAxis-material.rho).argmin()
-        # return self.varLUT[idE, idds, idrho, :]
-
-        # Linear interpolation
-        return self.interpVar(np.array((energy, stepsize, material.rho), dtype=float))[0]
-
-    def getMeanMu(self, energy: float, stepsize: float, material: Material) -> float:
-        return self.interpMu(np.array((energy, stepsize, material.rho), dtype=float))[0]
-
-
     def getOmegaMoments(self, pos3d: tuple3d) -> Tuple[tuple3d, tuple3d]:
         """Assume particle undergoes a very large amount of collisions during the diffusive step. As a result, the stationary post-collision angular distribution is the isotropic distribution. When fstat is isotropically distributed, it remains isotropic after scattering with f_postcol.
         """
@@ -467,14 +433,28 @@ class SimplifiedEGSnrcElectron(ParticleModel):
 
 
 class KDRTestParticle(SimplifiedEGSnrcElectron):
-    """Particle with which to test KDR. Scattering rate is fixed.
+    """Particle that behaves like a 10 MeV particle.
 
     Args:
         SimplifiedEGSnrcElectron (_type_): _description_
     """
-    def __init__(self, generator: Union[np.random.Generator, None, int] = None) -> None:
+    def __init__(self, generator: Union[np.random.Generator, None, int] = None, KDR: bool = False) -> None:
         super().__init__(generator, scatterer = '3d')
-        self.EFixed: float = 10.437819010728344  # Fix such that it is exact in the table.
+        self.EFixed: Final[float] = 10*ERE
+        self.KDR = KDR
+
+        if KDR:
+            # Load in look-up table. Linear interpolation of LUTs with RegularGridInterpolator from scipy.
+            # TODO: Fit look-up tables using least squares
+            bigLUT = np.load(PROJECT_ROOT + '/ms/data/ownlut.npy')
+            d = np.load(PROJECT_ROOT + '/ms/data/ownlutAxes.npz')
+            self.LUTeAxis = d['arr_0']
+            self.LUTdsAxis = d['arr_1']
+            self.LUTrhoAxis = d['arr_2']
+            # variance on x, y and z coordinate
+            self.interpPosVar = RegularGridInterpolator((self.LUTeAxis, self.LUTdsAxis, self.LUTrhoAxis), bigLUT[:, :, :, 4:7], fill_value=None, bounds_error=False)  # type: ignore
+            # expectation of cos(theta)
+            self.interpMu = RegularGridInterpolator((self.LUTeAxis, self.LUTdsAxis, self.LUTrhoAxis), bigLUT[:, :, :, 0], fill_value=None, bounds_error=False)  # type: ignore
 
     def getScatteringRate(self, pos3d: tuple3d, Ekin: float, material: Material) -> float:
         return super().getScatteringRate(pos3d, Ekin=self.EFixed, material=material)
@@ -491,55 +471,29 @@ class KDRTestParticle(SimplifiedEGSnrcElectron):
     def getDScatteringRate(self, pos3d: tuple3d, vec3d: tuple3d, Ekin: float, material: Material) -> tuple3d:
         return np.array((0.0, 0.0, 0.0), dtype=float)
 
-    def getScatteringVariance(self, energy: float, stepsize: float, material: Material) -> tuple[float, float]:
-        return super().getScatteringVariance(energy=self.EFixed, stepsize=stepsize, material=material)
+    def getScatteringVariance(self, energy: float, stepsize: float, material: Material) -> tuple3d:
+        """If using egs-based look-up table, variance on x, y and z is computed as [Var[sin(theta)]*Var[cos(phi)], Var[sin(theta)]*Var[sin(phi)], Var[cos(theta)]]^T, with Var[sin(phi)] = Var[cos(phi)] = 0.5. This does not work! If using own look-up table, variance on x, y and z is immediately pulled from table.
+        """
+        assert self.KDR
+        # Values outside LUT are extrapolated. No bounds checking needed.
+        # assert energy <= self.LUTeAxis.max() and energy >= self.LUTeAxis.min(), f'{energy=}'
+        # assert stepsize <= self.LUTdsAxis.max() and stepsize >= self.LUTdsAxis.min(), f'{stepsize=}'
+        # assert material.rho <= self.LUTrhoAxis.max() and material.rho >= self.LUTrhoAxis.min(), f'{material.rho=}'
+        return self.interpPosVar(np.array((energy, stepsize, material.rho), dtype=float))[0]
+
+    def getMeanMu(self, energy: float, stepsize: float, material: Material) -> float:
+        assert self.KDR
+        # Values outside LUT are extrapolated. No bounds checking needed.
+        # assert energy <= self.LUTeAxis.max() and energy >= self.LUTeAxis.min(), f'{energy=}'
+        # assert stepsize <= self.LUTdsAxis.max() and stepsize >= self.LUTdsAxis.min(), f'{stepsize=}'
+        # assert material.rho <= self.LUTrhoAxis.max() and material.rho >= self.LUTrhoAxis.min(), f'{material.rho=}'
+        return self.interpMu(np.array((energy, stepsize, material.rho), dtype=float))[0]
 
     def energyLoss(self, Ekin: float, pos3d: tuple3d, stepsize: float, material: Material) -> float:
         return super().energyLoss(Ekin=self.EFixed, pos3d=pos3d, stepsize=stepsize, material=material)
 
     def getOmegaMoments(self, pos3d: tuple3d) -> Tuple[tuple3d, tuple3d]:
         raise NotImplementedError('Particle only meant to be used with KDR.')
-
-'''
-class KDRTestParticle(ParticleModel):
-    """Particle to test KDR. Constant scattering rate & constant stopping power. pdf(cos(theta)) is a line from (-1, 0) to (1, 1). The mean and variance of cos(theta) and sin(theta) are derived analytically.
-        E[cos(theta)] = 1/3
-        E[cos(theta)**2] = 1/3
-        Var[cos(theta)] = 2/9
-        E[sin(theta)] = math.pi/4
-        E[sin(theta)**2] = 2/3
-        Var[sin(theta)] = 2/3 - (math.pi/4)**2
-    """
-    def __init__(self, generator: Union[np.random.Generator, None, int] = None, Es: float = 100, sp: float = 1.0) -> None:
-        super().__init__(generator)
-        self.Es = Es
-        self.sp = 1.0
-
-    def evalStoppingPower(self, Ekin: float, pos: tuple3d, material: Material) -> float:
-        return self.sp
-
-    def getScatteringRate(self, pos3d: tuple3d, Ekin: float, material: Material) -> float:
-        return self.Es
-
-    def getDScatteringRate(self, pos3d: tuple3d, vec3d: tuple3d, Ekin: float, material: Material) -> tuple3d:
-        return np.array((0.0, 0.0, 0.0), dtype=float)
-
-    def samplePathlength(self, Ekin: float, pos: tuple3d, material: Material) -> float:
-        assert self.rng is not None
-        return self.rng.exponential(scale=1/self.Es)
-
-    def getOmegaMoments(self, pos3d: tuple3d) -> Tuple[tuple3d, tuple3d]:
-        raise NotImplementedError('There exsists not absolute velocity distribution.')
-
-    def sampleScatteringAngles(self, Ekin: float, material: Material) -> Tuple[float, float, bool]:
-        assert self.rng is not None
-        phi = self.rng.uniform(low=0.0, high=2*math.pi)
-        mu = np.sqrt(4*np.random.uniform(low=0.0, high=1.0))-1
-        return mu, phi, False
-
-    def getScatteringVariance(self, energy: float, stepsize: float, material: Material) -> tuple[float, float]:
-        return 2/9, 2/3 - (math.pi/4)**2
-'''
 
 # Only used for plotting the stopping power
 class SimplifiedPenelopeElectron(ParticleModel):

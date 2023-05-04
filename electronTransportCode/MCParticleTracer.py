@@ -642,11 +642,9 @@ class KDR(KDParticleTracer):
         A_coef: tuple3d = vec3d*Ecost*expSum/((1 - Ecost)*stepsizeDs)
 
         # Load variance from LUT
-        varmu, varsint = self.particle.getScatteringVariance(energy, stepsize, material)
+        var = self.particle.getScatteringVariance(energy, stepsize, material)
 
-        # Variance of isotropic scattering angle phi
-        varcosphi = varsinphi = 0.5
-        return A_coef, np.array((varsint*varcosphi, varsint*varsinphi, varmu), dtype=float)
+        return A_coef, var
 
     def stepParticleDiffusive(self, pos3d: tuple3d, vec3d: tuple3d, energy: float, index: int, stepsize: float) -> tuple[tuple3d, Optional[tuple3d], int, bool, list[tuple[int, float, tuple3d]]]:
         """Apply diffusive motion to particle
@@ -670,7 +668,7 @@ class KDR(KDParticleTracer):
 
         # Get advection and diffusion coefficient
         A_coeff, D_coeff = self.advectionDiffusionCoeff(pos3d, vec3d, energy, index, stepsize)
-        assert D_coeff[0] >= 0 and D_coeff[1] >= 0 and D_coeff[2] >= 0
+        assert D_coeff[0] >= 0 and D_coeff[1] >= 0 and D_coeff[2] >= 0, f'{D_coeff=}'
 
         # Rotate diffusion coefficient
         u, v, w = vec3d

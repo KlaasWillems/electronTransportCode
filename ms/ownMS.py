@@ -8,7 +8,7 @@ from electronTransportCode.SimOptions import KDRLUTSimulation
 from electronTransportCode.MCEstimator import TrackEndEstimator
 from electronTransportCode.MCParticleTracer import AnalogParticleTracer
 from electronTransportCode.SimulationDomain import SimulationDomain
-from electronTransportCode.ParticleModel import SimplifiedEGSnrcElectron
+from electronTransportCode.ParticleModel import KDRTestParticle
 from electronTransportCode.ProjectUtils import ERE
 from electronTransportCode.Material import Material
 
@@ -18,7 +18,7 @@ xbins = ybins = 1
 
 def sample(nbsamples: int, energy: float, stepsize: float, material: Material) -> tuple[Optional[float], Optional[float], Optional[float], Optional[float], Optional[float], Optional[float], Optional[float]]:
     simDomain = SimulationDomain(xmin, xmax, xmin, xmax, xbins, ybins, material)
-    particle = SimplifiedEGSnrcElectron(None)
+    particle = KDRTestParticle(KDR=False)
     deltaE = particle.energyLoss(energy, np.array((0, 0, 0), dtype=float), stepsize, material)
     if energy > deltaE:
         # assert energy > deltaE, f'{energy=}, {deltaE=}, {stepsize=}. Stepsize too large for available energy'
@@ -45,55 +45,49 @@ if __name__ == '__main__':
     nbsamples = int(float(sys.argv[1]))
     nproc = MPI.COMM_WORLD.Get_size()
     rank = MPI.COMM_WORLD.Get_rank()
-    nbEnergy = int(float(sys.argv[2]))
+    nbds = int(float(sys.argv[2]))
 
-    if nbEnergy < nproc:
-        raise ValueError('More processors than energy values.')
-
-    # energy array
-    minEnergy = 5e-1
-    maxEnergy = 21/ERE
-    energies = np.linspace(minEnergy, maxEnergy, nbEnergy)
-    energiesSplit = np.array_split(energies, nproc)
-    energyArray = energiesSplit[rank]
+    if nbds < nproc:
+        raise ValueError('More processors than stepsize values.')
 
     # stepsize array
     minds = 1e-4
     maxds = 0.1
-    nbds = int(float(sys.argv[3]))
-    stepsizeArray = np.linspace(minds, maxds, nbds)
+    nbds = int(float(sys.argv[2]))
+    stepsizes = np.linspace(minds, maxds, nbds)
+    stepsizesSplit = np.array_split(stepsizes, nproc)
+    stepsizeArray = stepsizesSplit[rank]
 
     # material array. Specific for lung test case.
     minDensity = 0.05
     maxDensity = 1.85
-    nbDensity = int(float(sys.argv[4]))
+    nbDensity = int(float(sys.argv[3]))
     densityArray = np.linspace(minDensity, maxDensity, nbDensity)
 
-    lut = np.empty(shape=(energyArray.size, nbds, nbDensity, 7), dtype=float)
+    lut = np.empty(shape=(stepsizeArray.size, nbDensity, 7), dtype=float)
 
     t1 = time.process_time()
 
-    for i, energy in enumerate(energyArray):
+    EnergyDummy = 100
+    for j, stepsize in enumerate(stepsizeArray):
         t3 = time.process_time()
-        for j, stepsize in enumerate(stepsizeArray):
-            for k, density in enumerate(densityArray):
-                material = Material(rho=density)
-                lut[i, j, k, :] = sample(nbsamples, energy, stepsize, material)
+        for k, density in enumerate(densityArray):
+            material = Material(rho=density)
+            lut[j, k, :] = sample(nbsamples, EnergyDummy, stepsize, material)
         t4 = time.process_time()
-        print(f'Proc: {rank}. {round(100*(i+1)/energyArray.size, 3)}% completed. Last section took {(t4-t3)/60:2e} minutes.')
+        print(f'Proc: {rank}. {round(100*(j+1)/stepsizeArray.size, 3)}% completed. Last section took {(t4-t3)/60:2e} minutes.')
 
-    t2 = time.process_time()
     bigLut: Optional[np.ndarray]
     if nproc > 1:
         if rank == 0:
-            bigLut = np.empty(shape=(nbEnergy, nbds, nbDensity, 7), dtype=float)
+            bigLut = np.empty(shape=(nbds, nbDensity, 7), dtype=float)
             beginIndex = 0
-            for index, energyGroup in enumerate(energiesSplit):
+            for index, energyGroup in enumerate(stepsizesSplit):
                 if index != 0:
-                    MPI.COMM_WORLD.Recv(bigLut[beginIndex:, :, :, :], source=index, tag=index)
+                    MPI.COMM_WORLD.Recv(bigLut[beginIndex:, :, :], source=index, tag=index)
                 else:
-                    bigLut[beginIndex:beginIndex+energyArray.size, :, :, :] = lut
-                beginIndex += energyArray.size
+                    bigLut[beginIndex:beginIndex+stepsizeArray.size, :, :] = lut
+                beginIndex += stepsizeArray.size
 
         else:
             MPI.COMM_WORLD.Send(lut, dest=0, tag=rank)
@@ -104,6 +98,6 @@ if __name__ == '__main__':
     if rank == 0:
         assert bigLut is not None
         np.save('data/ownlut.npy', bigLut)
-        np.savez('data/ownlutAxes.npz', energies, stepsizeArray, densityArray)
-
+        np.savez('data/ownlutAxes.npz', stepsizeArray, densityArray)
+        t2 = time.process_time()
         print(f'Total time: {(t2-t1)/60:2e} minutes.')
