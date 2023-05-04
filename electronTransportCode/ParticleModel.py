@@ -308,7 +308,7 @@ class SimplifiedEGSnrcElectron(ParticleModel):
     """A simplified electron model. Soft elastic collisions are taken into account using the screened Rutherford elastic cross section.
     Energy loss is deposited continuously using the Bethe-Bloch inelastic restricted collisional stopping power. Hard-inelastic collisions and bremstrahlung are not taken into account.
     """
-    def __init__(self, generator: Union[np.random.Generator, None, int] = None, scatterer: str = '3d', LUT: str = 'own') -> None:
+    def __init__(self, generator: Union[np.random.Generator, None, int] = None, scatterer: str = '3d') -> None:
         """
             scatterer (str, optional): 3d means azimuthal scattering angle is sampled phi~U(0, 2*pi). '2d' means scattering in the yz-plane. In this case, phi is chosen from {pi/2 3*pi/2}. Defaults to '3d'.
         """
