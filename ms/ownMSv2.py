@@ -97,7 +97,7 @@ if __name__ == '__main__':
 
     if rank == 0:
         assert bigLut is not None
-        np.save('data/ownlut.npy', bigLut)
-        np.savez('data/ownlutAxes.npz', stepsizeArray, densityArray)
+        np.save('data/ownlutv2.npy', bigLut)
+        np.savez('data/ownlutAxesv2.npz', stepsizeArray, densityArray)
         t2 = time.process_time()
         print(f'Total time: {(t2-t1)/60:2e} minutes.')
