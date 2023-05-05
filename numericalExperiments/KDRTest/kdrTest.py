@@ -43,8 +43,8 @@ if __name__ == '__main__':
     NB_PARTICLES_PER_PROC = int(float(sys.argv[1])/nproc)
     NB_PARTICLES = int(NB_PARTICLES_PER_PROC*nproc)
 
-    simType = 'kdr'
-    # simType = sys.argv[2]
+    # simType = 'kdr'
+    simType = sys.argv[2]
 
     # - Set up estimator and particle
     trackEndEstimatorkx = TrackEndEstimator(simDomain, NB_PARTICLES_PER_PROC, setting='x')
