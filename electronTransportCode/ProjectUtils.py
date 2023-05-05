@@ -12,7 +12,8 @@ PROJECT_ROOT = os.path.abspath(exactSolution.__file__ + '/../..')
 tuple3d: TypeAlias = Annotated[npt.NDArray[np.float64], Literal[3]]
 
 # Constants
-CTF: Final[float] = np.power(9*(np.pi**2)/128, 1/3)  # Thomas-Fermi constant. Dimensionless
+u: Final[float] = constants.value('atomic mass constant')*1000  # [g] Atomic mass unit
+CTF: Final[float] = math.pow(9*(np.pi**2)/128, 1/3)  # Thomas-Fermi constant. Dimensionless
 FSC: Final[float] = constants.fine_structure  # fine structure constant (denoted with symbol alpha). Dimensionless
 Z_WATER: Final[float] = 10  # atomic number of water
 Z_WATER_EFF: Final[float] = 7.51  # effective atomic number of water
