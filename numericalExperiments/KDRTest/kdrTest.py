@@ -8,7 +8,7 @@ from electronTransportCode.ProjectUtils import E_THRESHOLD
 from electronTransportCode.SimulationDomain import SimulationDomain
 from electronTransportCode.Material import Material
 from electronTransportCode.MCEstimator import TrackEndEstimator
-from electronTransportCode.ParticleModel import KDRTestParticle
+from electronTransportCode.ParticleModel import SimplifiedEGSnrcElectron
 from electronTransportCode.SimOptions import PointSource
 from electronTransportCode.MCParticleTracer import KDR, AnalogParticleTracer
 
@@ -31,7 +31,7 @@ eSource: float = 5.0
 SEED: int = 4  # Random number generator seed
 pointSourceSim = PointSource(minEnergy=E_THRESHOLD, rngSeed=RNGSEED, eSource=eSource)
 
-particle1 = KDRTestParticle()
+particle1 = SimplifiedEGSnrcElectron(scatterer='3d')
 
 kineticParticleTracer = AnalogParticleTracer(particle=particle1, simOptions=pointSourceSim, simDomain=simDomain)
 kdr = KDR(simOptions=pointSourceSim, simDomain=simDomain, particle=particle1, dS=0.1)
@@ -39,10 +39,12 @@ kdr = KDR(simOptions=pointSourceSim, simDomain=simDomain, particle=particle1, dS
 if __name__ == '__main__':
     nproc = MPI.COMM_WORLD.Get_size()
 
+    # NB_PARTICLES_PER_PROC = 10
     NB_PARTICLES_PER_PROC = int(float(sys.argv[1])/nproc)
     NB_PARTICLES = int(NB_PARTICLES_PER_PROC*nproc)
 
-    simType = sys.argv[2]
+    simType = 'kdr'
+    # simType = sys.argv[2]
 
     # - Set up estimator and particle
     trackEndEstimatorkx = TrackEndEstimator(simDomain, NB_PARTICLES_PER_PROC, setting='x')
@@ -64,6 +66,7 @@ if __name__ == '__main__':
     elif simType == 'kdr':
         t2 = time.process_time()
         kdr.runMultiProc(nbParticles=NB_PARTICLES, estimators=(trackEndEstimatorkdrx, trackEndEstimatorkdry, trackEndEstimatorkdrz), file='data/trackEndEstimatorkdr.pkl', logAmount=logAmount)
+        # kdr.__call__(nbParticles=NB_PARTICLES, estimators=(trackEndEstimatorkdrx, trackEndEstimatorkdry, trackEndEstimatorkdrz))
         t3 = time.process_time()
         print(f'KDR simulation time: {round(t3-t2, 4)}')
         if MPI.COMM_WORLD.Get_rank() == 0:
