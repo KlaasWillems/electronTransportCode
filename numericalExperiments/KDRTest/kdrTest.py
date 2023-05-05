@@ -8,7 +8,7 @@ from electronTransportCode.ProjectUtils import E_THRESHOLD
 from electronTransportCode.SimulationDomain import SimulationDomain
 from electronTransportCode.Material import Material
 from electronTransportCode.MCEstimator import TrackEndEstimator
-from electronTransportCode.ParticleModel import SimplifiedEGSnrcElectron
+from electronTransportCode.ParticleModel import SimplifiedEGSnrcElectron, KDRTestParticle
 from electronTransportCode.SimOptions import PointSource
 from electronTransportCode.MCParticleTracer import KDR, AnalogParticleTracer
 
@@ -31,7 +31,8 @@ eSource: float = 5.0
 SEED: int = 4  # Random number generator seed
 pointSourceSim = PointSource(minEnergy=E_THRESHOLD, rngSeed=RNGSEED, eSource=eSource)
 
-particle1 = SimplifiedEGSnrcElectron(scatterer='3d')
+# particle1 = SimplifiedEGSnrcElectron(scatterer='3d')
+particle1 = KDRTestParticle()
 
 kineticParticleTracer = AnalogParticleTracer(particle=particle1, simOptions=pointSourceSim, simDomain=simDomain)
 kdr = KDR(simOptions=pointSourceSim, simDomain=simDomain, particle=particle1, dS=0.1)
@@ -39,7 +40,7 @@ kdr = KDR(simOptions=pointSourceSim, simDomain=simDomain, particle=particle1, dS
 if __name__ == '__main__':
     nproc = MPI.COMM_WORLD.Get_size()
 
-    # NB_PARTICLES_PER_PROC = 10
+    # NB_PARTICLES_PER_PROC = 5000
     NB_PARTICLES_PER_PROC = int(float(sys.argv[1])/nproc)
     NB_PARTICLES = int(NB_PARTICLES_PER_PROC*nproc)
 
