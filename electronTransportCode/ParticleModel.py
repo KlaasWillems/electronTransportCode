@@ -328,8 +328,9 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         self.interpPosVar = RegularGridInterpolator((self.LUTeAxis, self.LUTdsAxis, self.LUTrhoAxis), bigLUT[:, :, :, 4:7], fill_value=None, bounds_error=False)  # type: ignore
 
     def getScatteringRate(self, pos3d: tuple3d, Ekin: float, material: Material) -> float:
+        eta = material.etaCONST2/(Ekin*(Ekin+2))
         betaSquared: float = Ekin*(Ekin+2)/((Ekin+1)**2)
-        return material.bc/betaSquared  # total macroscopic screened Rutherford cross section
+        return material.bc/(betaSquared*(1+eta))  # total macroscopic screened Rutherford cross section
 
     def samplePathlength(self, Ekin: float, pos: tuple3d, material: Material) -> float:
         """ Sample path-length from screened Rutherford elastic scattering cross section. See EGSnrc manual by Kawrakow et al for full details.
@@ -339,7 +340,8 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         assert self.rng is not None
         assert Ekin > 0, f'{Ekin=}'
         betaSquared: float = Ekin*(Ekin+2)/((Ekin+1)**2)
-        SigmaSR: float = material.bc/betaSquared  # total macroscopic screened Rutherford cross section
+        eta = material.etaCONST2/(Ekin*(Ekin+2))
+        SigmaSR: float = material.bc/(betaSquared*(1+eta))  # total macroscopic screened Rutherford cross section
         return self.rng.exponential(1/SigmaSR)  # path-length
 
     def sampleScatteringAngles(self, Ekin: float, material: Material) -> Tuple[float, float, bool]:
@@ -351,11 +353,8 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         assert Ekin >= 0, f'{Ekin=}'
         # mu
         if self.scatterer == '3d' or self.scatterer == '2d':
-            temp = Ekin*(Ekin+2)
-            betaSquared: float = temp/((Ekin+1)**2)
-            eta0: float = material.eta0CONST/temp
+            eta: float = material.etaCONST2/(Ekin*(Ekin+2))
             r: float = self.rng.uniform()
-            eta: float = eta0*(1.13 + 3.76*((FSC*material.Z)**2)/betaSquared)
             mu = 1 - 2*eta*r/(1-r+eta)
             new_direction = False
         else:  # '2d-simple'
@@ -441,10 +440,7 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         return self.evalStoppingPower(Emid, pos3d, material)*stepsize
 
     def getMeanMu(self, energy: float, stepsize: float, material: Material) -> float:
-        temp = energy*(energy+2)
-        betaSquared = temp/((energy+1)**2)
-        eta0 = material.eta0CONST/temp
-        eta = eta0*(1.13 + 3.76*((FSC*material.Z)**2)/betaSquared)
+        eta: float = material.etaCONST2/(energy*(energy+2))
         return eta*(eta+1)*(1/eta + 1/(eta+1) + 2*math.log(eta) - 2*math.log(eta+1))
 
     def getScatteringVariance(self, energy: float, stepsize: float, material: Material) -> tuple3d:
