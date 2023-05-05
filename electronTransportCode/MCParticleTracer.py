@@ -637,9 +637,9 @@ class KDR(KDParticleTracer):
         Ecost = self.particle.getMeanMu(energy, stepsize, material)
 
         # Scale advection coefficient
-        stepsizeDs = stepsize*self.particle.getScatteringRate(pos3d, energy, material)
-        expSum: float = 1.0 - math.exp(stepsizeDs*(Ecost - 1.0))
-        A_coef: tuple3d = vec3d*Ecost*expSum/((1 - Ecost)*stepsizeDs)
+        Sigma = self.particle.getScatteringRate(pos3d, energy, material)
+        expSum: float = 1.0 - math.exp(stepsize*Sigma*(Ecost - 1.0))
+        A_coef: tuple3d = vec3d*Ecost*expSum/((1 - Ecost)*Sigma)
 
         # Load variance from LUT
         var = self.particle.getScatteringVariance(energy, stepsize, material)
@@ -680,13 +680,14 @@ class KDR(KDParticleTracer):
         assert np.all(D_coeff != 0.0), f'{D_coeff[0]=}, {D_coeff[1]=}, {D_coeff[2]=}, {D_coeff=}, {energy=}, {stepsize=}'
 
         # Apply diffusive step
-        xi = self.simOptions.rng.multivariate_normal(mean=np.array((0.0, 0.0, 0.0)), cov=np.diag(np.ones((3, ))))
-        new_pos3d: tuple3d = pos3d + A_coeff*stepsize + R.dot(np.diag(np.sqrt(D_coeff)).dot(xi))
+        xi = self.simOptions.rng.normal(size=3)  # much faster than multivariate_normal
+        # xi = self.simOptions.rng.multivariate_normal(mean=np.array((0.0, 0.0, 0.0)), cov=np.diag(np.ones((3, ))))
+        new_pos3d: tuple3d = pos3d + A_coeff + R.dot(np.diag(np.sqrt(D_coeff)).dot(xi))
 
         # Alternative: Apply diffusive step
         # cov = R @ np.diag(D_coeff) @ R.T
         # xi = self.simOptions.rng.multivariate_normal(mean=np.array((0.0, 0.0, 0.0)), cov=cov)
-        # new_pos3d: tuple3d = pos3d + A_coeff*stepsize + xi
+        # new_pos3d: tuple3d = pos3d + A_coeff + xi
 
         new_index = self.simDomain.getIndexPath(new_pos3d, vec3d)  # vector doesn't really matter here since particle won't be on an edge
 
