@@ -29,7 +29,6 @@ class Material:
         self.X: float = 0.1569 * rho * ZS/self.A
         self.SigmaCONST = math.pi*((Re*self.Z)**2)*self.rho/(u*self.A)
         self.etaCONST2: float = 1.13*(FSC**2)*math.exp(ZX/ZS)/(4*(CTF**2)*math.exp(ZE/ZS))
-        # self.eta0CONST: float = math.pow(FSC, 2)*math.pow(Z, 2/3)/(4*math.pow(CTF, 2))
         self.LcollConst = 2*math.pi*(Re**2)*self.SC_DENSITY*self.Z
 
 WaterMaterial = Material()

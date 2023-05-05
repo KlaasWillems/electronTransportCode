@@ -73,7 +73,7 @@ if __name__ == '__main__':
         for j, stepsize in enumerate(stepsizeArray):
             for k, density in enumerate(densityArray):
                 material = Material(rho=density)
-                lut[i, j, k, :] = sample(nbsamples, energy, stepsize, material.Z, material.eta0CONST, material.bc)
+                lut[i, j, k, :] = sample(nbsamples, energy, stepsize, material.Z, material.etaCONST2, material.bc)
         t4 = time.process_time()
         print(f'Proc: {rank}. {round(100*(i+1)/energyArray.size, 3)}% completed. Last section took {(t4-t3)/60:2e} minutes.')
 
