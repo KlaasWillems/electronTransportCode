@@ -25,17 +25,19 @@ ymin = -xmax; ymax = xmax; ybins = 1
 zmin = -xmax; zmax = xmax; zbins = 1
 material = Material(rho=1.05)
 simDomain = SimulationDomain(ymin, ymax, zmin, zmax, ybins, zbins, material=material)
-
-# Set up initial conditions
-eSource: float = 5.0
-SEED: int = 4  # Random number generator seed
-pointSourceSim = PointSource(minEnergy=E_THRESHOLD, rngSeed=RNGSEED, eSource=eSource)
+stepsize = 0.1
 
 # particle1 = SimplifiedEGSnrcElectron(scatterer='3d')
 particle1 = KDRTestParticle()
+deltaE = particle1.energyLoss(1.0, None, stepsize, material)  # type: ignore
+
+# Set up initial conditions
+eSource: float = deltaE
+SEED: int = 4  # Random number generator seed
+pointSourceSim = PointSource(minEnergy=0.0, rngSeed=RNGSEED, eSource=eSource)
 
 kineticParticleTracer = AnalogParticleTracer(particle=particle1, simOptions=pointSourceSim, simDomain=simDomain)
-kdr = KDR(simOptions=pointSourceSim, simDomain=simDomain, particle=particle1, dS=0.1)
+kdr = KDR(simOptions=pointSourceSim, simDomain=simDomain, particle=particle1, dS=stepsize)
 
 if __name__ == '__main__':
     nproc = MPI.COMM_WORLD.Get_size()
