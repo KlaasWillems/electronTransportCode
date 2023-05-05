@@ -98,7 +98,7 @@ class ParticleModel(ABC):
         raise NotImplementedError
 
     def getMeanMu(self, energy: float, stepsize: float, material: Material) -> float:
-        """Return average cosine of scattering angle. Only neede for Kinetic-Diffusion Rotation.
+        """Return average cosine of scattering angle. Only needed for KDR.
         """
         raise NotImplementedError
 
@@ -310,13 +310,23 @@ class SimplifiedEGSnrcElectron(ParticleModel):
     """
     def __init__(self, generator: Union[np.random.Generator, None, int] = None, scatterer: str = '3d') -> None:
         """
-            scatterer (str, optional): 3d means azimuthal scattering angle is sampled phi~U(0, 2*pi). '2d' means scattering in the yz-plane. In this case, phi is chosen from {pi/2 3*pi/2}. Defaults to '3d'.
+            scatterer (str, optional): 3d means azimuthal scattering angle is sampled phi~U(0, 2*pi). '2d' means scattering in the yz-plane. In this case, phi is chosen from {pi/2, 3*pi/2}. Defaults to '3d'.
         """
         if scatterer == '2d' or scatterer == '3d' or scatterer == '2d-simple':
             self.scatterer: Final[str] = scatterer
         else:
             raise ValueError('scatterer argument is invalid.')
         super().__init__(generator)
+
+        # Load in look-up table. Linear interpolation of LUTs with RegularGridInterpolator from scipy.
+        # TODO: Fit look-up tables using least squares
+        bigLUT = np.load(PROJECT_ROOT + '/ms/data/ownlutv2.npy')
+        d = np.load(PROJECT_ROOT + '/ms/data/ownlutAxesv2.npz')
+        self.LUTeAxis = d['arr_0']
+        self.LUTdsAxis = d['arr_1']
+        self.LUTrhoAxis = d['arr_2']
+        # variance on x, y and z coordinate
+        self.interpPosVar = RegularGridInterpolator((self.LUTeAxis, self.LUTdsAxis, self.LUTrhoAxis), bigLUT[:, :, :, 4:7], fill_value=None, bounds_error=False)  # type: ignore
 
     def getScatteringRate(self, pos3d: tuple3d, Ekin: float, material: Material) -> float:
         betaSquared: float = Ekin*(Ekin+2)/((Ekin+1)**2)
@@ -431,6 +441,15 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         assert Emid*ERE*1e6 >= material.I, f'{Emid=}'
         return self.evalStoppingPower(Emid, pos3d, material)*stepsize
 
+    def getMeanMu(self, energy: float, stepsize: float, material: Material) -> float:
+        temp = energy*(energy+2)
+        betaSquared = temp/((energy+1)**2)
+        eta0 = material.eta0CONST/temp
+        eta = eta0*(1.13 + 3.76*((FSC*material.Z)**2)/betaSquared)
+        return eta*(eta+1)*(1/eta + 1/(eta+1) + 2*math.log(eta) - 2*math.log(eta+1))
+
+    def getScatteringVariance(self, energy: float, stepsize: float, material: Material) -> tuple3d:
+        return self.interpPosVar(np.array((energy, stepsize, material.rho), dtype=float))[0]
 
 class KDRTestParticle(SimplifiedEGSnrcElectron):
     """Particle that behaves like a 10 MeV particle.
@@ -438,23 +457,9 @@ class KDRTestParticle(SimplifiedEGSnrcElectron):
     Args:
         SimplifiedEGSnrcElectron (_type_): _description_
     """
-    def __init__(self, generator: Union[np.random.Generator, None, int] = None, KDR: bool = False) -> None:
+    def __init__(self, generator: Union[np.random.Generator, None, int] = None) -> None:
         super().__init__(generator, scatterer = '3d')
         self.EFixed: Final[float] = 10*ERE
-        self.KDR = KDR
-
-        if KDR:
-            # Load in look-up table. Linear interpolation of LUTs with RegularGridInterpolator from scipy.
-            # TODO: Fit look-up tables using least squares
-            bigLUT = np.load(PROJECT_ROOT + '/ms/data/ownlut.npy')
-            d = np.load(PROJECT_ROOT + '/ms/data/ownlutAxes.npz')
-            self.LUTeAxis = d['arr_0']
-            self.LUTdsAxis = d['arr_1']
-            self.LUTrhoAxis = d['arr_2']
-            # variance on x, y and z coordinate
-            self.interpPosVar = RegularGridInterpolator((self.LUTeAxis, self.LUTdsAxis, self.LUTrhoAxis), bigLUT[:, :, :, 4:7], fill_value=None, bounds_error=False)  # type: ignore
-            # expectation of cos(theta)
-            self.interpMu = RegularGridInterpolator((self.LUTeAxis, self.LUTdsAxis, self.LUTrhoAxis), bigLUT[:, :, :, 0], fill_value=None, bounds_error=False)  # type: ignore
 
     def getScatteringRate(self, pos3d: tuple3d, Ekin: float, material: Material) -> float:
         return super().getScatteringRate(pos3d, Ekin=self.EFixed, material=material)
@@ -472,22 +477,10 @@ class KDRTestParticle(SimplifiedEGSnrcElectron):
         return np.array((0.0, 0.0, 0.0), dtype=float)
 
     def getScatteringVariance(self, energy: float, stepsize: float, material: Material) -> tuple3d:
-        """If using egs-based look-up table, variance on x, y and z is computed as [Var[sin(theta)]*Var[cos(phi)], Var[sin(theta)]*Var[sin(phi)], Var[cos(theta)]]^T, with Var[sin(phi)] = Var[cos(phi)] = 0.5. This does not work! If using own look-up table, variance on x, y and z is immediately pulled from table.
-        """
-        assert self.KDR
-        # Values outside LUT are extrapolated. No bounds checking needed.
-        # assert energy <= self.LUTeAxis.max() and energy >= self.LUTeAxis.min(), f'{energy=}'
-        # assert stepsize <= self.LUTdsAxis.max() and stepsize >= self.LUTdsAxis.min(), f'{stepsize=}'
-        # assert material.rho <= self.LUTrhoAxis.max() and material.rho >= self.LUTrhoAxis.min(), f'{material.rho=}'
-        return self.interpPosVar(np.array((energy, stepsize, material.rho), dtype=float))[0]
+        return super().getScatteringVariance(energy=self.EFixed, stepsize=stepsize, material=material)
 
     def getMeanMu(self, energy: float, stepsize: float, material: Material) -> float:
-        assert self.KDR
-        # Values outside LUT are extrapolated. No bounds checking needed.
-        # assert energy <= self.LUTeAxis.max() and energy >= self.LUTeAxis.min(), f'{energy=}'
-        # assert stepsize <= self.LUTdsAxis.max() and stepsize >= self.LUTdsAxis.min(), f'{stepsize=}'
-        # assert material.rho <= self.LUTrhoAxis.max() and material.rho >= self.LUTrhoAxis.min(), f'{material.rho=}'
-        return self.interpMu(np.array((energy, stepsize, material.rho), dtype=float))[0]
+        return super().getMeanMu(energy=self.EFixed, stepsize=stepsize, material=material)
 
     def energyLoss(self, Ekin: float, pos3d: tuple3d, stepsize: float, material: Material) -> float:
         return super().energyLoss(Ekin=self.EFixed, pos3d=pos3d, stepsize=stepsize, material=material)
