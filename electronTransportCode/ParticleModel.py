@@ -3,6 +3,7 @@ import math
 from typing import Optional, Union, Tuple, Final
 import numpy as np
 from scipy.interpolate import RegularGridInterpolator
+from sympy import beta
 from electronTransportCode.Material import Material
 from electronTransportCode.ProjectUtils import ERE, FSC, tuple3d, mathlog2, PROJECT_ROOT
 
@@ -328,9 +329,11 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         self.interpPosVar = RegularGridInterpolator((self.LUTeAxis, self.LUTdsAxis, self.LUTrhoAxis), bigLUT[:, :, :, 4:7], fill_value=None, bounds_error=False)  # type: ignore
 
     def getScatteringRate(self, pos3d: tuple3d, Ekin: float, material: Material) -> float:
-        eta = material.etaCONST2/(Ekin*(Ekin+2))
-        betaSquared: float = Ekin*(Ekin+2)/((Ekin+1)**2)
-        return material.bc/(betaSquared*(1+eta))  # total macroscopic screened Rutherford cross section
+        # total macroscopic screened Rutherford cross section
+        temp = Ekin*(Ekin+2)
+        eta = material.etaCONST2/temp
+        betaSquared: float = temp/((Ekin+1)**2)
+        return material.SigmaCONST/(betaSquared*temp*eta*(eta+1))
 
     def samplePathlength(self, Ekin: float, pos: tuple3d, material: Material) -> float:
         """ Sample path-length from screened Rutherford elastic scattering cross section. See EGSnrc manual by Kawrakow et al for full details.
@@ -339,9 +342,7 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         """
         assert self.rng is not None
         assert Ekin > 0, f'{Ekin=}'
-        betaSquared: float = Ekin*(Ekin+2)/((Ekin+1)**2)
-        eta = material.etaCONST2/(Ekin*(Ekin+2))
-        SigmaSR: float = material.bc/(betaSquared*(1+eta))  # total macroscopic screened Rutherford cross section
+        SigmaSR = self.getScatteringRate(pos, Ekin, material)
         return self.rng.exponential(1/SigmaSR)  # path-length
 
     def sampleScatteringAngles(self, Ekin: float, material: Material) -> Tuple[float, float, bool]:
