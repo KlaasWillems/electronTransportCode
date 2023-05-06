@@ -37,6 +37,7 @@ if __name__ == '__main__':
     # simType = 'kdr'
     simType = sys.argv[2]
     factor = int(float(sys.argv[3]))
+    ms = bool(sys.argv[4])
 
     # Set up simDomain
     particle1 = KDRTestParticle()
@@ -48,7 +49,7 @@ if __name__ == '__main__':
     pointSourceSim = PointSource(minEnergy=0.0, rngSeed=RNGSEED, eSource=eSource)
 
     kineticParticleTracer = AnalogParticleTracer(particle=particle1, simOptions=pointSourceSim, simDomain=simDomain)
-    kdr = KDR(simOptions=pointSourceSim, simDomain=simDomain, particle=particle1, dS=stepsize)
+    kdr = KDR(simOptions=pointSourceSim, simDomain=simDomain, particle=particle1, dS=stepsize, msAngle=ms)
 
     # - Set up estimator and particle
     trackEndEstimatorkx = TrackEndEstimator(simDomain, NB_PARTICLES_PER_PROC, setting='x')
@@ -69,7 +70,11 @@ if __name__ == '__main__':
             pickle.dump(kineticParticleTracer, open(f'data/particleTracerK{factor}.pkl', 'wb'))
     elif simType == 'kdr':
         t2 = time.process_time()
-        kdr.runMultiProc(nbParticles=NB_PARTICLES, estimators=(trackEndEstimatorkdrx, trackEndEstimatorkdry, trackEndEstimatorkdrz), file=f'data/trackEndEstimatorkdr{factor}.pkl', logAmount=logAmount)
+        if ms:
+            file = f'data/trackEndEstimatorkdrms{factor}.pkl'
+        else:
+            file = f'data/trackEndEstimatorkdr{factor}.pkl'
+        kdr.runMultiProc(nbParticles=NB_PARTICLES, estimators=(trackEndEstimatorkdrx, trackEndEstimatorkdry, trackEndEstimatorkdrz), file=file, logAmount=logAmount)
         # kdr.__call__(nbParticles=NB_PARTICLES, estimators=(trackEndEstimatorkdrx, trackEndEstimatorkdry, trackEndEstimatorkdrz))
         t3 = time.process_time()
         print(f'KDR simulation time: {round(t3-t2, 4)}')
