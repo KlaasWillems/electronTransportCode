@@ -2,7 +2,6 @@ import math
 from typing import Final, Tuple
 from itertools import islice
 import numpy as np
-from electronTransportCode.ProjectUtils import FSC
 import numba as nb
 
 MAXL_MS: Final[int] = 63
@@ -60,14 +59,12 @@ def loadTable() -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, float, 
 ums_array, fms_array, wms_array, ims_array, llammin, llammax, dllamb, dllambi, dqms, dqmsi = loadTable()
 
 @nb.jit(nb.float64(nb.float64, nb.float64, nb.float64, nb.float64, nb.float64), nopython=True, cache=True)
-def mscat(Ekin: float, stepsize: float, Z: float, eta0CONST: float, bc: float) -> float:
+def mscat(Ekin: float, stepsize: float, eta0CONST: float, SigmaCONST: float) -> float:
 
     temporary = Ekin*(Ekin+2)
     betaSquared = temporary/((Ekin+1)**2)
-    eta0 = eta0CONST/temporary
-    chia2 = eta0*(1.13 + 3.76*((FSC*Z)**2)/betaSquared)
-
-    lambdavar  = stepsize*bc/betaSquared
+    chia2 = eta0CONST/temporary
+    lambdavar  = stepsize*SigmaCONST/(betaSquared*temporary*chia2*(chia2+1))
 
     chilog = math.log(1 + 1/chia2)
     q1 = 2*chia2*(chilog*(1 + chia2) - 1)*lambdavar

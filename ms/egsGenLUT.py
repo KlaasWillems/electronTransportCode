@@ -13,15 +13,15 @@ from egsMS import mscat
 def set_seed(value: int) -> None:
     np.random.seed(value)
 
-@nb.jit(nb.types.UniTuple(nb.float64, 4)(nb.int32, nb.float64, nb.float64, nb.float64, nb.float64, nb.float64), nopython=True, cache=True)
-def sample(nbsamples: int, energy: float, stepsize: float, Z: float, eta0CONST: float, bc: float) -> tuple[float, float, float, float]:
+@nb.jit(nb.types.UniTuple(nb.float64, 4)(nb.int32, nb.float64, nb.float64, nb.float64, nb.float64), nopython=True, cache=True)
+def sample(nbsamples: int, energy: float, stepsize: float, eta0CONST: float, SigmaCONST: float) -> tuple[float, float, float, float]:
     meanMu: float = 0.0
     meanSint: float = 0.0
     sosMu: float = 0.0
     sosSint: float = 0.0
     for sampleNb in range(1, nbsamples+1):
         # sample cos(theta)
-        mu = mscat(energy, stepsize, Z, eta0CONST, bc)
+        mu = mscat(energy, stepsize, eta0CONST, SigmaCONST)
         sint = math.sqrt(1.0 - mu**2)
 
         # update mean and variance
@@ -73,7 +73,8 @@ if __name__ == '__main__':
         for j, stepsize in enumerate(stepsizeArray):
             for k, density in enumerate(densityArray):
                 material = Material(rho=density)
-                lut[i, j, k, :] = sample(nbsamples, energy, stepsize, material.Z, material.etaCONST2, material.bc)
+                # DEPRECATED: check arguments again
+                lut[i, j, k, :] = sample(nbsamples, energy, stepsize,material.etaCONST2, material.SigmaCONST)
         t4 = time.process_time()
         print(f'Proc: {rank}. {round(100*(i+1)/energyArray.size, 3)}% completed. Last section took {(t4-t3)/60:2e} minutes.')
 

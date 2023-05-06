@@ -10,6 +10,11 @@ from electronTransportCode.ParticleModel import ParticleModel
 from electronTransportCode.SimOptions import SimOptions
 from electronTransportCode.ProjectUtils import KDR_E_THRESHOLD, tuple3d, tuple3d
 from electronTransportCode.SimulationDomain import SimulationDomain
+from ms.egsMS import mscat
+
+# TODO:
+#   1) Plot KDRTest results. Results after one step are good! Results after multiple steps are shit. Probably because scattering angle after diffusive step is wrong.
+#   2) Sample multipel scattering angle after diffusive step?
 
 
 class ParticleTracer(ABC):
@@ -66,7 +71,7 @@ class ParticleTracer(ABC):
 
         # Run simulation
         if verbose:
-            print(f'Proc: {myrank}, type: {self.__class__.__name__}. Starting simulation of {particles_per_proc} particles.')
+            print(f'Proc: {myrank}, type: {self.__class__.__name__}. Starting simulation of {particles_per_proc} particles.')  # type: ignore
 
         self.__call__(particles_per_proc, estimatorList, logAmount=logAmount)
 
@@ -102,7 +107,7 @@ class ParticleTracer(ABC):
 
             if particleID % logAmount == 0:  # every 1000 particles
                 t2 = time.perf_counter()
-                print(f'Proc: {myrank}, type: {self.__class__.__name__}. Last {logAmount} particles took {round(t2-t1, 4)} seconds. {round(100*particleID/nbParticles, 3)}% completed.')
+                print(f'Proc: {myrank}, type: {self.__class__.__name__}. Last {logAmount} particles took {round(t2-t1, 4)} seconds. {round(100*particleID/nbParticles, 3)}% completed.')  # type: ignore
                 t1 = time.perf_counter()
 
         return estimators
@@ -630,6 +635,10 @@ class KDR(KDParticleTracer):
     """
     Version of kinetic diffusion Monte Carlo where the mean is conditioned on the velocity of the kinetic step. This is preferred for velocities that are rotations of the previous velocity. The variance is of the diffusion step is taken from the particle object. The particle object has the variance stored in a look-up table since no analytic formula for the variance of many kinetic steps exists.
     """
+    def __init__(self, simOptions: SimOptions, simDomain: SimulationDomain, particle: ParticleModel | None, dS: float | None = None, msAngle: bool = False) -> None:
+        super().__init__(simOptions, simDomain, particle, dS)
+        self.msAngle = msAngle
+
     def advectionDiffusionCoeff(self, pos3d: tuple3d, vec3d: tuple3d, energy: float, index: int, stepsize: float) -> Tuple[tuple3d, tuple3d]:
         assert self.particle is not None
         material = self.simDomain.getMaterial(index)
@@ -784,9 +793,14 @@ class KDR(KDParticleTracer):
                         loopbool = False  # make this the last iteration
                         diff_vec3d = kin_vec3d
                     else:
-                        # sample new direction for future kinetic step
-                        mu, phi, new_direction_bool = self.particle.sampleScatteringAngles(diff_energy, self.simDomain.getMaterial(index))
-                        diff_vec3d = self.scatterParticle(mu, phi, equi_vec, new_direction_bool)
+                        if self.msAngle:
+                            material = self.simDomain.getMaterial(kin_index)
+                            mu = mscat(diff_energy, step_diff1, material.etaCONST2, material.SigmaCONST)
+                            phi = self.simOptions.rng.uniform(low=0.0, high=2*math.pi)
+                        else:
+                            # sample new direction for future kinetic step
+                            mu, phi, _ = self.particle.sampleScatteringAngles(diff_energy, self.simDomain.getMaterial(index))
+                        diff_vec3d = self.scatterParticle(mu, phi, equi_vec, False)
 
                     # Divide energy loss evenly over all crossed cells based on stepsize
                     dE = kin_energy - diff_energy
