@@ -3,7 +3,6 @@ import math
 from typing import Optional, Union, Tuple, Final
 import numpy as np
 from scipy.interpolate import RegularGridInterpolator
-from sympy import beta
 from electronTransportCode.Material import Material
 from electronTransportCode.ProjectUtils import ERE, FSC, tuple3d, mathlog2, PROJECT_ROOT
 

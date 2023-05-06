@@ -3,6 +3,7 @@ from typing import Final, Tuple
 from itertools import islice
 import numpy as np
 import numba as nb
+from electronTransportCode.ProjectUtils import PROJECT_ROOT
 
 MAXL_MS: Final[int] = 63
 MAXQ_MS: Final[int] = 7
@@ -17,7 +18,7 @@ def loadTable() -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, float, 
     fms_array = np.empty(shape=(MAXL_MS+1, MAXQ_MS+1, MAXU_MS+1), dtype=float)
     wms_array = np.empty(shape=(MAXL_MS+1, MAXQ_MS+1, MAXU_MS+1), dtype=float)
     ims_array = np.empty(shape=(MAXL_MS+1, MAXQ_MS+1, MAXU_MS+1), dtype=int)
-    with open('data/msnew.data', 'r') as reader:
+    with open( PROJECT_ROOT + '/ms/data/msnew.data', 'r') as reader:
         for i in range(MAXL_MS+1):
             for j in range(MAXQ_MS+1):
                 line_gen = list(islice(reader, 14))
@@ -58,7 +59,7 @@ def loadTable() -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, float, 
 
 ums_array, fms_array, wms_array, ims_array, llammin, llammax, dllamb, dllambi, dqms, dqmsi = loadTable()
 
-@nb.jit(nb.float64(nb.float64, nb.float64, nb.float64, nb.float64, nb.float64), nopython=True, cache=True)
+@nb.jit(nb.float64(nb.float64, nb.float64, nb.float64, nb.float64), nopython=True, cache=True)
 def mscat(Ekin: float, stepsize: float, eta0CONST: float, SigmaCONST: float) -> float:
 
     temporary = Ekin*(Ekin+2)
