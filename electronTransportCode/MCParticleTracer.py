@@ -8,12 +8,8 @@ import pickle
 from electronTransportCode.MCEstimator import MCEstimator
 from electronTransportCode.ParticleModel import ParticleModel
 from electronTransportCode.SimOptions import SimOptions
-from electronTransportCode.ProjectUtils import KDR_E_THRESHOLD, tuple3d, tuple3d
+from electronTransportCode.ProjectUtils import tuple3d, tuple3d
 from electronTransportCode.SimulationDomain import SimulationDomain
-
-# TODO:
-#   1) Plot KDRTest results. Results after one step are good! Results after multiple steps are shit. Probably because scattering angle after diffusive step is wrong.
-#   2) Sample multipel scattering angle after diffusive step?
 
 
 class ParticleTracer(ABC):
@@ -390,12 +386,12 @@ class KDParticleTracer(ParticleTracer, ABC):
                 loopbool = False  # make this the last iteration
 
             # Score QOIs of kinetic step
-            # TODO: change kin_index to index
             for estimator in estimatorList:
-                estimator.updateEstimator((pos3d, kin_pos3d), (vec3d, kin_vec3d), (energy, kin_energy), kin_index, step_kin)
+                estimator.updateEstimator((pos3d, kin_pos3d), (vec3d, kin_vec3d), (energy, kin_energy), index, step_kin)
 
-            if loopbool:
+            if loopbool and kin_stepped:
                 # Do diffusive step if there is energy left
+                # Also, for the index computation to be consistent, the kinetic step must not have been a grid cell crossing
 
                 step_diff1, diff_energy1 = self.pickStepSize(kin_pos3d, kin_energy, kin_index, step_kin)
 
@@ -500,7 +496,7 @@ class KDParticleTracer(ParticleTracer, ABC):
             # Loop through cells between begin point and end point and write down the stepsizes
             while index_it != new_index:
                 stepGeom, domainEdge, new_pos_geom = self.simDomain.getCellEdgeInformation(pos_it, equi_vec, index_it)  # diffusive step did not exceed boundaries
-                if domainEdge == True:
+                if domainEdge:
                     return pos3d, None, index, False, [(index, 0.0, pos3d)]  # Switch to kinetic simulation to compute domain edge scattering event
                 else:
                     diff_step_track.append((index_it, stepGeom, new_pos_geom))
@@ -770,7 +766,7 @@ class KDR(KDParticleTracer):
             for estimator in estimatorList:
                 estimator.updateEstimator((pos3d, kin_pos3d), (vec3d, kin_vec3d), (energy, kin_energy), index, step_kin)
 
-            if loopbool and kin_energy > KDR_E_THRESHOLD:  # Do diffusive step if there is energy left
+            if loopbool and kin_stepped:  # Do diffusive step if there is energy left
 
                 step_diff1, diff_energy1 = self.pickStepSize(kin_pos3d, kin_energy, kin_index, step_kin)
 
