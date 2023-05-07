@@ -128,6 +128,7 @@ class DoseEstimator(MCEstimator):
             vecTuple (tuple[tuple3d, tuple3d]): old direction of travel and new position of travel after collision
             energyTuple (tuple[float, float]): old energy of particle and new energy of particle after collision
             index (int): cell identifier in simulation domain
+            stepsize (float): distance between pos and new_pos
         """
         energy, newEnergy = energyTuple
         self.scoreMatrix[index] += energy-newEnergy
@@ -158,6 +159,25 @@ class DoseEstimator(MCEstimator):
             self.scoreMatrix = np.sum(recvbuf, axis=0)
             self.nb_particles = nb_particles
             self.index = nb_particles
+
+
+class MomentumTypeEstimator(DoseEstimator):
+    def updateEstimator(self, posTuple: tuple[tuple3d, tuple3d], vecTuple: tuple[tuple3d, tuple3d], energyTuple: tuple[float, float], index: int, stepsize: float) -> None:
+        """Score vec^T * (0; 0; 1) * energy (momentum-like quantity of interest)
+
+        Args:
+            posTuple (tuple[tuple3d, tuple3d]): old_position and new position of particle after collision
+            vecTuple (tuple[tuple3d, tuple3d]): old direction of travel and new position of travel after collision
+            energyTuple (tuple[float, float]): old energy of particle and new energy of particle after collision
+            index (int): cell identifier in simulation domain
+            stepsize (float): distance between pos and new_pos
+        """
+        energy, _ = energyTuple
+        vec, _ = vecTuple
+        self.scoreMatrix[index] = vec[2]*energy
+
+    def getEstimator(self) -> np.ndarray:
+        return self.scoreMatrix
 
 
 class TrackPosition(MCEstimator):
