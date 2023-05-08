@@ -26,7 +26,7 @@ particle2 = DiffusionTestParticlev2(Es=scatteringRate, sp=1.0)
 if __name__ == '__main__':
 
     nproc = MPI.COMM_WORLD.Get_size()
-    eSource = 12.0
+    eSource = float(sys.argv[2])
 
     pointSourceSim = PointSource(minEnergy=0.0, rngSeed=SEED, eSource=eSource)
     particleTracerK = AnalogParticleTracer(particle=None, simOptions=pointSourceSim, simDomain=simDomain)
