@@ -43,7 +43,7 @@ if __name__ == '__main__':
 
     pointSourceSim = PointSource(minEnergy=0.0, rngSeed=SEED, eSource=eSource)
     particleTracerK = AnalogParticleTracer(particle=particle, simOptions=pointSourceSim, simDomain=simDomain)
-    particleTracerKD = KDMC(particle=particle, simOptions=pointSourceSim, simDomain=simDomain, dS = 0.2)  # stepsize is final time!
+    particleTracerKD = KDMC(particle=particle, simOptions=pointSourceSim, simDomain=simDomain, dS = 0.05)  # stepsize is final time!
 
     NB_PARTICLES = int(float(sys.argv[1]))
     NB_PARTICLES_PER_PROC = int(NB_PARTICLES/nproc)
