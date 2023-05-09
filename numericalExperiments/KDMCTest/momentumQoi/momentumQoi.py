@@ -19,7 +19,7 @@ simDomain = SimulationDomain(ymin, ymax, zmin, zmax, ybins, zbins, material=unit
 # Set up initial conditions
 SEED: int = 4  # Random number generator seed
 
-scatteringRate = 10.0
+scatteringRate = 100.0
 
 if __name__ == '__main__':
 
