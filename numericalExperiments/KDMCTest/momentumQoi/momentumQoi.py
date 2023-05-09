@@ -20,17 +20,30 @@ simDomain = SimulationDomain(ymin, ymax, zmin, zmax, ybins, zbins, material=unit
 SEED: int = 4  # Random number generator seed
 
 scatteringRate = 10.0
-particle1 = DiffusionTestParticle(Es=scatteringRate, sp=1.0)
-particle2 = DiffusionTestParticlev2(Es=scatteringRate, sp=1.0)
 
 if __name__ == '__main__':
 
+    rank = MPI.COMM_WORLD.Get_rank()
     nproc = MPI.COMM_WORLD.Get_size()
     eSource = float(sys.argv[2])
+    particleType = int(sys.argv[3])
+
+    if particleType == 1:
+        particle = DiffusionTestParticle(Es=scatteringRate, sp=1.0)
+        fileK = 'data/TrackEndEstimatorK1.pkl'
+        fileKD = 'data/TrackEndEstimatorKD1.pkl'
+        simargvFile = 'data/simargv1.pkl'
+    elif particleType == 2:
+        particle = DiffusionTestParticlev2(Es=scatteringRate, sp=1.0)
+        fileK = 'data/TrackEndEstimatorK2.pkl'
+        fileKD = 'data/TrackEndEstimatorKD2.pkl'
+        simargvFile = 'data/simargv2.pkl'
+    else:
+        raise ValueError('Invalid particle type')
 
     pointSourceSim = PointSource(minEnergy=0.0, rngSeed=SEED, eSource=eSource)
-    particleTracerK = AnalogParticleTracer(particle=None, simOptions=pointSourceSim, simDomain=simDomain)
-    particleTracerKD = KDMC(particle=None, simOptions=pointSourceSim, simDomain=simDomain, dS = eSource)  # stepsize is final time!
+    particleTracerK = AnalogParticleTracer(particle=particle, simOptions=pointSourceSim, simDomain=simDomain)
+    particleTracerKD = KDMC(particle=particle, simOptions=pointSourceSim, simDomain=simDomain, dS = 0.2)  # stepsize is final time!
 
     NB_PARTICLES = int(float(sys.argv[1]))
     NB_PARTICLES_PER_PROC = int(NB_PARTICLES/nproc)
@@ -45,24 +58,20 @@ if __name__ == '__main__':
 
     # Run analog particle tracer
     logAmount = int(NB_PARTICLES_PER_PROC/10)
-    particleTracerK.runMultiProc(nbParticles=NB_PARTICLES, particle=particle1, estimators=(momEstimatorK1, ), file='data/TrackEndEstimatorK1.pkl', logAmount=logAmount)
-    particleTracerK.runMultiProc(nbParticles=NB_PARTICLES, particle=particle2, estimators=(momEstimatorK2, ), file='data/TrackEndEstimatorK2.pkl', logAmount=logAmount)
+    particleTracerK.runMultiProc(nbParticles=NB_PARTICLES, estimators=(momEstimatorK1, ), file=fileK, logAmount=logAmount)
 
     # Run KD particle tracer
-    particleTracerKD.runMultiProc(nbParticles=NB_PARTICLES, particle=particle1, estimators=(momEstimatorKD1, ), file='data/TrackEndEstimatorKD1.pkl', logAmount=logAmount)
-    particleTracerKD.runMultiProc(nbParticles=NB_PARTICLES, particle=particle2, estimators=(momEstimatorKD2, ), file='data/TrackEndEstimatorKD2.pkl', logAmount=logAmount)
-    # particleTracerKD.__call__(nbParticles=NB_PARTICLES, estimators=(momEstimatorKD, ))
+    particleTracerKD.runMultiProc(nbParticles=NB_PARTICLES, estimators=(momEstimatorKD1, ), file=fileKD, logAmount=logAmount)
 
     t2 = time.perf_counter()
 
-    if MPI.COMM_WORLD.Get_rank() == 0:
-
+    if rank == 0:
         print('\n')
         print(f'Simulation took {t2-t1} seconds. Writing results...')
 
         # dump argv
         tup = (eSource, NB_PARTICLES)
-        pickle.dump(tup, open('data/simargv.pkl', 'wb'))
+        pickle.dump(tup, open(simargvFile, 'wb'))
 
         # dump particle tracers
         pickle.dump(particleTracerK, open('data/particleTracerK.pkl', 'wb'))
