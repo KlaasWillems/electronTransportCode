@@ -1,5 +1,7 @@
+import sys
 import time
 import pickle
+from mpi4py import MPI
 from electronTransportCode.SimOptions import WaterPhantom
 from electronTransportCode.SimulationDomain import SimulationDomain
 from electronTransportCode.MCParticleTracer import AnalogParticleTracer
@@ -30,15 +32,14 @@ particleTracer = AnalogParticleTracer(particle=particle, simOptions=waterPhantom
 if __name__ == "__main__":
     # Run simulation
     print('Starting simulation')
-    NB_PARTICLES = 10000
+    NB_PARTICLES = int(float(sys.argv[1]))
+    logAmount = int(NB_PARTICLES/10)
     t1 = time.perf_counter()
-    particleTracer(nbParticles=NB_PARTICLES, estimators=doseEstimator)
+    particleTracer.runMultiProc(nbParticles=NB_PARTICLES, estimators=(doseEstimator, ), file='data/doseEstimator.pkl', logAmount=logAmount)
     t2 = time.perf_counter()
     print(f'Simulation took {t2-t1} seconds')
 
-    # Save files
-    with open('data/doseEstimator.pkl', 'wb') as file:
-        pickle.dump(doseEstimator, file)
-
-    with open('data/particleTracer.pkl', 'wb') as file:
-        pickle.dump(particleTracer, file)
+    # Save file
+    if MPI.COMM_WORLD.Get_size() == 0:
+        with open('data/particleTracer.pkl', 'wb') as file:
+            pickle.dump(particleTracer, file)
