@@ -18,12 +18,14 @@ zmin = -xmax; zmax = xmax; zbins = 1
 simDomain = SimulationDomain(ymin, ymax, zmin, zmax, ybins, zbins, material=unitDensityMaterial)
 
 # Set up initial conditions
-SEED: int = 4  # Random number generator seed
+
 
 
 if __name__ == '__main__':
     myrank = MPI.COMM_WORLD.Get_rank()
     nproc = MPI.COMM_WORLD.Get_size()
+
+    SEED = myrank
 
     eSource = 5.0
     nbdS = 10

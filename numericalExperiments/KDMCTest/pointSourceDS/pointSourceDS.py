@@ -18,10 +18,9 @@ zmin = -xmax; zmax = xmax; zbins = 1
 simDomain = SimulationDomain(ymin, ymax, zmin, zmax, ybins, zbins, material=unitDensityMaterial)
 
 # Set up initial conditions
-SEED: int = 4  # Random number generator seed
 
 scatteringRate1 = 1.0
-particle1 = PointSourceParticle(generator=SEED, sigma=scatteringRate1)
+
 
 if __name__ == '__main__':
     myrank = MPI.COMM_WORLD.Get_rank()
@@ -32,6 +31,9 @@ if __name__ == '__main__':
     repeats = int(sys.argv[2])
     dsArray = np.logspace(-3, np.log10(eSource), nbdS)
 
+    SEED = myrank
+
+    particle1 = PointSourceParticle(generator=SEED, sigma=scatteringRate1)
     pointSourceSim = PointSource(minEnergy=0.0, rngSeed=SEED, eSource=eSource)
     particleTracerK = AnalogParticleTracer(particle=None, simOptions=pointSourceSim, simDomain=simDomain)
     particleTracerKD = KDMC(particle=None, simOptions=pointSourceSim, simDomain=simDomain, dS=None)
