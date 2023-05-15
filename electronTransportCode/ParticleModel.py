@@ -96,10 +96,35 @@ class ParticleModel(ABC):
         """
         raise NotImplementedError
 
-    def getMeanMu(self, energy: float, stepsize: float, material: Material) -> float:
+    def getMeanMu(self, energy: float, material: Material) -> float:
         """Return average cosine of scattering angle. Only needed for KDR.
         """
         raise NotImplementedError
+
+    def getMuMoment2(self, energy: float, material: Material) -> float:
+        """Return second moment around zero of cos(theta) pdf
+
+        Args:
+            energy (float): Energy of particle
+            material (Material): Material of the current cell
+
+        Returns:
+            float: second moment of mu = cos(theta) around zero
+        """
+        raise NotImplementedError
+
+    def getSintMoment2(self, energy: float, material: Material) -> float:
+        """Return second moment around zero of sint(theta) pdf
+
+        Args:
+            energy (float): Energy of particle
+            material (Material): Material of the current cell
+
+        Returns:
+            float: second moment of sin(theta) around zero
+        """
+        raise NotImplementedError
+
 
     @abstractmethod
     def getOmegaMoments(self, pos3d: tuple3d) -> Tuple[tuple3d, tuple3d]:
@@ -439,9 +464,20 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         assert Emid*ERE*1e6 >= material.I, f'{Emid=}'
         return self.evalStoppingPower(Emid, pos3d, material)*stepsize
 
-    def getMeanMu(self, energy: float, stepsize: float, material: Material) -> float:
+    def getMeanMu(self, energy: float, material: Material) -> float:
         eta: float = material.etaCONST2/(energy*(energy+2))
         return eta*(eta+1)*(1/eta + 1/(eta+1) + 2*math.log(eta) - 2*math.log(eta+1))
+
+    def getMuMoment2(self, energy: float, material: Material) -> float:
+        eta: float = material.etaCONST2/(energy*(energy+2))
+        return 8*eta*(eta+1)-4*eta*(2*eta+1)*(eta+1)*math.log(1 + 1/eta) + 1
+
+    def getSintMoment2(self, energy: float, material: Material) -> float:
+        eta: float = material.etaCONST2/(energy*(energy+2))
+        # inverse hyperbolic cotangent formula from wikipedia
+        x = 2*eta + 1
+        arcoth = math.log((x+1)/(x-1))/2
+        return -2*eta*(eta+1)*(4-4*(2*eta+1)*arcoth)
 
     def getScatteringVariance(self, energy: float, stepsize: float, material: Material) -> tuple3d:
         return self.interpPosVar(np.array((energy, stepsize, material.rho), dtype=float))[0]
@@ -474,8 +510,11 @@ class KDRTestParticle(SimplifiedEGSnrcElectron):
     def getScatteringVariance(self, energy: float, stepsize: float, material: Material) -> tuple3d:
         return super().getScatteringVariance(energy=self.EFixed, stepsize=stepsize, material=material)
 
-    def getMeanMu(self, energy: float, stepsize: float, material: Material) -> float:
-        return super().getMeanMu(energy=self.EFixed, stepsize=stepsize, material=material)
+    def getMeanMu(self, energy: float, material: Material) -> float:
+        return super().getMeanMu(energy=self.EFixed, material=material)
+
+    def getMuMoment2(self, energy: float, material: Material) -> float:
+        return super().getMuMoment2(energy=self.EFixed, material=material)
 
     def energyLoss(self, Ekin: float, pos3d: tuple3d, stepsize: float, material: Material) -> float:
         return super().energyLoss(Ekin=self.EFixed, pos3d=pos3d, stepsize=stepsize, material=material)
