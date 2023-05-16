@@ -17,10 +17,6 @@ ymin = -xmax; ymax = xmax; ybins = 1  # No internal grid cell crossings
 zmin = -xmax; zmax = xmax; zbins = 1
 simDomain = SimulationDomain(ymin, ymax, zmin, zmax, ybins, zbins, material=unitDensityMaterial)
 
-# Set up initial conditions
-SEED: int = 4  # Random number generator seed
-sp = 1.0
-
 
 if __name__ == '__main__':
 
@@ -28,6 +24,7 @@ if __name__ == '__main__':
     nproc = MPI.COMM_WORLD.Get_size()
     eSource = 5.0
     myrank = MPI.COMM_WORLD.Get_rank()
+    SEED = myrank
 
     pointSourceSim = KDTestSource(minEnergy=0.0, rngSeed=SEED, eSource=eSource)
     particleTracerK = AnalogParticleTracer(particle=None, simOptions=pointSourceSim, simDomain=simDomain)
@@ -37,6 +34,7 @@ if __name__ == '__main__':
     NB_PARTICLES_PER_PROC = int(NB_PARTICLES/nproc)
 
     # --- Set up estimators
+    sp = 1.0
     nbSim = 10
     scatteringRateList = np.logspace(2, -2, nbSim)
     particleList = [DiffusionTestParticlev2(Es=scatteringRateList[i], sp=sp) for i in range(nbSim)]
