@@ -299,9 +299,10 @@ class KDParticleTracer(ParticleTracer, ABC):
     """Implements kinetic-diffusion Monte Carlo using a mean and variance.
     """
 
-    def __init__(self, simOptions: SimOptions, simDomain: SimulationDomain, particle: Optional[ParticleModel], dS: Optional[float] = None) -> None:
+    def __init__(self, simOptions: SimOptions, simDomain: SimulationDomain, particle: Optional[ParticleModel], dS: Optional[float] = None, het_corr: bool = True) -> None:
         super().__init__(simOptions, simDomain, particle)
         self.dS = dS  # KDMC stepsize parameter
+        self.het_corr = het_corr
 
     def resetAnalytics(self) -> None:
         self.particleIndex: int = 0
@@ -535,8 +536,12 @@ class KDMC(KDParticleTracer):
         mu_omega, _ = self.particle.getOmegaMoments(pos3d)
 
         # Fix intermediate position
-        x_int = pos3d + mu_omega*stepsize/2  # type: ignore
-        E_int = energy - deltaE/2
+        if self.het_corr:
+            x_int = pos3d + mu_omega*stepsize/2  # type: ignore
+            E_int = energy - deltaE/2
+        else:
+            x_int = pos3d
+            E_int = energy
 
         material = self.simDomain.getMaterial(index)
         mu_omega, var_omega = self.particle.getOmegaMoments(x_int)
@@ -560,7 +565,7 @@ class KDMC(KDParticleTracer):
 
         # Mean
         dRdx = self.particle.getDScatteringRate(x_int, vec3d, E_int, material)
-        mean: tuple3d = mu_omega + (1 - exp1)*vec_mean_dev/sigmaStepsize + het_correction*dRdx
+        mean: tuple3d = mu_omega + (1 - exp1)*vec_mean_dev/sigmaStepsize + het_correction*dRdx*self.het_corr
 
         # Variance
         temp1 = 1.0 - exp1*sigmaStepsizeDouble - exp2  # Due to catastrophic cancellation, this thing can become negative. In this case, put it to zero.
@@ -583,8 +588,12 @@ class KDSMC(KDParticleTracer):
         mu_omega, _ = self.particle.getOmegaMoments(pos3d)
 
         # Fix intermediate position
-        x_int = pos3d + mu_omega*stepsize/2  # type: ignore
-        E_int = energy - deltaE/2
+        if self.het_corr:
+            x_int = pos3d + mu_omega*stepsize/2  # type: ignore
+            E_int = energy - deltaE/2
+        else:
+            x_int = pos3d
+            E_int = energy
 
         material = self.simDomain.getMaterial(index)
         mu_omega, var_omega = self.particle.getOmegaMoments(x_int)
