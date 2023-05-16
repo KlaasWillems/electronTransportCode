@@ -17,8 +17,6 @@ zmin = -xmax; zmax = xmax; zbins = 1
 simDomain = SimulationDomain(ymin, ymax, zmin, zmax, ybins, zbins, material=unitDensityMaterial)
 
 # Set up initial conditions
-SEED: int = 4  # Random number generator seed
-
 scatteringRate1 = '0.1*(1 + 0.5*sin(y))'; scatteringRate2 = '(1 + 0.5*sin(y))'; scatteringRate3 = '10*(1 + 0.5*sin(y))'
 sp = 1.0
 particle1 = DiffusionTestParticlev2(Es=scatteringRate1, sp=sp)
@@ -28,7 +26,10 @@ particle3 = DiffusionTestParticlev2(Es=scatteringRate3, sp=sp)
 if __name__ == '__main__':
 
     nproc = MPI.COMM_WORLD.Get_size()
+    myrank = MPI.COMM_WORLD.Get_rank()
     eSource = float(sys.argv[1])
+
+    SEED = myrank
 
     pointSourceSim = KDTestSource(minEnergy=0.0, rngSeed=SEED, eSource=eSource, dir='y')
     particleTracerK = AnalogParticleTracer(particle=None, simOptions=pointSourceSim, simDomain=simDomain)
@@ -68,7 +69,7 @@ if __name__ == '__main__':
 
     t2 = time.perf_counter()
 
-    if MPI.COMM_WORLD.Get_rank() == 0:
+    if myrank == 0:
 
         print('\n')
         print(f'Simulation took {t2-t1} seconds. Writing results...')
@@ -81,5 +82,3 @@ if __name__ == '__main__':
         pickle.dump(particleTracerK, open('data/particleTracerK.pkl', 'wb'))
         pickle.dump(particleTracerKD1, open('data/particleTracerKD1.pkl', 'wb'))
         pickle.dump(particleTracerKD2, open('data/particleTracerKD2.pkl', 'wb'))
-
-    # run: mpiexec -n 4 python3 -m simpleHomogeneous 1.0 30000
