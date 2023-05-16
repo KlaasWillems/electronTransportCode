@@ -30,8 +30,9 @@ if __name__ == '__main__':
     particleTracerK = AnalogParticleTracer(particle=None, simOptions=pointSourceSim, simDomain=simDomain)
     particleTracerKD = KDMC(particle=None, simOptions=pointSourceSim, simDomain=simDomain, dS = eSource)  # stepsize is final time!
 
-    NB_PARTICLES = 30000
+    NB_PARTICLES = int(sys.argv[1])
     NB_PARTICLES_PER_PROC = int(NB_PARTICLES/nproc)
+    NB_PARTICLES = int(nproc*NB_PARTICLES_PER_PROC)
 
     # --- Set up estimators
     sp = 1.0
