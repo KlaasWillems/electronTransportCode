@@ -18,7 +18,7 @@ if __name__ == '__main__':
 
     # Sim settings
     particle = SimplifiedEGSnrcElectron(scatterer=scatterer)  # constrain scattering to yz plance
-    lungInit = LungInitialConditions(sigmaPos=1/50, kappa=10, eSource=28/ERE)
+    lungInit = LungInitialConditions(sigmaPos=1/50, kappa=10, eSource=35/ERE)
     lungSimDomain = LungSimulationDomain()
 
     if scatterer == '2d-simple':  # decrease scattering rate for easy testing
