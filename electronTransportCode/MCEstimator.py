@@ -163,7 +163,7 @@ class DoseEstimator(MCEstimator):
 
 class MomentumTypeEstimator(DoseEstimator):
     def updateEstimator(self, posTuple: tuple[tuple3d, tuple3d], vecTuple: tuple[tuple3d, tuple3d], energyTuple: tuple[float, float], index: int, stepsize: float) -> None:
-        """Score vec^T * (0; 0; 1) * energy (momentum-like quantity of interest)
+        """Score momentum-like quantity of interest
 
         Args:
             posTuple (tuple[tuple3d, tuple3d]): old_position and new position of particle after collision
@@ -173,8 +173,8 @@ class MomentumTypeEstimator(DoseEstimator):
             stepsize (float): distance between pos and new_pos
         """
         energy, newenergy = energyTuple
-        vec, _ = vecTuple
-        self.scoreMatrix[index] = abs(vec[2])*(energy-newenergy)
+        vec, newvec = vecTuple
+        self.scoreMatrix[index] = abs(vec[2] - newvec[2])*(energy-newenergy)
 
     def getEstimator(self) -> np.ndarray:
         return self.scoreMatrix
