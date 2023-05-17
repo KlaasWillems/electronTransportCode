@@ -22,7 +22,7 @@ if __name__ == '__main__':
 
     if scatterer == '2d-simple':  # decrease scattering rate for easy testing
         for material in lungSimDomain.materialArray:
-            material.bc = material.bc/100
+            material.bc = material.bc/10000
 
     # MPI Code
     procs = MPI.COMM_WORLD.Get_size()
