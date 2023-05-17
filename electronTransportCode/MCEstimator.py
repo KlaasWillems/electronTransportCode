@@ -172,9 +172,9 @@ class MomentumTypeEstimator(DoseEstimator):
             index (int): cell identifier in simulation domain
             stepsize (float): distance between pos and new_pos
         """
-        energy, _ = energyTuple
+        energy, newenergy = energyTuple
         vec, _ = vecTuple
-        self.scoreMatrix[index] = abs(vec[2])*energy
+        self.scoreMatrix[index] = abs(vec[2])*(energy-newenergy)
 
     def getEstimator(self) -> np.ndarray:
         return self.scoreMatrix
