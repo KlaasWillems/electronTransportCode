@@ -86,10 +86,11 @@ class LungInitialConditions(SimOptions):
     def initialDirection(self) -> tuple3d:
         """Angle with negative y-axis is von Mises distributed with disperion equal to kappa
         """
-        theta = np.random.vonmises(-math.pi/2, kappa=self.kappa)
+        # phi = 3*math.pi/2
+        theta = np.random.vonmises(math.pi/2, kappa=self.kappa)
         cost = math.cos(theta)
         sint = math.sin(theta)
-        return np.array((0.0, sint, cost), dtype=float)
+        return np.array((0.0, -sint, cost), dtype=float)
 
     def initialEnergy(self) -> float:
         """Normally distributed energy distribution.
