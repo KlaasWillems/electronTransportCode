@@ -12,10 +12,11 @@ from electronTransportCode.MCEstimator import DoseEstimator, MomentumTypeEstimat
 
 
 # Set up simulation domain
+bins = 200
 xmax = 10
 ymin = -xmax; ymax = xmax; ybins = 200
 zmin = -xmax; zmax = xmax; zbins = 200
-simDomain = SimulationDomain(ymin, ymax, zmin, zmax, ybins, zbins, material=unitDensityMaterial)
+simDomain = SimulationDomain(-4, 4, -4, 4, ybins, zbins, material=unitDensityMaterial)
 
 # Set up initial conditions
 SEED: int = 4  # Random number generator seed
@@ -30,15 +31,21 @@ if __name__ == '__main__':
     particleType = int(sys.argv[3])
 
     if particleType == 1:
+        simDomain = SimulationDomain(-4, 4, -4, 4, bins, bins, material=unitDensityMaterial)
         particle = DiffusionTestParticle(Es=scatteringRate, sp=1.0)
         fileK = 'data/EstimatorsK1.pkl'
         fileKD = 'data/EstimatorsKD1.pkl'
         simargvFile = 'data/simargv1.pkl'
+        filePK = 'data/particleTracerK1.pkl'
+        filePKD = 'data/particleTracerKD1.pkl'
     elif particleType == 2:
+        simDomain = SimulationDomain(-1, 19, -4, 4, bins, bins, material=unitDensityMaterial)
         particle = DiffusionTestParticlev2(Es=scatteringRate, sp=1.0)
         fileK = 'data/EstimatorsK2.pkl'
         fileKD = 'data/EstimatorsKD2.pkl'
         simargvFile = 'data/simargv2.pkl'
+        filePK = 'data/particleTracerK2.pkl'
+        filePKD = 'data/particleTracerKD2.pkl'
     else:
         raise ValueError('Invalid particle type')
 
@@ -73,7 +80,7 @@ if __name__ == '__main__':
         pickle.dump(tup, open(simargvFile, 'wb'))
 
         # dump particle tracers
-        pickle.dump(particleTracerK, open('data/particleTracerK.pkl', 'wb'))
-        pickle.dump(particleTracerKD, open('data/particleTracerKD.pkl', 'wb'))
+        pickle.dump(particleTracerK, open(filePK, 'wb'))
+        pickle.dump(particleTracerKD, open(filePKD, 'wb'))
 
     # run: mpiexec -n 4 python3 -m simpleHomogeneous 1.0 30000
