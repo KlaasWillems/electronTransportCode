@@ -174,7 +174,7 @@ class MomentumTypeEstimator(DoseEstimator):
         """
         energy, newenergy = energyTuple
         vec, newvec = vecTuple
-        self.scoreMatrix[index] = abs(vec[2] - newvec[2])*(energy-newenergy)
+        self.scoreMatrix[index] = abs(vec[2])*(energy-newenergy)
 
     def getEstimator(self) -> np.ndarray:
         return self.scoreMatrix
