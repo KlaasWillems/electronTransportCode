@@ -65,7 +65,7 @@ class LungSimulationDomain(SimulationDomain):
 
 
 class LungInitialConditions(SimOptions):
-    def __init__(self, rngSeed: int = 12, width: float = 14.5, kappa: float = 80, sigmaE: float = 1/100, eSource: float = 21/ERE, sigmaPos: float = 1/20) -> None:
+    def __init__(self, rngSeed: int = 12, width: float = 14.5, kappa: float = 80, sigmaE: float = 1/100, eSource: float = 21/ERE, sigmaPos: float = 1/100) -> None:
         """
         Args:
             rngSeed (int, optional): Seed for random number generator. Defaults to 12.
@@ -99,4 +99,4 @@ class LungInitialConditions(SimOptions):
     def initialPosition(self) -> tuple3d:
         """z-coordinate normally distributed around width/2. y coordinate fixed at width and x coordinate fixed at 0.0.
         """
-        return np.array((0.0, self.width, self.rng.normal(loc=-self.width/2, scale=self.sigmaE)), dtype=float)
+        return np.array((0.0, self.width, self.rng.normal(loc=-self.width/2, scale=self.sigmaPos)), dtype=float)
