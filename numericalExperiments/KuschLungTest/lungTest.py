@@ -6,6 +6,7 @@ from mpi4py import MPI
 from electronTransportCode.MCEstimator import DoseEstimator
 from electronTransportCode.ParticleModel import SimplifiedEGSnrcElectron
 from electronTransportCode.MCParticleTracer import AnalogParticleTracer, KDMC, KDR
+from electronTransportCode.ProjectUtils import ERE
 from lungSetup import LungInitialConditions, LungSimulationDomain
 
 # Load particle, initial conditions and simulation domain
@@ -17,7 +18,7 @@ if __name__ == '__main__':
 
     # Sim settings
     particle = SimplifiedEGSnrcElectron(scatterer=scatterer)  # constrain scattering to yz plance
-    lungInit = LungInitialConditions(sigmaPos=1/50, kappa=10)
+    lungInit = LungInitialConditions(sigmaPos=1/50, kappa=10, eSource=28/ERE)
     lungSimDomain = LungSimulationDomain()
 
     if scatterer == '2d-simple':  # decrease scattering rate for easy testing
