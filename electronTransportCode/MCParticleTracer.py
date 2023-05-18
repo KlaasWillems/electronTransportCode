@@ -644,6 +644,10 @@ class KDR(KDParticleTracer):
     """
     Version of kinetic diffusion Monte Carlo where the mean is conditioned on the velocity of the kinetic step. This is preferred for velocities that are rotations of the previous velocity. The variance is of the diffusion step is taken from the particle object. The particle object has the variance stored in a look-up table since no analytic formula for the variance of many kinetic steps exists.
     """
+    def __init__(self, simOptions: SimOptions, simDomain: SimulationDomain, particle: ParticleModel | None, dS: float | None = None, useMSAngle: bool = False) -> None:
+        super().__init__(simOptions=simOptions, simDomain=simDomain, particle=particle, dS=dS, het_corr=False)
+        self.useMsAngle = useMSAngle
+
     def advectionDiffusionCoeff(self, pos3d: tuple3d, vec3d: tuple3d, energy: float, index: int, stepsize: float, deltaE: float) -> Tuple[tuple3d, tuple3d]:
         assert self.particle is not None
         material = self.simDomain.getMaterial(index)
@@ -800,8 +804,13 @@ class KDR(KDParticleTracer):
                         loopbool = False  # make this the last iteration
                         diff_vec3d = kin_vec3d
                     else:
-                        mu, phi, _ = self.particle.sampleScatteringAngles(diff_energy, self.simDomain.getMaterial(index))
-                        diff_vec3d = self.scatterParticle(mu, phi, equi_vec, False)
+                        material = self.simDomain.getMaterial(index)
+                        if self.useMsAngle:
+                            mu, phi, _ = self.particle.sampleMSScatteringAngles(kin_energy, step_diff1, material)
+                            diff_vec3d = self.scatterParticle(mu, phi, kin_vec3d, False)
+                        else:
+                            mu, phi, _ = self.particle.sampleScatteringAngles(diff_energy, material)
+                            diff_vec3d = self.scatterParticle(mu, phi, equi_vec, False)
 
                     # Divide energy loss evenly over all crossed cells based on stepsize
                     dE = kin_energy - diff_energy

@@ -54,6 +54,19 @@ class ParticleModel(ABC):
             float: polar and azimuthal scattering angle, NEW_ABS_DIR (bool): If polar and scattering angels are with respect to the absolute coordinate system (True) or compared to the previous direction of travel (False)
         """
 
+    def sampleMSScatteringAngles(self, Ekin: float, stepsize: float, material: Material) -> Tuple[float, float, bool]:
+        """Sample accumulated scattering angle theta and phi
+
+        Args:
+            Ekin (float): Incoming particle kinetic energy relative to electron rest energy (tau or epsilon in literature)
+            stepsize (float): [cm] path-length
+            material (Material): material of scattering medium in cell.
+
+        Returns:
+            float: polar and azimuthal scattering angle, NEW_ABS_DIR (bool): If polar and scattering angels are with respect to the absolute coordinate system (True) or compared to the previous direction of travel (False)
+        """
+        raise NotImplementedError
+
     @abstractmethod
     def evalStoppingPower(self, Ekin: float, pos: tuple3d, material: Material) -> float:
         """Evaluate electron stopping power.
@@ -334,7 +347,7 @@ class SimplifiedEGSnrcElectron(ParticleModel):
     """
     def __init__(self, generator: Union[np.random.Generator, None, int] = None, scatterer: str = '3d') -> None:
         """
-            scatterer (str, optional): 3d means azimuthal scattering angle is sampled phi~U(0, 2*pi). '2d' means scattering in the yz-plane. In this case, phi is chosen from {pi/2, 3*pi/2}. Defaults to '3d'.
+            scatterer (str, optional): 3d means azimuthal scattering angle is sampled phi~U(0, 2*pi). '2d' means scattering in the yz-plane. In this case, phi is chosen from {pi/2, 3*pi/2}. Defaults to '3d'. '2d-simple' means uniform scattering in y < 0 direction.
         """
         if scatterer == '2d' or scatterer == '3d' or scatterer == '2d-simple':
             self.scatterer: Final[str] = scatterer
@@ -342,7 +355,7 @@ class SimplifiedEGSnrcElectron(ParticleModel):
             raise ValueError('scatterer argument is invalid.')
         super().__init__(generator)
 
-        # Load in look-up table. Linear interpolation of LUTs with RegularGridInterpolator from scipy.
+        # Load look-up table for variance on kinetic motion. Linear interpolation of LUTs with RegularGridInterpolator from scipy.
         # TODO: Fit look-up tables using least squares
         bigLUT = np.load(PROJECT_ROOT + '/ms/data/ownlutv2.npy')
         d = np.load(PROJECT_ROOT + '/ms/data/ownlutAxesv2.npz')
@@ -351,6 +364,20 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         self.LUTrhoAxis = d['arr_2']
         # variance on x, y and z coordinate
         self.interpPosVar = RegularGridInterpolator((self.LUTeAxis, self.LUTdsAxis, self.LUTrhoAxis), bigLUT[:, :, :, 4:7], fill_value=None, bounds_error=False)  # type: ignore
+
+        # Load look-up table for MS distribution
+        MSLUT = np.load(PROJECT_ROOT + '/ms/data/msAngleLUT.npy')
+        self.MSLUTBins = int((MSLUT[0, 0, 0, :].size-1)/3)
+        d = np.load(PROJECT_ROOT + '/ms/data/msAngleAxes.npz')
+        self.MSLUTeAxis = d['arr_0']
+        self.MSLUTdsAxis = d['arr_1']
+        self.MSLUTrhoAxis = d['arr_2']
+        self.MSLUT = np.zeros(shape=(self.MSLUTeAxis.size, self.MSLUTdsAxis.size, self.MSLUTrhoAxis.size, 2*self.MSLUTBins), dtype=float)
+        self.MSLUT[:, :, :, 0:self.MSLUTBins] = MSLUT[:, :, :, 0:self.MSLUTBins]  # copy counts
+        norm = self.MSLUT[:, :, :, 0:self.MSLUTBins].sum(axis=3)
+        self.MSLUT[:, :, :, 0:self.MSLUTBins] /= norm[:, :, :, None]  # Normalise rows
+        binedges = MSLUT[:, :, :, self.MSLUTBins:2*self.MSLUTBins+1]
+        self.MSLUT[:, :, :, self.MSLUTBins:2*self.MSLUTBins] = (binedges[:, :, :, 1:] + binedges[:, :, :, :-1])/2  # center of bins
 
     def getScatteringRate(self, pos3d: tuple3d, Ekin: float, material: Material) -> float:
         # total macroscopic screened Rutherford cross section
@@ -368,6 +395,22 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         assert Ekin > 0, f'{Ekin=}'
         SigmaSR = self.getScatteringRate(pos, Ekin, material)
         return self.rng.exponential(1/SigmaSR)  # path-length
+
+    def sampleMSScatteringAngles(self, Ekin: float, stepsize: float, material: Material) -> Tuple[float, float, bool]:
+        assert self.rng is not None
+        assert Ekin >= 0, f'{Ekin=}'
+
+        if self.scatterer == '3d' or self.scatterer == '2d':
+            # Find closest value of energy, stepsize and material.density in LUT
+            eIndex = np.abs(self.MSLUTeAxis - Ekin).argmin()
+            dsIndex = np.abs(self.MSLUTdsAxis - stepsize).argmin()
+            rhoIndex = np.abs(self.MSLUTrhoAxis - material.rho).argmin()
+            # Sample discrete distribution using inverse CDF method (implemented by Numpy)
+            mu = self.rng.choice(self.MSLUT[eIndex, dsIndex, rhoIndex, self.MSLUTBins:2*self.MSLUTBins], p=self.MSLUT[eIndex, dsIndex, rhoIndex, 0:self.MSLUTBins])
+            phi = self.rng.uniform(low=0.0, high=2*math.pi)
+            return mu, phi, False
+        else:
+            raise NotImplementedError
 
     def sampleScatteringAngles(self, Ekin: float, material: Material) -> Tuple[float, float, bool]:
         """ Sample polar scattering angle from screened Rutherford elastic scattering cross section. See EGSnrc manual by Kawrakow et al for full details.
