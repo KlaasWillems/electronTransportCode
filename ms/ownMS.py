@@ -67,8 +67,8 @@ if __name__ == '__main__':
 
     # Do simulation for each combination of energy, stepsize and material
     for i, energy in enumerate(energyArray):
+        t3 = time.process_time()
         for j, stepsize in enumerate(stepsizeArray):
-            t3 = time.process_time()
             for k, density in enumerate(densityArray):
                 material = Material(rho=density)
                 sample(NB_PARTICLES, NB_PARTICLES_PER_PROC, energy, stepsize, material)
