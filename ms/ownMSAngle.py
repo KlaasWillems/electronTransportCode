@@ -108,5 +108,6 @@ if __name__ == '__main__':
         phiAxes = np.linspace(-math.pi, math.pi, pdfBins+1)
         np.save('data/msAngleLUT.npy', lut)
         np.save('data/msAnglePhiAxes.npy', phiAxes)
+        np.savez('data/msAngleAxes.npz', energyArray, stepsizeArray, densityArray)
         t2 = time.process_time()
         print(f'Total time: {(t2-t1)/60:2e} minutes.')
