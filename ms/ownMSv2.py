@@ -14,6 +14,8 @@ from electronTransportCode.ParticleModel import KDRTestParticle, SimplifiedEGSnr
 from electronTransportCode.ProjectUtils import ERE
 from electronTransportCode.Material import Material
 
+# Make LUT for mean and variance for KDR.
+
 xmin = -100
 xmax = 100
 xbins = ybins = 1
@@ -22,7 +24,6 @@ tempFile = 'data/tempTEE.pkl'
 def sample(NB_PARTICLES: int, NB_PARTICLES_PER_PROC: int, energy: float, stepsize: float, material: Material) -> None:
     simDomain = SimulationDomain(xmin, xmax, xmin, xmax, xbins, ybins, material)
     particle = SimplifiedEGSnrcElectron()
-    # particle = KDRTestParticle(KDR=False)
     deltaE = particle.energyLoss(energy, np.array((0, 0, 0), dtype=float), stepsize, material)
     assert energy-deltaE >= 0, f'{energy=}, {deltaE=}'
     simOptions = KDRLUTSimulation(eSource=energy, minEnergy=energy-deltaE, rngSeed=MPI.COMM_WORLD.Get_rank())
@@ -64,6 +65,7 @@ if __name__ == '__main__':
 
     t1 = time.process_time()
 
+    # Do simulation for each combination of energy, stepsize and material
     for i, energy in enumerate(energyArray):
         for j, stepsize in enumerate(stepsizeArray):
             t3 = time.process_time()
