@@ -12,6 +12,9 @@ from electronTransportCode.ParticleModel import SimplifiedEGSnrcElectron
 from electronTransportCode.ProjectUtils import ERE
 from electronTransportCode.Material import Material
 
+# Make LUT for variance and mean for KDR.
+# This file is deprecated. Use ownMSv2.py instead. It has better parallelisation.
+
 xmin = -100
 xmax = 100
 xbins = ybins = 1
