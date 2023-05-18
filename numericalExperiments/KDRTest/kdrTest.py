@@ -65,7 +65,7 @@ if __name__ == '__main__':
         trackEndEstimatorkdrx = TrackEndEstimator(simDomain, NB_PARTICLES_PER_PROC, setting='x')
         trackEndEstimatorkdry = TrackEndEstimator(simDomain, NB_PARTICLES_PER_PROC, setting='y')
         trackEndEstimatorkdrz = TrackEndEstimator(simDomain, NB_PARTICLES_PER_PROC, setting='z')
-        MS = bool(sys.argv[4])
+        MS = sys.argv[4] == 'True'
         if MS:
             outFileTEE = f'data/trackEndEstimatorkdrMS{factor}.pkl'
             outFileKDR = f'data/kdrMS{factor}.pkl'
