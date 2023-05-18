@@ -59,7 +59,7 @@ if __name__ == '__main__':
         kineticParticleTracer.runMultiProc(nbParticles=NB_PARTICLES, estimators=(trackEndEstimatorkx, trackEndEstimatorky, trackEndEstimatorkz), file=f'data/trackEndEstimatork{factor}.pkl', logAmount=logAmount)
         t2 = time.process_time()
         print(f'Kinetic simulation time: {round(t2-t1, 4)}')
-        if MPI.COMM_WORLD.Get_rank() == 0:
+        if myrank == 0:
             pickle.dump(kineticParticleTracer, open(f'data/particleTracerK{factor}.pkl', 'wb'))
     elif simType == 'kdr':
         trackEndEstimatorkdrx = TrackEndEstimator(simDomain, NB_PARTICLES_PER_PROC, setting='x')
@@ -67,16 +67,18 @@ if __name__ == '__main__':
         trackEndEstimatorkdrz = TrackEndEstimator(simDomain, NB_PARTICLES_PER_PROC, setting='z')
         MS = bool(sys.argv[4])
         if MS:
-            file = f'data/trackEndEstimatorkdrMS{factor}.pkl'
+            outFileTEE = f'data/trackEndEstimatorkdrMS{factor}.pkl'
+            outFileKDR = f'data/kdrMS{factor}.pkl'
         else:
-            file = f'data/trackEndEstimatorkdr{factor}.pkl'
+            outFileTEE = f'data/trackEndEstimatorkdr{factor}.pkl'
+            outFileKDR = f'data/kdr{factor}.pkl'
         kdr = KDR(simOptions=pointSourceSim, simDomain=simDomain, particle=particle1, dS=stepsize, useMSAngle=MS)
         t2 = time.process_time()
-        kdr.runMultiProc(nbParticles=NB_PARTICLES, estimators=(trackEndEstimatorkdrx, trackEndEstimatorkdry, trackEndEstimatorkdrz), file=file, logAmount=logAmount)
+        kdr.runMultiProc(nbParticles=NB_PARTICLES, estimators=(trackEndEstimatorkdrx, trackEndEstimatorkdry, trackEndEstimatorkdrz), file=outFileTEE, logAmount=logAmount)
         t3 = time.process_time()
         print(f'KDR simulation time: {round(t3-t2, 4)}')
-        if MPI.COMM_WORLD.Get_rank() == 0:
-            pickle.dump(kdr, open(f'data/kdr{factor}.pkl', 'wb'))
+        if myrank == 0:
+            pickle.dump(kdr, open(outFileKDR, 'wb'))
 
     # dump argv
     tup = (eSource, NB_PARTICLES)
