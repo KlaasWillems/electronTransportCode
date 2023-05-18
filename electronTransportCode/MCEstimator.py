@@ -1,6 +1,6 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import Optional, Tuple
+from typing import Final, Optional, Tuple
 import numpy.typing as npt
 from mpi4py import MPI
 import numpy as np
@@ -53,13 +53,14 @@ class TrackEndEstimator(MCEstimator):
         """
         super().__init__(simDomain)
         self.nb_particles = nb_particles
-        self.scoreMatrix = np.zeros((self.nb_particles, ))
+        self.scoreMatrix = np.zeros((self.nb_particles, ), dtype=float)
         self.index: int = 0
-        self.setting = setting
+        self.setting: Final[str] = setting
 
     def updateEstimator(self, posTuple: tuple[tuple3d, tuple3d], vecTuple: tuple[tuple3d, tuple3d], energyTuple: tuple[float, float], index: int, stepsize: float) -> None:
         _, new_energy = energyTuple
         _, new_pos = posTuple
+        _, new_vec = vecTuple
         if new_energy == 0.0:
             if self.setting == 'x':
                 self.scoreMatrix[self.index] = new_pos[0]
@@ -81,6 +82,12 @@ class TrackEndEstimator(MCEstimator):
                     self.scoreMatrix[self.index] = np.sqrt(new_pos[0]**2 + new_pos[1]**2)
                 else:
                     self.index -= 1
+            elif self.setting == 'Omega_x':
+                self.scoreMatrix[self.index] = new_vec[0]
+            elif self.setting == 'Omega_y':
+                self.scoreMatrix[self.index] = new_vec[1]
+            elif self.setting == 'Omega_z':
+                self.scoreMatrix[self.index] = new_vec[2]
             else:
                 raise NotImplementedError('Requested estimator is not implemented. Check for typos.')
             self.index += 1
