@@ -19,11 +19,6 @@ from electronTransportCode.MCParticleTracer import KDR, AnalogParticleTracer
 # 4) If simulation type is 'kdr', final argument is a boolean. True if multiple scattering angle should be used. False if not.
 
 
-# Initialize Advection-Diffusion parameters (No advection)
-stoppingPower = 1
-scatteringRate = 100
-RNGSEED = 4
-
 # Initialize simulation parameters
 xmax = 15
 
@@ -35,6 +30,7 @@ simDomain = SimulationDomain(ymin, ymax, zmin, zmax, ybins, zbins, material=mate
 stepsize = 0.1
 
 if __name__ == '__main__':
+    myrank = MPI.COMM_WORLD.Get_rank()
     nproc = MPI.COMM_WORLD.Get_size()
 
     NB_PARTICLES_PER_PROC = int(float(sys.argv[1])/nproc)
@@ -50,7 +46,7 @@ if __name__ == '__main__':
     # Set up initial conditions
     eSource: float = deltaE
     SEED: int = 4  # Random number generator seed
-    pointSourceSim = PointSource(minEnergy=0.0, rngSeed=RNGSEED, eSource=eSource)
+    pointSourceSim = PointSource(minEnergy=0.0, rngSeed=myrank, eSource=eSource)
 
     logAmount = int(NB_PARTICLES_PER_PROC/10)
     # - Run simulation
@@ -69,9 +65,14 @@ if __name__ == '__main__':
         trackEndEstimatorkdrx = TrackEndEstimator(simDomain, NB_PARTICLES_PER_PROC, setting='x')
         trackEndEstimatorkdry = TrackEndEstimator(simDomain, NB_PARTICLES_PER_PROC, setting='y')
         trackEndEstimatorkdrz = TrackEndEstimator(simDomain, NB_PARTICLES_PER_PROC, setting='z')
-        kdr = KDR(simOptions=pointSourceSim, simDomain=simDomain, particle=particle1, dS=stepsize, useMSAngle=bool(sys.argv[4]))
+        MS = bool(sys.argv[4])
+        if MS:
+            file = f'data/trackEndEstimatorkdrMS{factor}.pkl'
+        else:
+            file = f'data/trackEndEstimatorkdr{factor}.pkl'
+        kdr = KDR(simOptions=pointSourceSim, simDomain=simDomain, particle=particle1, dS=stepsize, useMSAngle=MS)
         t2 = time.process_time()
-        kdr.runMultiProc(nbParticles=NB_PARTICLES, estimators=(trackEndEstimatorkdrx, trackEndEstimatorkdry, trackEndEstimatorkdrz), file=f'data/trackEndEstimatorkdr{factor}.pkl', logAmount=logAmount)
+        kdr.runMultiProc(nbParticles=NB_PARTICLES, estimators=(trackEndEstimatorkdrx, trackEndEstimatorkdry, trackEndEstimatorkdrz), file=file, logAmount=logAmount)
         t3 = time.process_time()
         print(f'KDR simulation time: {round(t3-t2, 4)}')
         if MPI.COMM_WORLD.Get_rank() == 0:
