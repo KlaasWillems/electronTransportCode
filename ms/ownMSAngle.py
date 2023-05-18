@@ -107,6 +107,6 @@ if __name__ == '__main__':
         os.remove(tempFile)
         phiAxes = np.linspace(-math.pi, math.pi, pdfBins+1)
         np.save('data/msAngleLUT.npy', lut)
-        np.savez('data/msAnglePhiAxes.npy', phiAxes)
+        np.save('data/msAnglePhiAxes.npy', phiAxes)
         t2 = time.process_time()
         print(f'Total time: {(t2-t1)/60:2e} minutes.')
