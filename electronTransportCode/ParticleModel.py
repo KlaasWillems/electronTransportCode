@@ -373,6 +373,7 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         self.MSLUTdsAxis = d['arr_1']
         self.MSLUTrhoAxis = d['arr_2']
         self.MSKappaLUT = np.load(PROJECT_ROOT + '/ms/data/msKappaLUT.npy')
+        self.interpKappa = RegularGridInterpolator((self.MSLUTeAxis, self.MSLUTdsAxis, self.MSLUTrhoAxis), self.MSKappaLUT, fill_value=None, bounds_error=False)  # type: ignore
 
     def getScatteringRate(self, pos3d: tuple3d, Ekin: float, material: Material) -> float:
         # total macroscopic screened Rutherford cross section
@@ -396,14 +397,8 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         assert Ekin >= 0, f'{Ekin=}'
 
         if self.scatterer == '3d' or self.scatterer == '2d':
-            # Find closest value of energy, stepsize and material.density in LUT
-            eIndex = np.abs(self.MSLUTeAxis - Ekin).argmin()
-            dsIndex = np.abs(self.MSLUTdsAxis - stepsize).argmin()
-            rhoIndex = np.abs(self.MSLUTrhoAxis - material.rho).argmin()
-
-            # Look-up LUT
-            # TODO: linearly interpolate dispersion coefficient
-            kappa = self.MSKappaLUT[eIndex, dsIndex, rhoIndex, 0]
+            # Linearly interpolate dispersion coefficient
+            kappa = self.interpKappa(np.array((Ekin, stepsize, material.rho), dtype=float))[0]
 
             # rvs routine from spherical_stats._vmf.VMF
             z = np.array([0., 0., 1.], dtype=float)
