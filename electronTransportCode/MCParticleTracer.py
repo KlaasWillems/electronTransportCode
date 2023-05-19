@@ -806,8 +806,7 @@ class KDR(KDParticleTracer):
                     else:
                         material = self.simDomain.getMaterial(index)
                         if self.useMsAngle:
-                            mu, phi, _ = self.particle.sampleMSScatteringAngles(kin_energy, step_diff1, material)
-                            diff_vec3d = self.scatterParticle(mu, phi, kin_vec3d, False)
+                            diff_vec3d = self.particle.sampleMSVec(kin_energy, step_diff1, material, kin_vec3d)
                         else:
                             mu, phi, _ = self.particle.sampleScatteringAngles(diff_energy, material)
                             diff_vec3d = self.scatterParticle(mu, phi, equi_vec, False)

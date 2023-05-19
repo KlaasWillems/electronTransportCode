@@ -3,8 +3,9 @@ import math
 from typing import Optional, Union, Tuple, Final
 import numpy as np
 from scipy.interpolate import RegularGridInterpolator
+from spherical_stats import _vmf, _utils
 from electronTransportCode.Material import Material
-from electronTransportCode.ProjectUtils import ERE, FSC, tuple3d, mathlog2, PROJECT_ROOT
+from electronTransportCode.ProjectUtils import ERE, tuple3d, mathlog2, PROJECT_ROOT
 
 
 class ParticleModel(ABC):
@@ -54,16 +55,17 @@ class ParticleModel(ABC):
             float: polar and azimuthal scattering angle, NEW_ABS_DIR (bool): If polar and scattering angels are with respect to the absolute coordinate system (True) or compared to the previous direction of travel (False)
         """
 
-    def sampleMSScatteringAngles(self, Ekin: float, stepsize: float, material: Material) -> Tuple[float, float, bool]:
+    def sampleMSVec(self, Ekin: float, stepsize: float, material: Material, oldVec: tuple3d) -> tuple3d:
         """Sample accumulated scattering angle theta and phi
 
         Args:
             Ekin (float): Incoming particle kinetic energy relative to electron rest energy (tau or epsilon in literature)
             stepsize (float): [cm] path-length
             material (Material): material of scattering medium in cell.
+            oldVec (tuple3d): previous direction. Used as mean of vMF distribution
 
         Returns:
-            float: polar and azimuthal scattering angle, NEW_ABS_DIR (bool): If polar and scattering angels are with respect to the absolute coordinate system (True) or compared to the previous direction of travel (False)
+            float: returns a new post-diffusive step normalised velocity vector
         """
         raise NotImplementedError
 
@@ -365,6 +367,13 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         # variance on x, y and z coordinate
         self.interpPosVar = RegularGridInterpolator((self.LUTeAxis, self.LUTdsAxis, self.LUTrhoAxis), bigLUT[:, :, :, 4:7], fill_value=None, bounds_error=False)  # type: ignore
 
+        # Load MS LUTs
+        d = np.load(PROJECT_ROOT + '/ms/data/msKappaAxes.npz')
+        self.MSLUTeAxis = d['arr_0']
+        self.MSLUTdsAxis = d['arr_1']
+        self.MSLUTrhoAxis = d['arr_2']
+        self.MSKappaLUT = np.load(PROJECT_ROOT + '/ms/data/msKappaLUT.npy')
+
     def getScatteringRate(self, pos3d: tuple3d, Ekin: float, material: Material) -> float:
         # total macroscopic screened Rutherford cross section
         temp = Ekin*(Ekin+2)
@@ -382,8 +391,7 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         SigmaSR = self.getScatteringRate(pos, Ekin, material)
         return self.rng.exponential(1/SigmaSR)  # path-length
 
-    def sampleMSScatteringAngles(self, Ekin: float, stepsize: float, material: Material) -> Tuple[float, float, bool]:
-        raise NotImplementedError
+    def sampleMSVec(self, Ekin: float, stepsize: float, material: Material, oldVec: tuple3d) -> tuple3d:
         assert self.rng is not None
         assert Ekin >= 0, f'{Ekin=}'
 
@@ -392,10 +400,15 @@ class SimplifiedEGSnrcElectron(ParticleModel):
             eIndex = np.abs(self.MSLUTeAxis - Ekin).argmin()
             dsIndex = np.abs(self.MSLUTdsAxis - stepsize).argmin()
             rhoIndex = np.abs(self.MSLUTrhoAxis - material.rho).argmin()
-            # Sample discrete distribution using inverse CDF method (implemented by Numpy)
-            mu = self.rng.choice(self.MSLUT[eIndex, dsIndex, rhoIndex, self.MSLUTBins:2*self.MSLUTBins], p=self.MSLUT[eIndex, dsIndex, rhoIndex, 0:self.MSLUTBins])
-            phi = self.rng.uniform(low=0.0, high=2*math.pi)
-            return mu, phi, False
+
+            # Look-up LUT
+            # TODO: linearly interpolate dispersion coefficient
+            kappa = self.MSKappaLUT[eIndex, dsIndex, rhoIndex, 0]
+
+            # rvs routine from spherical_stats._vmf.VMF
+            z = np.array([0., 0., 1.], dtype=float)
+            rot_matrix = _utils.rotation_matrix(z, oldVec)
+            return _vmf._sample(kappa, rot_matrix, size=1)[0]
         else:
             raise NotImplementedError
 
