@@ -50,9 +50,9 @@ if __name__ == '__main__':
     maxEnergy = 21/ERE
     nbEnergy = int(float(sys.argv[2]))
     particle: ParticleModel
-    if nbEnergy == 1:
+    if nbEnergy == 2:
         particle = KDRTestParticle()
-        energyArray = np.array((particle.EFixed, ), dtype=float)
+        energyArray = np.array((particle.EFixed, particle.EFixed+1), dtype=float)
     else:
         particle = SimplifiedEGSnrcElectron()
         energyArray = np.linspace(minEnergy, maxEnergy, nbEnergy)
