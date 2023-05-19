@@ -365,20 +365,6 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         # variance on x, y and z coordinate
         self.interpPosVar = RegularGridInterpolator((self.LUTeAxis, self.LUTdsAxis, self.LUTrhoAxis), bigLUT[:, :, :, 4:7], fill_value=None, bounds_error=False)  # type: ignore
 
-        # Load look-up table for MS distribution
-        MSLUT = np.load(PROJECT_ROOT + '/ms/data/msAngleLUT.npy')
-        self.MSLUTBins = int((MSLUT[0, 0, 0, :].size-1)/3)
-        d = np.load(PROJECT_ROOT + '/ms/data/msAngleAxes.npz')
-        self.MSLUTeAxis = d['arr_0']
-        self.MSLUTdsAxis = d['arr_1']
-        self.MSLUTrhoAxis = d['arr_2']
-        self.MSLUT = np.zeros(shape=(self.MSLUTeAxis.size, self.MSLUTdsAxis.size, self.MSLUTrhoAxis.size, 2*self.MSLUTBins), dtype=float)
-        self.MSLUT[:, :, :, 0:self.MSLUTBins] = MSLUT[:, :, :, 0:self.MSLUTBins]  # copy counts
-        norm = self.MSLUT[:, :, :, 0:self.MSLUTBins].sum(axis=3)
-        self.MSLUT[:, :, :, 0:self.MSLUTBins] /= norm[:, :, :, None]  # Normalise rows
-        binedges = MSLUT[:, :, :, self.MSLUTBins:2*self.MSLUTBins+1]
-        self.MSLUT[:, :, :, self.MSLUTBins:2*self.MSLUTBins] = (binedges[:, :, :, 1:] + binedges[:, :, :, :-1])/2  # center of bins
-
     def getScatteringRate(self, pos3d: tuple3d, Ekin: float, material: Material) -> float:
         # total macroscopic screened Rutherford cross section
         temp = Ekin*(Ekin+2)
@@ -397,6 +383,7 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         return self.rng.exponential(1/SigmaSR)  # path-length
 
     def sampleMSScatteringAngles(self, Ekin: float, stepsize: float, material: Material) -> Tuple[float, float, bool]:
+        raise NotImplementedError
         assert self.rng is not None
         assert Ekin >= 0, f'{Ekin=}'
 
