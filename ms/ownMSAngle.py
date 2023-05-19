@@ -93,7 +93,7 @@ if __name__ == '__main__':
                     lut[i, j, k, 0] = kappa
         t4 = time.process_time()
         if rank == 0:
-            print(f'{round(100*(i+1)/stepsizeArray.size, 3)}% completed. Last section took {(t4-t3)/60:2e} minutes.')
+            print(f'{round(100*(i+1)/energyArray.size, 3)}% completed. Last section took {(t4-t3)/60:2e} minutes.')
 
     if rank == 0:
         assert lut is not None
