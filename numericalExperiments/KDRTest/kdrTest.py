@@ -79,7 +79,8 @@ if __name__ == '__main__':
         print(f'KDR simulation time: {round(t3-t2, 4)}')
         if myrank == 0:
             pickle.dump(kdr, open(outFileKDR, 'wb'))
-
+    else:
+        raise ValueError(f'{simType=} variable wrong.')
     # dump argv
     tup = (eSource, NB_PARTICLES)
     pickle.dump(tup, open('data/simargv.pkl', 'wb'))
