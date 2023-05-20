@@ -18,10 +18,9 @@ from electronTransportCode.Material import Material
 # Make LUT for multiple scattering angle theta and phi. LUT stores distribution of theta and phi as histogram.
 # Command line arguments:
 #   1) Amount of particles to simulate per setting
-#   2) Amount of energy bins. If 1, simulate KDRTestParticle that has fixed energy.
+#   2) Amount of energy bins. If 2, simulate KDRTestParticle that has fixed energy.
 #   3) Amount of stepsize bins
 #   4) Amount of density bins
-#   5) Amount of bins in de histogram
 
 xmin = -100
 xmax = 100
