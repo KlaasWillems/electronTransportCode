@@ -528,7 +528,7 @@ class KDRTestParticle(SimplifiedEGSnrcElectron):
     """
     def __init__(self, generator: Union[np.random.Generator, None, int] = None) -> None:
         super().__init__(generator, scatterer = '3d')
-        self.EFixed: Final[float] = 10*ERE
+        self.EFixed: Final[float] = 10/ERE
 
     def getScatteringRate(self, pos3d: tuple3d, Ekin: float, material: Material) -> float:
         return super().getScatteringRate(pos3d, Ekin=self.EFixed, material=material)
