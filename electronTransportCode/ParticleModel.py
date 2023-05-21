@@ -368,12 +368,12 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         self.interpPosVar = RegularGridInterpolator((self.LUTeAxis, self.LUTdsAxis, self.LUTrhoAxis), bigLUT[:, :, :, 4:7], fill_value=None, bounds_error=False)  # type: ignore
 
         # Load MS LUTs
-        d = np.load(PROJECT_ROOT + '/ms/data/msKappaAxes.npz')
-        self.MSLUTeAxis = d['arr_0']
-        self.MSLUTdsAxis = d['arr_1']
-        self.MSLUTrhoAxis = d['arr_2']
-        self.MSKappaLUT = np.load(PROJECT_ROOT + '/ms/data/msKappaLUT.npy')
-        self.interpKappa = RegularGridInterpolator((self.MSLUTeAxis, self.MSLUTdsAxis, self.MSLUTrhoAxis), self.MSKappaLUT, fill_value=None, bounds_error=False)  # type: ignore
+        # d = np.load(PROJECT_ROOT + '/ms/data/msKappaAxes.npz')
+        # self.MSLUTeAxis = d['arr_0']
+        # self.MSLUTdsAxis = d['arr_1']
+        # self.MSLUTrhoAxis = d['arr_2']
+        # self.MSKappaLUT = np.load(PROJECT_ROOT + '/ms/data/msKappaLUT.npy')
+        # self.interpKappa = RegularGridInterpolator((self.MSLUTeAxis, self.MSLUTdsAxis, self.MSLUTrhoAxis), self.MSKappaLUT, fill_value=None, bounds_error=False)  # type: ignore
 
     def getScatteringRate(self, pos3d: tuple3d, Ekin: float, material: Material) -> float:
         # total macroscopic screened Rutherford cross section
@@ -393,6 +393,7 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         return self.rng.exponential(1/SigmaSR)  # path-length
 
     def sampleMSVec(self, Ekin: float, stepsize: float, material: Material, oldVec: tuple3d) -> tuple3d:
+        raise NotImplementedError
         assert self.rng is not None
         assert Ekin >= 0, f'{Ekin=}'
 
