@@ -91,7 +91,6 @@ if __name__ == '__main__':
                     costMS = TEEz.scoreMatrix/np.linalg.norm(data, axis=1)
                     _, kappa = spherical_stats._vmf._fit(data)
                     params_esag = spherical_stats._esag._fit(data)
-                    print(params_esag)
                     params_expon = scipy.stats.expon.fit(1-costMS)
                     lut[i, j, k, 0] = kappa
                     lut[i, j, k, 1:6] = params_esag
