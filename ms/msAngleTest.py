@@ -26,9 +26,9 @@ from electronTransportCode.Material import Material
 xmin = -100
 xmax = 100
 xbins = ybins = 1
+tempFile = 'data/tempTEEx.pkl'
 
-def sample(NB_PARTICLES: int, NB_PARTICLES_PER_PROC: int, particle: ParticleModel, energy: float, stepsize: float, material: Material) -> \
-                                                        Tuple[TrackEndEstimator, TrackEndEstimator, TrackEndEstimator]:
+def sample(NB_PARTICLES: int, NB_PARTICLES_PER_PROC: int, particle: ParticleModel, energy: float, stepsize: float, material: Material) -> None:
     simDomain = SimulationDomain(xmin, xmax, xmin, xmax, xbins, ybins, material)
     deltaE = particle.energyLoss(energy, np.array((0, 0, 0), dtype=float), stepsize, material)
     assert energy-deltaE >= 0, f'{energy=}, {deltaE=}'
@@ -37,8 +37,7 @@ def sample(NB_PARTICLES: int, NB_PARTICLES_PER_PROC: int, particle: ParticleMode
     TEEy = TrackEndEstimator(simDomain, NB_PARTICLES_PER_PROC, 'Omega_y')
     TEEz = TrackEndEstimator(simDomain, NB_PARTICLES_PER_PROC, 'Omega_z')
     particleTracer = AnalogParticleTracer(simOptions, simDomain, particle)
-    particleTracer.runMultiProc(NB_PARTICLES, (TEEx, TEEy, TEEz), file=None, verbose=False)
-    return TEEx, TEEy, TEEz
+    particleTracer.runMultiProc(NB_PARTICLES, (TEEx, TEEy, TEEz), file=tempFile, verbose=False)
 
 if __name__ == '__main__':
     rank = MPI.COMM_WORLD.Get_rank()
@@ -84,8 +83,10 @@ if __name__ == '__main__':
         for j, stepsize in enumerate(stepsizeArray):
             for k, density in enumerate(densityArray):
                 material = Material(rho=density)
-                TEEx, TEEy, TEEz = sample(NB_PARTICLES, NB_PARTICLES_PER_PROC, particle, energy, stepsize, material)
+                sample(NB_PARTICLES, NB_PARTICLES_PER_PROC, particle, energy, stepsize, material)
                 if rank == 0:  # post-process simulation results
+                    TEEx: TrackEndEstimator; TEEy: TrackEndEstimator; TEEz: TrackEndEstimator
+                    TEEx, TEEy, TEEz = pickle.load(open(tempFile, 'rb'))
                     assert lut is not None
                     data = np.column_stack((TEEx.scoreMatrix, TEEy.scoreMatrix, TEEz.scoreMatrix))
                     costMS = TEEz.scoreMatrix/np.linalg.norm(data, axis=1)
@@ -101,6 +102,7 @@ if __name__ == '__main__':
 
     if rank == 0:
         assert lut is not None
+        os.remove(tempFile)
         np.save('data/msAngleLUTTest.npy', lut)
         np.savez('data/msAngleLUTTestAxes.npz', energyArray, stepsizeArray, densityArray)
         t2 = time.process_time()
