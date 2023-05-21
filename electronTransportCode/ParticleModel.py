@@ -451,7 +451,7 @@ class SimplifiedEGSnrcElectron(ParticleModel):
                 eIndex = np.abs(self.MSLUTeAxis - Ekin).argmin()
                 dsIndex = np.abs(self.MSLUTdsAxis-stepsize).argmin()
                 rhoIndex = np.abs(self.MSLUTrhoAxis - material.rho).argmin()
-                params = self.MSExpLUT[eIndex, dsIndex, rhoIndex]
+                params = self.MSESAGLUT[eIndex, dsIndex, rhoIndex]
                 return spherical_stats._esag._rvs(params=params, size=1)[0]
             elif self.msDist == 'vmf':
                 # Linearly interpolate dispersion coefficient of vMF distribution
