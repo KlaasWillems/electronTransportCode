@@ -72,7 +72,7 @@ if __name__ == '__main__':
         if MS == 'False':
             outFileTEE = f'data/trackEndEstimatorkdr{factor}.pkl'
             outFileKDR = f'data/kdr{factor}.pkl'
-            particle1 = KDRTestParticle()
+            particle1 = KDRTestParticle(msDist=None)
         elif MSBool:
             outFileTEE = f'data/trackEndEstimatorkdr{MS}{factor}.pkl'
             outFileKDR = f'data/kdr{MS}{factor}.pkl'
