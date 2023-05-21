@@ -60,7 +60,7 @@ if __name__ == '__main__':
         t1 = time.process_time()
         kineticParticleTracer.runMultiProc(nbParticles=NB_PARTICLES, estimators=(trackEndEstimatorkx, trackEndEstimatorky, trackEndEstimatorkz), file=f'data/trackEndEstimatork{factor}.pkl', logAmount=logAmount)
         t2 = time.process_time()
-        print(f'Kinetic simulation time: {round(t2-t1, 4)}')
+        print(f'Kinetic simulation time: {round(t2-t1, 4)} s')
         if myrank == 0:
             pickle.dump(kineticParticleTracer, open(f'data/particleTracerK{factor}.pkl', 'wb'))
     elif simType == 'kdr':
@@ -83,7 +83,7 @@ if __name__ == '__main__':
         t2 = time.process_time()
         kdr.runMultiProc(nbParticles=NB_PARTICLES, estimators=(trackEndEstimatorkdrx, trackEndEstimatorkdry, trackEndEstimatorkdrz), file=outFileTEE, logAmount=logAmount)
         t3 = time.process_time()
-        print(f'KDR simulation time: {round(t3-t2, 4)}')
+        print(f'KDR simulation time: {round(t3-t2, 4)} s')
         if myrank == 0:
             pickle.dump(kdr, open(outFileKDR, 'wb'))
     else:
