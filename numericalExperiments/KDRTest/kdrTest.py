@@ -1,5 +1,7 @@
 # Imports
+from multiprocessing import Value
 import sys
+from matplotlib.pyplot import scatter
 import numpy as np
 import pickle
 import time
@@ -16,7 +18,7 @@ from electronTransportCode.MCParticleTracer import KDR, AnalogParticleTracer
 # 1) Amount of particles to simulate
 # 2) Simulation type 'k' or 'kdr'
 # 3) Amount of steps \Delta s to simulate a particle
-# 4) If simulation type is 'kdr', final argument is a boolean. True if multiple scattering angle should be used. False if not.
+# 4) If simulation type is 'kdr', final argument is a str. 'False' for no multiple scattering, 'esag' for ESAG distribution, 'vmf' for vmf          distribution and 'expon' for exponential distribution.
 
 
 # Initialize simulation parameters
@@ -65,14 +67,19 @@ if __name__ == '__main__':
         trackEndEstimatorkdrx = TrackEndEstimator(simDomain, NB_PARTICLES_PER_PROC, setting='x')
         trackEndEstimatorkdry = TrackEndEstimator(simDomain, NB_PARTICLES_PER_PROC, setting='y')
         trackEndEstimatorkdrz = TrackEndEstimator(simDomain, NB_PARTICLES_PER_PROC, setting='z')
-        MS = sys.argv[4] == 'True'
-        if MS:
-            outFileTEE = f'data/trackEndEstimatorkdrMS{factor}.pkl'
-            outFileKDR = f'data/kdrMS{factor}.pkl'
-        else:
+        MS = sys.argv[4]
+        MSBool = MS == 'esag' or MS == 'vmf' or MS == 'expon'
+        if MS == 'False':
             outFileTEE = f'data/trackEndEstimatorkdr{factor}.pkl'
             outFileKDR = f'data/kdr{factor}.pkl'
-        kdr = KDR(simOptions=pointSourceSim, simDomain=simDomain, particle=particle1, dS=stepsize, useMSAngle=MS)
+            particle1 = KDRTestParticle()
+        elif MSBool:
+            outFileTEE = f'data/trackEndEstimatorkdr{MS}{factor}.pkl'
+            outFileKDR = f'data/kdr{MS}{factor}.pkl'
+            particle1 = KDRTestParticle(msDist=MS)
+        else:
+            raise ValueError(f'{MS=}')
+        kdr = KDR(simOptions=pointSourceSim, simDomain=simDomain, particle=particle1, dS=stepsize, useMSAngle=MSBool)
         t2 = time.process_time()
         kdr.runMultiProc(nbParticles=NB_PARTICLES, estimators=(trackEndEstimatorkdrx, trackEndEstimatorkdry, trackEndEstimatorkdrz), file=outFileTEE, logAmount=logAmount)
         t3 = time.process_time()

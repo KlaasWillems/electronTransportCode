@@ -2,10 +2,46 @@ from abc import ABC, abstractmethod
 import math
 from typing import Optional, Union, Tuple, Final
 import numpy as np
+import scipy.stats
 from scipy.interpolate import RegularGridInterpolator
 from spherical_stats import _vmf, _utils
+import spherical_stats
 from electronTransportCode.Material import Material
 from electronTransportCode.ProjectUtils import ERE, tuple3d, mathlog2, PROJECT_ROOT
+
+
+# Copy of scatterParticle from MCParticleTracer class.
+def scatterParticle(cost: float, phi: float, vec3d: tuple3d) -> tuple3d:
+    """Scatter a particle across polar angle (theta) and azimuthatl scattering angle phi
+
+    Args:
+        cost (float): Cosine of polar scattering angle
+        phi (float): Azimuthal scattering angle in radians
+        vec3d (tuple3d): Direction of travel
+
+    Returns:
+        tuple3d: Direction of travel after scattering cost and phi with respect to vec3d
+    """
+    sint = math.sqrt(1 - cost**2)
+    cosphi = math.cos(phi)
+    sinphi = math.sin(phi)
+
+    # Rotation matrices (See penelope documentation eq. 1.131)
+    if math.isclose(abs(vec3d[2]), 1.0, rel_tol=1e-14):  # indeterminate case
+        sign = math.copysign(1.0, vec3d[2])
+        x = sign*sint*cosphi
+        y = sign*sint*sinphi
+        z = sign*cost
+    else:
+        tempVar = math.sqrt(1-vec3d[2]**2)
+        tempVar2 = vec3d[2]*cosphi
+        x = vec3d[0]*cost + sint*(vec3d[0]*tempVar2 - vec3d[1]*sinphi)/tempVar
+        y = vec3d[1]*cost + sint*(vec3d[1]*tempVar2 + vec3d[0]*sinphi)/tempVar
+        z = vec3d[2]*cost - tempVar*sint*cosphi
+
+    # normalized for security
+    norm = math.sqrt(x**2 + y**2 + z**2)
+    return np.array((x/norm, y/norm, z/norm), dtype=float)
 
 
 class ParticleModel(ABC):
@@ -347,15 +383,17 @@ class SimplifiedEGSnrcElectron(ParticleModel):
     """A simplified electron model. Soft elastic collisions are taken into account using the screened Rutherford elastic cross section.
     Energy loss is deposited continuously using the Bethe-Bloch inelastic restricted collisional stopping power. Hard-inelastic collisions and bremstrahlung are not taken into account.
     """
-    def __init__(self, generator: Union[np.random.Generator, None, int] = None, scatterer: str = '3d') -> None:
+    def __init__(self, generator: Union[np.random.Generator, None, int] = None, scatterer: str = '3d', msDist: Optional[str] = None) -> None:
         """
             scatterer (str, optional): 3d means azimuthal scattering angle is sampled phi~U(0, 2*pi). '2d' means scattering in the yz-plane. In this case, phi is chosen from {pi/2, 3*pi/2}. Defaults to '3d'. '2d-simple' means uniform scattering in y < 0 direction.
+            msDist (str, optional): 'esag' for elliptically symmetric angular Gaussian distribution, 'vmf' for von Mises Fisher distribution or 'expon' for exponential distribution of 1-cos(\thetaMS)
         """
         if scatterer == '2d' or scatterer == '3d' or scatterer == '2d-simple':
             self.scatterer: Final[str] = scatterer
         else:
             raise ValueError('scatterer argument is invalid.')
         super().__init__(generator)
+        self.msDist: Final[Optional[str]] = msDist
 
         # Load look-up table for variance on kinetic motion. Linear interpolation of LUTs with RegularGridInterpolator from scipy.
         # TODO: Fit look-up tables using least squares
@@ -368,12 +406,20 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         self.interpPosVar = RegularGridInterpolator((self.LUTeAxis, self.LUTdsAxis, self.LUTrhoAxis), bigLUT[:, :, :, 4:7], fill_value=None, bounds_error=False)  # type: ignore
 
         # Load MS LUTs
-        # d = np.load(PROJECT_ROOT + '/ms/data/msKappaAxes.npz')
-        # self.MSLUTeAxis = d['arr_0']
-        # self.MSLUTdsAxis = d['arr_1']
-        # self.MSLUTrhoAxis = d['arr_2']
-        # self.MSKappaLUT = np.load(PROJECT_ROOT + '/ms/data/msKappaLUT.npy')
-        # self.interpKappa = RegularGridInterpolator((self.MSLUTeAxis, self.MSLUTdsAxis, self.MSLUTrhoAxis), self.MSKappaLUT, fill_value=None, bounds_error=False)  # type: ignore
+        if self.msDist is not None:
+            d = np.load(PROJECT_ROOT + '/ms/data/msAngleLUTTestAxes.npz')
+            self.MSLUTeAxis = d['arr_0']
+            self.MSLUTdsAxis = d['arr_1']
+            self.MSLUTrhoAxis = d['arr_2']
+            if self.msDist == 'esag':
+                self.MSESAGLUT = np.load(PROJECT_ROOT + '/ms/data/msAngleLUTTest.npy')[:, :, :, 1:6]
+            elif self.msDist == 'vmf':
+                self.MSKappaLUT = np.load(PROJECT_ROOT + '/ms/data/msAngleLUTTest.npy')[:, :, :, 0]
+                self.interpKappa = RegularGridInterpolator((self.MSLUTeAxis, self.MSLUTdsAxis, self.MSLUTrhoAxis), self.MSKappaLUT, fill_value=None, bounds_error=False)  # type: ignore
+            elif self.msDist == 'expon':
+                self.MSExpLUT = np.load(PROJECT_ROOT + '/ms/data/msAngleLUTTest.npy')[:, :, :, 6:8]
+            else:
+                raise NotImplementedError
 
     def getScatteringRate(self, pos3d: tuple3d, Ekin: float, material: Material) -> float:
         # total macroscopic screened Rutherford cross section
@@ -393,18 +439,37 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         return self.rng.exponential(1/SigmaSR)  # path-length
 
     def sampleMSVec(self, Ekin: float, stepsize: float, material: Material, oldVec: tuple3d) -> tuple3d:
-        raise NotImplementedError
         assert self.rng is not None
+        assert self.msDist is not None
         assert Ekin >= 0, f'{Ekin=}'
 
+        # esag and vmf sampling via spherical_stats package.
+        # In this case, sampling occurs via the global numpy random object (np.random), not self.rng.
         if self.scatterer == '3d' or self.scatterer == '2d':
-            # Linearly interpolate dispersion coefficient
-            kappa = self.interpKappa(np.array((Ekin, stepsize, material.rho), dtype=float))[0]
-
-            # rvs routine from spherical_stats._vmf.VMF
             z = np.array([0., 0., 1.], dtype=float)
-            rot_matrix = _utils.rotation_matrix(z, oldVec)
-            return _vmf._sample(kappa, rot_matrix, size=1)[0]
+            if self.msDist == 'esag':
+                eIndex = np.abs(self.MSLUTeAxis - Ekin).argmin()
+                dsIndex = np.abs(self.MSLUTdsAxis-stepsize).argmin()
+                rhoIndex = np.abs(self.MSLUTrhoAxis - material.rho).argmin()
+                params = self.MSExpLUT[eIndex, dsIndex, rhoIndex]
+                return spherical_stats._esag._rvs(params=params, size=1)[0]
+            elif self.msDist == 'vmf':
+                # Linearly interpolate dispersion coefficient of vMF distribution
+                kappa = self.interpKappa(np.array((Ekin, stepsize, material.rho), dtype=float))[0]
+                # rvs routine from spherical_stats._vmf.VMF
+                rot_matrix = _utils.rotation_matrix(z, oldVec)
+                return _vmf._sample(kappa, rot_matrix, size=1)[0]
+            elif self.msDist == 'expon':
+                # Exponential fit of 1-cos(\thetaMS)
+                eIndex = np.abs(self.MSLUTeAxis - Ekin).argmin()
+                dsIndex = np.abs(self.MSLUTdsAxis-stepsize).argmin()
+                rhoIndex = np.abs(self.MSLUTrhoAxis - material.rho).argmin()
+                loc, scale = self.MSExpLUT[eIndex, dsIndex, rhoIndex]
+                mu = 1.0 - scipy.stats.expon.rvs(loc=loc, scale=scale, size=1, random_state=self.rng)[0]  # type: ignore
+                phi = self.rng.uniform(low=0.0, high=2*math.pi)
+                return scatterParticle(mu, phi, oldVec)
+            else:
+                raise NotImplementedError
         else:
             raise NotImplementedError
 
@@ -527,8 +592,8 @@ class KDRTestParticle(SimplifiedEGSnrcElectron):
     Args:
         SimplifiedEGSnrcElectron (_type_): _description_
     """
-    def __init__(self, generator: Union[np.random.Generator, None, int] = None) -> None:
-        super().__init__(generator, scatterer = '3d')
+    def __init__(self, generator: Union[np.random.Generator, None, int] = None, msDist: Optional[str] = None) -> None:
+        super().__init__(generator, scatterer = '3d', msDist=msDist)
         self.EFixed: Final[float] = 10/ERE
 
     def getScatteringRate(self, pos3d: tuple3d, Ekin: float, material: Material) -> float:
