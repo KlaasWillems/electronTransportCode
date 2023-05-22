@@ -396,7 +396,7 @@ class KDParticleTracer(ParticleTracer, ABC):
 
                 step_diff1, diff_energy1 = self.pickStepSize(kin_pos3d, kin_energy, kin_index, step_kin)
 
-                diff_pos3d, equi_vec, diff_index, diff_stepped, diff_step_track,  = self.stepParticleDiffusive(kin_pos3d, kin_vec3d, kin_energy, kin_index, step_diff1, kin_energy-diff_energy1)
+                diff_pos3d, equi_vec, diff_index, diff_stepped, diff_step_track,  = self.stepParticleDiffusive(kin_pos3d, vec3d, kin_energy, kin_index, step_diff1, kin_energy-diff_energy1, kin_vec3d)
                 if diff_stepped:  # Step was taken: do estimation
                     assert equi_vec is not None
 
@@ -450,16 +450,17 @@ class KDParticleTracer(ParticleTracer, ABC):
 
         self.updateAnalytics(kin_counter, diff_counter, false_diff_counter)
 
-    def stepParticleDiffusive(self, pos3d: tuple3d, vec3d: tuple3d, energy: float, index: int, stepsize: float, deltaE: float) -> tuple[tuple3d, Optional[tuple3d], int, bool, list[tuple[int, float, tuple3d]]]:
+    def stepParticleDiffusive(self, pos3d: tuple3d, vec3d: tuple3d, energy: float, index: int, stepsize: float, deltaE: float, vec3d_new: Optional[tuple3d]) -> tuple[tuple3d, Optional[tuple3d], int, bool, list[tuple[int, float, tuple3d]]]:
         """Apply diffusive motion to particle
 
         Args:
             pos3d (tuple3d): Position of particle after kinetic step
-            vec3d (tuple3d): final velocity on which the diffusive moment is conditioned
+            vec3d (tuple3d): velocity of the particle during the kinetic step
             energy (float): energy of particle after kinetic step
             index (int): position of particle in estimator grid
             stepsize (float): remaing part of step for diffusive motion
             deltaE (float): Energy loss due to diffusive step
+            vec3d_new (optional, float): final velocity of the diffsive step (for conditioning on the final velocity)
 
         Returns:
             tuple[tuple3d, Optional[tuple3d], int, bool, list[tuple[int, float, tuple3d]]]:
@@ -470,15 +471,16 @@ class KDParticleTracer(ParticleTracer, ABC):
                 diff_step_track (list[tuple[int, float, tuple3d]]): list containing tuples. Each tuple gives the index of a cell, the step the particle took in that cell and the endpoint of that step.
         """
         assert self.particle is not None
+        assert vec3d_new is not None
 
         # Get advection and diffusion coefficient
-        A_coeff, D_coeff = self.advectionDiffusionCoeff(pos3d, vec3d, energy, index, stepsize, deltaE)
+        A_coeff, D_coeff = self.advectionDiffusionCoeff(pos3d, vec3d, energy, index, stepsize, deltaE, vec3d_new)
         assert D_coeff[0] >= 0 and D_coeff[1] >= 0 and D_coeff[2] >= 0
 
         # Apply diffusive step
         xi = self.simOptions.rng.normal(size=(3, ))
         new_pos3d: tuple3d = pos3d + A_coeff*stepsize + np.sqrt(2*D_coeff*stepsize)*xi
-        new_index = self.simDomain.getIndexPath(new_pos3d, vec3d)  # vector doesn't really matter here since particle won't be on an edge
+        new_index = self.simDomain.getIndexPath(new_pos3d, vec3d_new)  # vector doesn't really matter here since particle won't be on an edge
 
         # Find equivalent kinetic step
         pos_delta = new_pos3d - pos3d
@@ -511,26 +513,29 @@ class KDParticleTracer(ParticleTracer, ABC):
             return new_pos3d, equi_vec, new_index, True, diff_step_track
 
     @abstractmethod
-    def advectionDiffusionCoeff(self, pos3d: tuple3d, vec3d: tuple3d, energy: float, index: int, stepsize: float, deltaE: float) -> Tuple[tuple3d, tuple3d]:
-        """Return advection and diffusion coefficient
+    def advectionDiffusionCoeff(self, pos3d: tuple3d, vec3d: tuple3d, energy: float, index: int, stepsize: float, deltaE: float, vec3d_new: Optional[tuple3d]) -> Tuple[tuple3d, tuple3d]:
+        """Return advection and diffusion coefficient from KDR
 
         Args:
-            pos3d (tuple3d): position x double prime
-            vec3d (tuple3d): final direction of travel on which the mean and variance are conditioned
-            stepsize (float): remaining 'time' for the diffusive movement
-            deltaE (float): Energy loss due to diffusive step
+            pos3d (tuple3d): Position at the start of the diffusive step
+            vec3d (tuple3d): Velocity of particle during the kinetic step
+            energy (float): Energy of particle at the start of the diffusive step
+            index (int): Cell index of cell in which that particle is at the start of the diffusive step
+            stepsize (float): Diffusive step size
+            deltaE (float): Energy loss over the diffusive step
+            vec3d_new (optional, float): final velocity of the diffsive step (for conditioning on the final velocity)
 
         Returns:
             Tuple[tuple3d, tuple3d]: Advection and diffusion coefficient
         """
-        pass
 
 
 class KDMC(KDParticleTracer):
     """Implements kinetic-diffusion Monte Carlo using the mean and variance of kinetic motion conditioned on the final velocity.
     """
-    def advectionDiffusionCoeff(self, pos3d: tuple3d, vec3d: tuple3d, energy: float, index: int, stepsize: float, deltaE: float) -> Tuple[tuple3d, tuple3d]:
+    def advectionDiffusionCoeff(self, pos3d: tuple3d, vec3d: tuple3d, energy: float, index: int, stepsize: float, deltaE: float, vec3d_new: Optional[tuple3d]) -> Tuple[tuple3d, tuple3d]:
         assert self.particle is not None
+        assert vec3d_new is not None
 
         # Get mean and variance of Omega distribution
         mu_omega, _ = self.particle.getOmegaMoments(pos3d)
@@ -553,7 +558,7 @@ class KDMC(KDParticleTracer):
         sigmaStepsizeDouble = 2*sigmaStepsize
         exp1: float = math.exp(-sigmaStepsize)
         exp2: float = math.exp(-sigmaStepsizeDouble)
-        vec_mean_dev = vec3d - mu_omega
+        vec_mean_dev = vec3d_new - mu_omega
         vec_mean_dev2 = vec_mean_dev**2
 
         # Heterogeneity correction
@@ -564,7 +569,7 @@ class KDMC(KDParticleTracer):
         het_correction = het1 - het2 - het3 + het4
 
         # Mean
-        dRdx = self.particle.getDScatteringRate(x_int, vec3d, E_int, material)
+        dRdx = self.particle.getDScatteringRate(x_int, vec3d, E_int, material)  # It should really be an intermediate velocity that is passed here, that it isn't ever used...
         mean: tuple3d = mu_omega + (1 - exp1)*vec_mean_dev/sigmaStepsize + het_correction*dRdx*self.het_corr
 
         # Variance
@@ -581,7 +586,7 @@ class KDMC(KDParticleTracer):
 class KDSMC(KDParticleTracer):
     """Implements KDMC using a mean and variance that doesn't incorporate the correlation between multiple time steps. The 's' stands for 'simple'.
     """
-    def advectionDiffusionCoeff(self, pos3d: tuple3d, vec3d: tuple3d, energy: float, index: int, stepsize: float, deltaE: float) -> Tuple[tuple3d, tuple3d]:
+    def advectionDiffusionCoeff(self, pos3d: tuple3d, vec3d: tuple3d, energy: float, index: int, stepsize: float, deltaE: float, vec3d_new: Optional[tuple3d]) -> Tuple[tuple3d, tuple3d]:
         assert self.particle is not None
 
         # Get mean and variance of Omega distribution
@@ -617,7 +622,7 @@ class KDSMC(KDParticleTracer):
 class KDLMC(KDParticleTracer):
     """Implements KDMC using the advection and diffusion coefficients from the diffusion limit.
     """
-    def advectionDiffusionCoeff(self, pos3d: tuple3d, vec3d: tuple3d, energy: float, index: int, stepsize: float, deltaE: float) -> Tuple[tuple3d, tuple3d]:
+    def advectionDiffusionCoeff(self, pos3d: tuple3d, vec3d: tuple3d, energy: float, index: int, stepsize: float, deltaE: float, vec3d_new: Optional[tuple3d]) -> Tuple[tuple3d, tuple3d]:
         assert self.particle is not None
 
         # Get mean and variance of Omega distribution
@@ -648,46 +653,35 @@ class KDR(KDParticleTracer):
         super().__init__(simOptions=simOptions, simDomain=simDomain, particle=particle, dS=dS, het_corr=False)
         self.useMsAngle = useMSAngle
 
-    def advectionDiffusionCoeff(self, pos3d: tuple3d, vec3d: tuple3d, energy: float, index: int, stepsize: float, deltaE: float) -> Tuple[tuple3d, tuple3d]:
+    def advectionDiffusionCoeff(self, pos3d: tuple3d, vec3d: tuple3d, energy: float, index: int, stepsize: float, deltaE: float, vec3d_new: Optional[tuple3d]) -> Tuple[tuple3d, tuple3d]:
         assert self.particle is not None
         material = self.simDomain.getMaterial(index)
         E_int = energy - deltaE/2
-
         Ecost = self.particle.getMeanMu(E_int, material)
 
-        # Scale advection coefficient
         Sigma = self.particle.getScatteringRate(pos3d, E_int, material)
-        expSum: float = 1.0 - math.exp(stepsize*Sigma*(Ecost - 1.0))
-        A_coef: tuple3d = vec3d*Ecost*expSum/((1 - Ecost)*Sigma)
+        A_coef: tuple3d
+        if self.useMsAngle:
+            assert vec3d_new is not None
+            stepsizeds = stepsize*Sigma
+            Ecosmin1 = Ecost-1.0
+            term1 = (math.exp(stepsizeds*Ecosmin1) - 1)*vec3d*Ecost/((-Ecosmin1*Sigma)*math.pow(Sigma*Ecosmin1, 2))
+            term2 = vec3d_new*(1.0 - math.exp(-Sigma*stepsize))/Sigma
+            A_coef = term1 + term2
+        else:  # No multiple scattering, no conditioning on final velocity possible.
+            expSum: float = 1.0 - math.exp(stepsize*Sigma*(Ecost - 1.0))
+            A_coef = vec3d*Ecost*expSum/((1 - Ecost)*Sigma)
 
         # Load variance from LUT
         var = self.particle.getScatteringVariance(E_int, stepsize, material)
 
         return A_coef, var
 
-    def stepParticleDiffusive(self, pos3d: tuple3d, vec3d: tuple3d, energy: float, index: int, stepsize: float, deltaE: float) -> tuple[tuple3d, Optional[tuple3d], int, bool, list[tuple[int, float, tuple3d]]]:
-        """Apply diffusive motion to particle
-
-        Args:
-            pos3d (tuple3d): Position of particle after kinetic step
-            vec3d (tuple3d): final velocity on which the diffusive moment is conditioned
-            energy (float): energy of particle after kinetic step
-            index (int): position of particle in estimator grid
-            stepsize (float): remaing part of step for diffusive motion
-            deltaE (float): Energy loss due to diffusive step
-
-        Returns:
-            tuple[tuple3d, Optional[tuple3d], int, bool, list[tuple[int, float, tuple3d]]]:
-                new_pos (tuple3d): New position after diffusive step
-                equi_vec (Optional[tuple3d]): if relevant return the direction vector between the start and end point of the diffusive motion
-                index (int): new index of particle after diffusive step
-                diff_stepped (bool): if particle actually moved from previous position (eg. don't move if it ends up outside of the domain)
-                diff_step_track (list[tuple[int, float, tuple3d]]): list containing tuples. Each tuple gives the index of a cell, the step the particle took in that cell and the endpoint of that step.
-        """
+    def stepParticleDiffusive(self, pos3d: tuple3d, vec3d: tuple3d, energy: float, index: int, stepsize: float, deltaE: float, vec3d_new: Optional[tuple3d]) -> tuple[tuple3d, Optional[tuple3d], int, bool, list[tuple[int, float, tuple3d]]]:
         assert self.particle is not None
 
         # Get advection and diffusion coefficient
-        A_coeff, D_coeff = self.advectionDiffusionCoeff(pos3d, vec3d, energy, index, stepsize, deltaE)
+        A_coeff, D_coeff = self.advectionDiffusionCoeff(pos3d, vec3d, energy, index, stepsize, deltaE, vec3d_new)
         assert D_coeff[0] >= 0 and D_coeff[1] >= 0 and D_coeff[2] >= 0, f'{D_coeff=}'
 
         # Rotate diffusion coefficient
@@ -740,7 +734,6 @@ class KDR(KDParticleTracer):
             diff_step_track.append((index_it, final_stepsize, new_pos3d))
             return new_pos3d, equi_vec, new_index, True, diff_step_track
 
-
     def traceParticle(self, estimators: Union[MCEstimator, tuple[MCEstimator, ...]]) -> None:
         """Step particle through simulation domain until its energy is below a threshold value. Estimator routine is called after each step for on-the-fly estimation.
 
@@ -788,9 +781,18 @@ class KDR(KDParticleTracer):
 
             if loopbool and kin_stepped:  # Do diffusive step if there is energy left
 
+                # Determine size of diffusive step
                 step_diff1, diff_energy1 = self.pickStepSize(kin_pos3d, kin_energy, kin_index, step_kin)
 
-                diff_pos3d, equi_vec, diff_index, diff_stepped, diff_step_track  = self.stepParticleDiffusive(kin_pos3d, kin_vec3d, kin_energy, kin_index, step_diff1, kin_energy-diff_energy1)
+                # Sample multiple scattering velocity (for conditioning on final velocity)
+                material = self.simDomain.getMaterial(index)
+                diff_vec3d: Optional[tuple3d]
+                if self.useMsAngle:
+                    diff_vec3d = self.particle.sampleMSVec(kin_energy, step_diff1, material, vec3d)
+                else:
+                    diff_vec3d = None
+
+                diff_pos3d, equi_vec, diff_index, diff_stepped, diff_step_track  = self.stepParticleDiffusive(kin_pos3d, vec3d, kin_energy, kin_index, step_diff1, kin_energy-diff_energy1, diff_vec3d)
                 if diff_stepped:  # Step was taken: do estimation
                     assert equi_vec is not None
 
@@ -802,14 +804,10 @@ class KDR(KDParticleTracer):
                         if self.simOptions.DEPOSIT_REMAINDING_E_LOCALLY:
                             diff_energy = 0
                         loopbool = False  # make this the last iteration
-                        diff_vec3d = kin_vec3d
-                    else:
-                        material = self.simDomain.getMaterial(index)
-                        if self.useMsAngle:
-                            diff_vec3d = self.particle.sampleMSVec(kin_energy, step_diff1, material, kin_vec3d)
-                        else:
-                            mu, phi, _ = self.particle.sampleScatteringAngles(diff_energy, material)
-                            diff_vec3d = self.scatterParticle(mu, phi, equi_vec, False)
+                    if not self.useMsAngle:
+                        mu, phi, _ = self.particle.sampleScatteringAngles(diff_energy, material)
+                        diff_vec3d = self.scatterParticle(mu, phi, equi_vec, False)
+                    assert diff_vec3d is not None
 
                     # Divide energy loss evenly over all crossed cells based on stepsize
                     dE = kin_energy - diff_energy
@@ -838,6 +836,7 @@ class KDR(KDParticleTracer):
                     diff_vec3d = kin_vec3d
 
                 # set final state
+                assert diff_vec3d is not None
                 pos3d = diff_pos3d
                 vec3d = diff_vec3d
                 energy = diff_energy
