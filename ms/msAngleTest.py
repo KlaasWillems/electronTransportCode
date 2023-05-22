@@ -19,7 +19,7 @@ from electronTransportCode.Material import Material
 # Make LUT for multiple scattering angle theta and phi. LUT stores distribution of theta and phi as histogram.
 # Command line arguments:
 #   1) Amount of particles to simulate per setting
-#   2) Amount of energy bins. If 2, simulate KDRTestParticle that has fixed energy.
+#   2) Amount of energy bins. If 3, simulate KDRTestParticle for three specific energies.
 #   3) Amount of stepsize bins
 #   4) Amount of density bins
 
@@ -50,9 +50,9 @@ if __name__ == '__main__':
     maxEnergy = 21/ERE
     nbEnergy = int(float(sys.argv[2]))
     particle: ParticleModel
-    if nbEnergy == 2:
+    if nbEnergy == 3:
         particle = KDRTestParticle()
-        energyArray = np.array((particle.EFixed, particle.EFixed+1), dtype=float)
+        energyArray = np.array((particle.EFixed, particle.EFixed+5, particle.EFixed+10), dtype=float)
     else:
         particle = SimplifiedEGSnrcElectron()
         energyArray = np.linspace(minEnergy, maxEnergy, nbEnergy)
