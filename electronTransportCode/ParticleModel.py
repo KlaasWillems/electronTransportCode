@@ -586,7 +586,9 @@ class SimplifiedEGSnrcElectron(ParticleModel):
         return -2*eta*(eta+1)*(4-4*(2*eta+1)*arcoth)
 
     def getScatteringVariance(self, energy: float, stepsize: float, material: Material) -> tuple3d:
-        return self.interpPosVar(np.array((energy, stepsize, material.rho), dtype=float))[0]
+        var = self.interpPosVar(np.array((energy, stepsize, material.rho), dtype=float))[0]
+        var[var < 0] = 0.0  # Due to linear extrapolation of step size (axis=1), variance could become negative. Cap this to 0.
+        return var
 
 class KDRTestParticle(SimplifiedEGSnrcElectron):
     """Particle that behaves like a 10 MeV particle.
