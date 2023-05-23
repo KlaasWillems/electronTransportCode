@@ -656,3 +656,19 @@ class SimplifiedPenelopeElectron(ParticleModel):
 
     def sampleScatteringAngles(self, Ekin: float, material: Material) -> Tuple[float, float, bool]:
         raise NotImplementedError
+
+
+class KDRSpeedUpParticle(KDRTestParticle):
+    def __init__(self, sigma: float, generator: Union[np.random.Generator, None, int] = None, msDist: Optional[str] = None) -> None:
+        """Realistic particle with variable scattering rate for easy testing of the speed up of KDR
+
+        Args:
+            sigma (float): Scattering rate of particle
+            generator (Union[np.random.Generator, None, int]): Numpy generator. Defaults to None.
+            msDist (Optional[str]): Multiple scattering distribution to use ('vmf', 'expon', or 'esag'). Defaults to None.
+        """
+        self.sigma = sigma
+        super().__init__(generator, msDist)
+
+    def getScatteringRate(self, pos3d: tuple3d, Ekin: float, material: Material) -> float:
+        return self.sigma
