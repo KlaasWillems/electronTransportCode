@@ -1,7 +1,5 @@
 # Imports
-from multiprocessing import Value
 import sys
-from matplotlib.pyplot import scatter
 import numpy as np
 import pickle
 import time
@@ -73,7 +71,7 @@ if __name__ == '__main__':
         trackEndEstimatorkz = TrackEndEstimator(simDomain, NB_PARTICLES_PER_PROC, setting='z')
         kineticParticleTracer = AnalogParticleTracer(particle=particle1, simOptions=pointSourceSim, simDomain=simDomain)
         t1 = time.process_time()
-        kineticParticleTracer.runMultiProc(nbParticles=NB_PARTICLES, estimators=(trackEndEstimatorkx, trackEndEstimatorky, trackEndEstimatorkz), file=f'data/trackEndEstimatork{factor}.pkl', logAmount=logAmount)
+        kineticParticleTracer.runMultiProc(nbParticles=NB_PARTICLES, estimators=(trackEndEstimatorkx, trackEndEstimatorky, trackEndEstimatorkz), file=f'data/trackEndEstimatork{factor}.pkl', logAmount=logAmount, verbose=False)
         t2 = time.process_time()
         print(f'Kinetic simulation time: {round(t2-t1, 4)} s')
         if myrank == 0:
@@ -98,7 +96,7 @@ if __name__ == '__main__':
 
         kdr = KDR(simOptions=pointSourceSim, simDomain=simDomain, particle=particle1, dS=stepsize, useMSAngle=MSBool)
         t2 = time.process_time()
-        kdr.runMultiProc(nbParticles=NB_PARTICLES, estimators=(trackEndEstimatorkdrx, trackEndEstimatorkdry, trackEndEstimatorkdrz), file=outFileTEE, logAmount=logAmount)
+        kdr.runMultiProc(nbParticles=NB_PARTICLES, estimators=(trackEndEstimatorkdrx, trackEndEstimatorkdry, trackEndEstimatorkdrz), file=outFileTEE, logAmount=logAmount, verbose=False)
         t3 = time.process_time()
         print(f'KDR simulation time: {round(t3-t2, 4)} s')
         if myrank == 0:
