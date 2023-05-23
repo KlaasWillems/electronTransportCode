@@ -658,19 +658,18 @@ class KDR(KDParticleTracer):
         material = self.simDomain.getMaterial(index)
         E_int = energy - deltaE/2
         Ecost = self.particle.getMeanMu(E_int, material)
-
         Sigma = self.particle.getScatteringRate(pos3d, E_int, material)
-        A_coef: tuple3d
-        if self.useMsAngle:
-            assert vec3d_new is not None
-            stepsizeds = stepsize*Sigma
-            Ecosmin1 = Ecost-1.0
-            term1 = (1 - (math.exp(stepsizeds*Ecosmin1) - 1)/math.pow(Sigma*Ecosmin1, 2))*vec3d*Ecost/((-Ecosmin1*Sigma))
-            term2 = vec3d_new*(1.0 - math.exp(-Sigma*stepsize))/Sigma
-            A_coef = term1 + term2
-        else:  # No multiple scattering, no conditioning on final velocity possible.
-            expSum: float = 1.0 - math.exp(stepsize*Sigma*(Ecost - 1.0))
-            A_coef = vec3d*Ecost*expSum/((1 - Ecost)*Sigma)
+
+        # Advection coefficient in case of conditioning on final velocity. Does not work.
+        # stepsizeds = stepsize*Sigma
+        # Ecosmin1 = Ecost-1.0
+        # term1 = (1 - (math.exp(stepsizeds*Ecosmin1) - 1)/math.pow(Sigma*Ecosmin1, 2))*vec3d*Ecost/((-Ecosmin1*Sigma))
+        # term2 = vec3d_new*(1.0 - math.exp(-Sigma*stepsize))/Sigma
+        # A_coef = term1 + term2
+
+        # Simple advection coefficient. No conditioning on final velocity possible, only on the first velocity.
+        expSum: float = 1.0 - math.exp(stepsize*Sigma*(Ecost - 1.0))
+        A_coef = vec3d*Ecost*expSum/((1 - Ecost)*Sigma)
 
         # Load variance from LUT
         var = self.particle.getScatteringVariance(E_int, stepsize, material)
