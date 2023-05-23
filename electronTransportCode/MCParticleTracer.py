@@ -665,7 +665,7 @@ class KDR(KDParticleTracer):
             assert vec3d_new is not None
             stepsizeds = stepsize*Sigma
             Ecosmin1 = Ecost-1.0
-            term1 = (math.exp(stepsizeds*Ecosmin1) - 1)*vec3d*Ecost/((-Ecosmin1*Sigma)*math.pow(Sigma*Ecosmin1, 2))
+            term1 = (1 - (math.exp(stepsizeds*Ecosmin1) - 1)/math.pow(Sigma*Ecosmin1, 2))*vec3d*Ecost/((-Ecosmin1*Sigma))
             term2 = vec3d_new*(1.0 - math.exp(-Sigma*stepsize))/Sigma
             A_coef = term1 + term2
         else:  # No multiple scattering, no conditioning on final velocity possible.
