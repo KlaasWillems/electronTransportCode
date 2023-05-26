@@ -418,6 +418,8 @@ class SimplifiedEGSnrcElectron(ParticleModel):
                 self.interpKappa = RegularGridInterpolator((self.MSLUTeAxis, self.MSLUTdsAxis, self.MSLUTrhoAxis), self.MSKappaLUT, fill_value=None, bounds_error=False)  # type: ignore
             elif self.msDist == 'expon':
                 self.MSExpLUT = np.load(PROJECT_ROOT + '/ms/data/msAngleLUTTest.npy')[:, :, :, 6:8]
+            elif self.msDist == 'lognormal':
+                self.lognormParms = np.load(PROJECT_ROOT + '/ms/data/msAngleLUTTest.npy')[:, :, :, 8:11]
             else:
                 raise NotImplementedError
 
@@ -468,6 +470,14 @@ class SimplifiedEGSnrcElectron(ParticleModel):
                 rhoIndex = np.abs(self.MSLUTrhoAxis - material.rho).argmin()
                 loc, scale = self.MSExpLUT[eIndex, dsIndex, rhoIndex]
                 mu = 1.0 - scipy.stats.expon.rvs(loc=loc, scale=scale, size=1, random_state=self.rng)[0]  # type: ignore
+                phi = self.rng.uniform(low=0.0, high=2*math.pi)
+                return scatterParticle(mu, phi, oldVec)
+            elif self.msDist == 'lognormal':
+                eIndex = np.abs(self.MSLUTeAxis - Ekin).argmin()
+                dsIndex = np.abs(self.MSLUTdsAxis-stepsize).argmin()
+                rhoIndex = np.abs(self.MSLUTrhoAxis - material.rho).argmin()
+                shape, loc, scale = self.lognormParms[eIndex, dsIndex, rhoIndex]
+                mu = math.cos(scipy.stats.lognorm.rvs(s=shape, loc=loc, scale=scale, size=1)[0])  # type: ignore
                 phi = self.rng.uniform(low=0.0, high=2*math.pi)
                 return scatterParticle(mu, phi, oldVec)
             else:

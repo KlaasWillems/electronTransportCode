@@ -82,7 +82,7 @@ if __name__ == '__main__':
         trackEndEstimatorkdrz = TrackEndEstimator(simDomain, NB_PARTICLES_PER_PROC, setting='z')
 
         MS = sys.argv[5]
-        MSBool = MS == 'esag' or MS == 'vmf' or MS == 'expon'
+        MSBool = MS == 'esag' or MS == 'vmf' or MS == 'expon' or MS == 'lognormal'
         if MS == 'False':
             outFileTEE = outputFolder + f'trackEndEstimatorkdr{factor}.pkl'
             outFileKDR = outputFolder + f'kdr{factor}.pkl'

@@ -71,7 +71,7 @@ if __name__ == '__main__':
 
     lut: Optional[np.ndarray]
     if rank == 0:
-        lut = np.empty(shape=(nbEnergy, nbds, nbDensity, 8), dtype=float)  # Store fitted dipserion coefficient
+        lut = np.empty(shape=(nbEnergy, nbds, nbDensity, 11), dtype=float)  # Store fitted dipserion coefficient
     else:
         lut = None
 
