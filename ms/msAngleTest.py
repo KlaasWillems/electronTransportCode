@@ -93,9 +93,11 @@ if __name__ == '__main__':
                     _, kappa = spherical_stats._vmf._fit(data)
                     params_esag = spherical_stats._esag._fit(data)
                     params_expon = scipy.stats.expon.fit(1-costMS)
+                    params_lognorm = scipy.stats.lognorm.fit(np.arccos(costMS))
                     lut[i, j, k, 0] = kappa
                     lut[i, j, k, 1:6] = params_esag
                     lut[i, j, k, 6:8] = params_expon
+                    lut[i, j, k, 8:11] = params_lognorm
         t4 = time.process_time()
         if rank == 0:
             print(f'{round(100*(i+1)/energyArray.size, 3)}% completed. Last section took {(t4-t3)/60:2e} minutes.')
