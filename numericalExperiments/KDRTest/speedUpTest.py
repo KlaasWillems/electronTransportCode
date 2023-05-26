@@ -26,7 +26,7 @@ if __name__ == '__main__':
     eSource = 5.0
     SEED = 2
     dS = 0.1
-    MSDistribution: str = 'vmf'
+    MSDistribution: str = 'lognormal'
 
     pointSourceSim = KDTestSource(minEnergy=0.0, rngSeed=SEED, eSource=eSource)
     particleTracerK = AnalogParticleTracer(particle=None, simOptions=pointSourceSim, simDomain=simDomain)
