@@ -22,7 +22,7 @@ if __name__ == '__main__':
     if particleType == 'EGS':
         particle = SimplifiedEGSnrcElectron(scatterer=scatterer)  # constrain scattering to yz plance
     elif particleType == 'KDRTest':
-        particle = KDRTestParticle(msDist='vmf')
+        particle = KDRTestParticle(msDist='lognormal')
     else:
         raise ValueError
     lungInit = LungInitialConditions(sigmaPos=1/50, kappa=10, eSource=35/ERE)
