@@ -17,15 +17,20 @@ if __name__ == '__main__':
     algorithm = sys.argv[3]
     particleType = sys.argv[4]
 
+    kappa = 10
+    eSource = 35
+
     # Sim settings
     particle: ParticleModel
     if particleType == 'EGS':
         particle = SimplifiedEGSnrcElectron(scatterer=scatterer)  # constrain scattering to yz plance
     elif particleType == 'KDRTest':
         particle = KDRTestParticle(msDist='lognormal')
+        kappa = 80
+        eSource = 25
     else:
         raise ValueError
-    lungInit = LungInitialConditions(sigmaPos=1/50, kappa=10, eSource=35/ERE)
+    lungInit = LungInitialConditions(sigmaPos=1/50, kappa=kappa, eSource=eSource/ERE)
     lungSimDomain = LungSimulationDomain()
 
     if scatterer == '2d-simple':  # decrease scattering rate for easy testing
