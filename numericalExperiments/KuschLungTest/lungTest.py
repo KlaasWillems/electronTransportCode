@@ -26,7 +26,7 @@ if __name__ == '__main__':
         particle = SimplifiedEGSnrcElectron(scatterer=scatterer)  # constrain scattering to yz plance
     elif particleType == 'KDRTest':
         particle = KDRTestParticle(msDist='lognormal')
-        kappa = 80
+        kappa = 5000
         eSource = 25
     else:
         raise ValueError
